@@ -1,0 +1,19 @@
+include: package:lints/recommended.yaml
+
+formatter:
+  page_width: 120
+analyzer:
+  errors:
+    comment_references: error
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+    - comment_references

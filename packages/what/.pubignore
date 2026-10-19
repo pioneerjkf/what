@@ -1,0 +1,5 @@
+# Exclude generated documentation outputs
+doc/api/
+.dart_tool/
+build/
+assets/

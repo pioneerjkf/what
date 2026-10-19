@@ -1,0 +1,24 @@
+name: what_lints_example
+description: "Showcase and verification example application for what_lints rules."
+publish_to: "none"
+
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  what:
+  what_flutter:
+
+dev_dependencies:
+  custom_lint: ^0.8.1
+  flutter_lints: ^6.0.0
+  what_lints:
+    path: ../
+
+flutter:
+  uses-material-design: true

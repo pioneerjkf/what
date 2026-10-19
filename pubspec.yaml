@@ -1,0 +1,19 @@
+name: what_workspace
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - packages/what
+  - packages/what_extensions
+  - packages/what_flutter
+  - packages/what_flutter/example
+  - packages/what_lints
+  - packages/what_lints/example
+  - packages/what_test
+  - packages/what_flutter_test
+
+dev_dependencies:
+  custom_lint: ^0.8.1
+  what_lints:
+    path: packages/what_lints
+  lints: ^6.0.0

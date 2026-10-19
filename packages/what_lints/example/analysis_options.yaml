@@ -1,0 +1,11 @@
+include: package:flutter_lints/flutter.yaml
+
+# `lib/` (pub.dev guided tour) and `lint_cases/` (exhaustive corpus) are always
+# analyzed: both are verified by `what_lints/test/harness/` on every CI run.
+analyzer:
+  plugins:
+    - custom_lint
+  errors:
+    analysis_options_deprecated_plugins: ignore
+  exclude:
+    - build/**

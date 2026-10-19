@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 740" width="100%" height="100%" role="img" aria-label="LPDAG Phase 1 Push-Dirty Diagram">
+  <title>LPDAG Phase 1: Push-Dirty (Downstream Invalidation)</title>
+  <desc>Downstream control-plane invalidation wave traversing intrusive pointers: source mutation marks downstream relays as check and notifies terminals with zero compute and zero heap allocation.</desc>
+
+  <defs>
+    <!-- True Dark Neutral Palette (Desaturated Charcoal / Slate) -->
+    <linearGradient id="neutral-canvas-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141519" />
+      <stop offset="100%" stop-color="#0B0C0E" />
+    </linearGradient>
+
+    <linearGradient id="neutral-canvas-border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2B2D35" />
+      <stop offset="50%" stop-color="#1C1D24" />
+      <stop offset="100%" stop-color="#121318" />
+    </linearGradient>
+
+    <!-- Subtle Ambient Glow -->
+    <radialGradient id="subtle-ambient" cx="50%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.04" />
+      <stop offset="60%" stop-color="#1E293B" stop-opacity="0.01" />
+      <stop offset="100%" stop-color="#0B0C0E" />
+    </radialGradient>
+
+    <!-- Technical Matrix Grid (Desaturated Neutral) -->
+    <pattern id="matrix-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="16" cy="16" r="1.1" fill="#71717A" opacity="0.10" />
+    </pattern>
+
+    <!-- Downward Arrow Markers -->
+    <marker id="arrow-pulse" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#38BDF8" />
+    </marker>
+  </defs>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .canvas-bg {
+      fill: url(#neutral-canvas-bg);
+      stroke: url(#neutral-canvas-border);
+      stroke-width: 1.5;
+    }
+
+    /* Modern Squircle Node Cards */
+    .node-box {
+      fill: #18191E;
+      stroke: #2E313A;
+      stroke-width: 1.2;
+    }
+
+    .node-title {
+      font-size: 15px;
+      font-weight: 600;
+      fill: #F4F4F5;
+      letter-spacing: -0.01em;
+    }
+    .node-type {
+      font-size: 10px;
+      font-weight: 600;
+      fill: #94A3B8;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .node-code {
+      font-size: 12px;
+      font-weight: 400;
+      fill: #D4D4D8;
+    }
+
+    .pulse-edge {
+      stroke: #38BDF8;
+      stroke-width: 1.8;
+      fill: none;
+    }
+
+    .meta-label {
+      font-size: 10.5px;
+      font-weight: 500;
+      fill: #71717A;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .grid-line {
+      stroke: #22242B;
+      stroke-width: 1;
+    }
+    .corner-cross {
+      stroke: #3F434F;
+      stroke-width: 1.2;
+      opacity: 0.5;
+    }
+  </style>
+
+  <!-- Frame Background & Grid with Smooth Squircle Radius (rx=24, ry=24) -->
+  <rect class="canvas-bg" x="8" y="8" width="824" height="724" rx="24" ry="24" />
+  <rect x="8" y="8" width="824" height="724" rx="24" ry="24" fill="url(#matrix-grid)" />
+  <rect x="8" y="8" width="824" height="724" rx="24" ry="24" fill="url(#subtle-ambient)" />
+
+  <!-- Precision Corner Crosshairs -->
+  <g class="corner-cross">
+    <path d="M18 24 H28 M23 19 V29" />
+    <path d="M812 24 H822 M817 19 V29" />
+    <path d="M18 716 H28 M23 711 V721" />
+    <path d="M812 716 H822 M817 711 V721" />
+  </g>
+
+  <!-- Header Level -->
+  <g transform="translate(36, 40)">
+    <rect x="0" y="-12" width="132" height="22" rx="11" ry="11" fill="rgba(56, 189, 248, 0.08)" stroke="rgba(56, 189, 248, 0.35)" stroke-width="1" />
+    <text x="66" y="3" text-anchor="middle" font-size="10.5" font-weight="600" fill="#38BDF8" letter-spacing="0.10em">LPDAG PHASE 1</text>
+    <text class="meta-label" x="148" y="3">PUSH-DIRTY · CONTROL PLANE INVALIDATION</text>
+    <text class="meta-label" x="768" y="3" text-anchor="end">0 COMPUTE · 0 HEAP ALLOCATION</text>
+  </g>
+
+  <line class="grid-line" x1="36" y1="58" x2="804" y2="58" />
+
+  <!-- =================================================================== -->
+  <!-- 01. SOURCE NODE (Top Center)                                        -->
+  <!-- =================================================================== -->
+  <g transform="translate(260, 96)">
+    <rect class="node-box" x="0" y="0" width="320" height="96" rx="18" ry="18" stroke="#FB7185" stroke-opacity="0.50" />
+    <text class="node-type" x="22" y="28">SOURCE NODE (MUTATED)</text>
+    <text class="node-title" x="22" y="54">WhatController (Source count)</text>
+    <text class="node-code" x="22" y="78">count.set(2) → <tspan fill="#FB7185" font-weight="600">v1 → v2</tspan> <tspan fill="#71717A">(dirty)</tspan></text>
+    
+    <!-- Dirty Badge -->
+    <rect x="232" y="16" width="66" height="22" rx="11" ry="11" fill="rgba(244, 63, 94, 0.08)" stroke="rgba(251, 113, 133, 0.40)" stroke-width="1" />
+    <text x="265" y="31" text-anchor="middle" font-size="10" font-weight="600" fill="#FB7185">DIRTY</text>
+  </g>
+
+  <!-- Flow Wave 1: Source to Left & Right (64px Gap: y=192 to y=256) -->
+  <!-- Wave 1 (Left): Source to Left (A) -->
+  <path class="pulse-edge" d="M 350 192 L 350 224 L 215 224 L 215 254" marker-end="url(#arrow-pulse)" />
+  <g transform="translate(283, 224)">
+    <circle cx="0" cy="0" r="14" fill="#141519" />
+    <text x="0" y="5" text-anchor="middle" font-size="16" font-weight="800" fill="#38BDF8">1</text>
+  </g>
+
+  <!-- Wave 1 (Right): Source to Right (B) -->
+  <path class="pulse-edge" d="M 490 192 L 490 224 L 625 224 L 625 254" marker-end="url(#arrow-pulse)" />
+  <g transform="translate(558, 224)">
+    <circle cx="0" cy="0" r="14" fill="#141519" />
+    <text x="0" y="5" text-anchor="middle" font-size="16" font-weight="800" fill="#38BDF8">1</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- 02. COMPUTED RELAYS: LEFT & RIGHT (Middle Level)                    -->
+  <!-- =================================================================== -->
+  <!-- Left Node (A) -->
+  <g transform="translate(60, 256)">
+    <rect class="node-box" x="0" y="0" width="310" height="96" rx="18" ry="18" />
+    <text class="node-type" x="22" y="28">COMPUTED RELAY</text>
+    <text class="node-title" x="22" y="54">computed: Left (A)</text>
+    <text class="node-code" x="22" y="78">_dirtyState: <tspan fill="#FBBF24" font-weight="600">check</tspan> <tspan fill="#71717A">(0 computation)</tspan></text>
+    
+    <!-- Check Tag -->
+    <rect x="228" y="16" width="66" height="22" rx="11" ry="11" fill="rgba(245, 158, 11, 0.08)" stroke="rgba(245, 158, 11, 0.40)" stroke-width="1" />
+    <text x="261" y="31" text-anchor="middle" font-size="10" font-weight="600" fill="#FBBF24">CHECK</text>
+  </g>
+
+  <!-- Right Node (B) -->
+  <g transform="translate(470, 256)">
+    <rect class="node-box" x="0" y="0" width="310" height="96" rx="18" ry="18" />
+    <text class="node-type" x="22" y="28">COMPUTED RELAY</text>
+    <text class="node-title" x="22" y="54">computed: Right (B)</text>
+    <text class="node-code" x="22" y="78">_dirtyState: <tspan fill="#FBBF24" font-weight="600">check</tspan> <tspan fill="#71717A">(0 computation)</tspan></text>
+
+    <!-- Check Tag -->
+    <rect x="228" y="16" width="66" height="22" rx="11" ry="11" fill="rgba(245, 158, 11, 0.08)" stroke="rgba(245, 158, 11, 0.40)" stroke-width="1" />
+    <text x="261" y="31" text-anchor="middle" font-size="10" font-weight="600" fill="#FBBF24">CHECK</text>
+  </g>
+
+  <!-- Flow Wave 2: Left & Right to Sum (64px Gap: y=352 to y=416) -->
+  <!-- Wave 2 (Left): Left (A) to Sum (C) -->
+  <path class="pulse-edge" d="M 215 352 L 215 384 L 300 384 L 300 414" marker-end="url(#arrow-pulse)" />
+  <g transform="translate(258, 384)">
+    <circle cx="0" cy="0" r="14" fill="#141519" />
+    <text x="0" y="5" text-anchor="middle" font-size="16" font-weight="800" fill="#38BDF8">2</text>
+  </g>
+
+  <!-- Wave 2 (Right): Right (B) to Sum (C) -->
+  <path class="pulse-edge" d="M 625 352 L 625 384 L 540 384 L 540 414" marker-end="url(#arrow-pulse)" />
+  <g transform="translate(582, 384)">
+    <circle cx="0" cy="0" r="14" fill="#141519" />
+    <text x="0" y="5" text-anchor="middle" font-size="16" font-weight="800" fill="#38BDF8">2</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- 03. COMPUTED RELAY: SUM NODE (C) (Lower Middle Level)               -->
+  <!-- =================================================================== -->
+  <g transform="translate(190, 416)">
+    <rect class="node-box" x="0" y="0" width="460" height="98" rx="18" ry="18" />
+    <text class="node-type" x="24" y="28">COMPUTED RELAY</text>
+    <text class="node-title" x="24" y="54">computed: Sum (C = A + B)</text>
+    <text class="node-code" x="24" y="78">_dirtyState: <tspan fill="#FBBF24" font-weight="600">check</tspan> · <tspan fill="#71717A">Evaluation deferred until read (0 computation)</tspan></text>
+
+    <!-- Check Tag -->
+    <rect x="374" y="16" width="66" height="22" rx="11" ry="11" fill="rgba(245, 158, 11, 0.08)" stroke="rgba(245, 158, 11, 0.40)" stroke-width="1" />
+    <text x="407" y="31" text-anchor="middle" font-size="10" font-weight="600" fill="#FBBF24">CHECK</text>
+  </g>
+
+  <!-- Flow Wave 3: Sum to WhatTerminal (60px Gap: y=514 to y=574) -->
+  <path class="pulse-edge" d="M 420 514 L 420 572" marker-end="url(#arrow-pulse)" />
+  <g transform="translate(420, 544)">
+    <circle cx="0" cy="0" r="14" fill="#141519" />
+    <text x="0" y="5" text-anchor="middle" font-size="16" font-weight="800" fill="#38BDF8">3</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- 04. TERMINAL CONSUMER: WHATTERMINAL (Bottom Level)                 -->
+  <!-- =================================================================== -->
+  <g transform="translate(240, 574)">
+    <rect class="node-box" x="0" y="0" width="360" height="88" rx="18" ry="18" />
+    <text class="node-type" x="180" y="28" text-anchor="middle">TERMINAL CONSUMER</text>
+    <text class="node-title" x="180" y="52" font-size="15" text-anchor="middle">WhatTerminal (Flutter Widget / Subscriber)</text>
+    <text class="node-code" x="180" y="74" font-size="11.5" fill="#A1A1AA" text-anchor="middle">onInvalidated() → Frame Queued (VSYNC)</text>
+  </g>
+
+  <!-- Footer Technical Annotation (English Only) -->
+  <line class="grid-line" x1="36" y1="690" x2="804" y2="690" />
+  <text class="meta-label" x="420" y="708" font-size="10" text-anchor="middle">
+    PUSH-DIRTY: 3-TIER CONTROL WAVE MARKS CHECK WITH ZERO COMPUTATION &amp; ZERO HEAP ALLOCATIONS
+  </text>
+</svg>

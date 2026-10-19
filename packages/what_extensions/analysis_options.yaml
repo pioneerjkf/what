@@ -1,0 +1,17 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+  errors:
+    comment_references: error
+
+linter:
+  rules:
+    - comment_references
+
+include: package:lints/recommended.yaml

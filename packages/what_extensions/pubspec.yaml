@@ -1,0 +1,30 @@
+name: what_extensions
+description: "Reactive collection operators and functional pipeline extensions for the What reactive framework."
+
+homepage: https://pioneerjkf.dev
+repository: https://github.com/pioneerjkf/what
+issue_tracker: https://github.com/pioneerjkf/what/issues
+topics:
+  - state-management
+  - reactivity
+  - extensions
+  - async
+  - stream
+
+resolution: workspace
+
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  meta: ^1.18.0
+
+  collection: ^1.19.1
+
+  what: ^0.1.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.24.0

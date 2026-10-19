@@ -1,0 +1,26 @@
+name: what_flutter_example
+description: "An interactive showcase example application for what_flutter."
+publish_to: "none"
+
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  what:
+  what_flutter:
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  what_lints:
+    path: ../../what_lints
+  custom_lint: ^0.8.1
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,12 @@
+# Exclude generated documentation outputs
+doc/api/
+.dart_tool/
+build/
+assets/
+
+# Exclude example platform runners and test suites to optimize package archive size
+example/.dart_tool/
+example/build/
+example/macos/
+example/web/
+example/test/

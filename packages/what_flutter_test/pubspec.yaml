@@ -1,0 +1,25 @@
+name: what_flutter_test
+description: "Unified Flutter widget testing harness and state mocking system for the What Flutter reactive framework."
+homepage: https://pioneerjkf.dev
+repository: https://github.com/pioneerjkf/what
+issue_tracker: https://github.com/pioneerjkf/what/issues
+version: 0.1.0
+
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  meta: ^1.18.0
+  what: ^0.1.0
+  what_flutter: ^0.1.0
+  what_test: ^0.1.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
