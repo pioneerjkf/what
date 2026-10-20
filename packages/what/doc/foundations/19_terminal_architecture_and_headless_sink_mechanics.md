@@ -83,7 +83,7 @@ If a system attempts to inspect these nodes without establishing an active subsc
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
 │   [ Dormant State (0 Consumers) ]                                      │
-│   node.peek; // One-time untracked read; node remains DORMANT!         │
+│   untracked(node); // One-time untracked read; node remains DORMANT!   │
 │   streamNode; // Stream subscription NOT established!                  │
 │                                                                        │
 │   [ Active Grounding (Terminal Mooring) ]                              │
@@ -100,12 +100,12 @@ If a system attempts to inspect these nodes without establishing an active subsc
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Untracked Reads (`.peek`) vs. Terminal Grounding
+### 2.2 Untracked Reads (`untracked(...)`) vs. Terminal Grounding
 
 A fundamental distinction exists between reading a node's immediate value and establishing reactive grounding:
 
-* **[`.peek`](../../lib/src/what/what.dart) / [`.peekState`](../../lib/src/what/what.dart)**:
-  - Invokes `_read()` directly via [`_WhatPeekMixin`](../../lib/src/what/what.dart) and [`_PullResolver`](../../lib/src/engine/_internal/_pull.dart).
+* **[`untracked(node)`](../../lib/src/what/untracked.dart) / [`untracked.state(node)`](../../lib/src/what/untracked.dart)**:
+  - Invokes `_read()` directly via inlined internal resolver without creating dependency edges and without registering as a target.
   - Evaluates the current state on-demand without creating dependency edges and without registering as a target.
   - Leaves `_lifecycle.isActive` strictly `false`.
   - **Does not awaken dormant async stream listeners or allocate `managed` handles.**
@@ -184,7 +184,7 @@ base class RawWhatTerminal<T> extends _RawTerminal
    ```
    Calling `terminal.data`, `terminal.snapshot`, or `terminal.isEmpty` directly dereferences the upstream source. This guarantees **zero heap allocation** and completely eliminates cache desynchronization.
 2. **Direct State Protocol Implementation**:
-   Because `RawWhatTerminal` mixes in [`_WhatStateMixin<T>`](../../lib/src/what/what.dart) and implements [`WhatState<T>`](../../lib/src/what/what.dart), external consumers can inspect state properties directly on the terminal instance:
+   Because `RawWhatTerminal` mixes in [`_WhatStateMixin<T>`](../../lib/src/what/_internal/_state.dart) and implements [`WhatState<T>`](../../lib/src/what/state.dart), external consumers can inspect state properties directly on the terminal instance:
    ```dart
    final term = RawWhatTerminal(source, onInvalidated: () {});
    if (term.hasData) print(term.data);

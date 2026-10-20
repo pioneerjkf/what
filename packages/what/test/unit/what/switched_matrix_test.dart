@@ -18,23 +18,23 @@ void main() {
         return via(isPrimary.what) ? primary.what : secondary.what;
       });
 
-      expect(switchedWhat.peek, 'Primary-Initial');
+      expect(untracked(switchedWhat), 'Primary-Initial');
 
       // Update primary
       primary.data = 'Primary-Updated';
-      expect(switchedWhat.peek, 'Primary-Updated');
+      expect(untracked(switchedWhat), 'Primary-Updated');
 
       // Switch to secondary
       isPrimary.data = false;
-      expect(switchedWhat.peek, 'Secondary-Initial');
+      expect(untracked(switchedWhat), 'Secondary-Initial');
 
       // Update primary while secondary is active -> switched remains secondary
       primary.data = 'Primary-Ignored';
-      expect(switchedWhat.peek, 'Secondary-Initial');
+      expect(untracked(switchedWhat), 'Secondary-Initial');
 
       // Update secondary
       secondary.data = 'Secondary-Updated';
-      expect(switchedWhat.peek, 'Secondary-Updated');
+      expect(untracked(switchedWhat), 'Secondary-Updated');
     });
 
     test('1.2 what.switched switches underlying What nodes dynamically', () {
@@ -54,13 +54,13 @@ void main() {
         }
       });
 
-      expect(switchedWhat.peek, 100);
+      expect(untracked(switchedWhat), 100);
 
       mode.data = 2;
-      expect(switchedWhat.peek, 200);
+      expect(untracked(switchedWhat), 200);
 
       mode.data = 3;
-      expect(switchedWhat.peek, 300);
+      expect(untracked(switchedWhat), 300);
     });
 
     test('1.3 What.computed dynamically expands and shrinks collection of Whats', () {
@@ -73,23 +73,23 @@ void main() {
 
       final sumWhat = dynamicGroup.sum();
 
-      expect(sumWhat.peek, 30); // 10 + 20
+      expect(untracked(sumWhat), 30); // 10 + 20
 
       // Mutate item in active set
       items[0].data = 15;
-      expect(sumWhat.peek, 35); // 15 + 20
+      expect(untracked(sumWhat), 35); // 15 + 20
 
       // Expand group to 4 items
       count.data = 4;
-      expect(sumWhat.peek, 105); // 15 + 20 + 30 + 40
+      expect(untracked(sumWhat), 105); // 15 + 20 + 30 + 40
 
       // Mutate item outside current active count (item[4]) -> sum unchanged
       items[4].data = 999;
-      expect(sumWhat.peek, 105);
+      expect(untracked(sumWhat), 105);
 
       // Shrink group to 1 item
       count.data = 1;
-      expect(sumWhat.peek, 15);
+      expect(untracked(sumWhat), 15);
     });
 
     test('1.4 Deeply nested switches with effect tracking evaluate consistently', () async {

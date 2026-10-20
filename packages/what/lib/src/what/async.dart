@@ -67,7 +67,7 @@ extension FutureWhatExtension<T> on Future<T> {
   ///   onError: (error, stackTrace) => UserProfile.fallback(),
   /// );
   ///
-  /// final greeting = profileWhat.peekState.match(
+  /// final greeting = untracked.state(profileWhat).match(
   ///   data: (profile) => 'Welcome, ${profile.name}!',
   ///   empty: () => 'Loading profile...',
   ///   error: (err, stack) => 'Failed to load profile.',
@@ -173,7 +173,7 @@ extension StreamWhatExtension<T> on Stream<T> {
   ///   graceful: graceful,
   /// );
   ///
-  /// final label = sensorWhat.peekState.match(
+  /// final label = untracked.state(sensorWhat).match(
   ///   data: (value) => 'Reading: $value',
   ///   empty: () => 'Sensor calibrating...',
   ///   error: (err, stack) => 'Sensor failure: $err',

@@ -61,7 +61,7 @@ Dynamic rerouting is the universal control mechanism shared by functional branch
 ```dart
 // packages/what/lib/src/what/_internal/_delta.dart
 abstract base class _DeltaWhat<T> extends _CoupledUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>
+    with _WhatStateMixin<T>
     implements What<T> {
   _DeltaWhat() : super.late() {
     _deltaTerminal = RawViaTerminal(_evaluateDelta, onInvalidated: _onDeltaDirty);
@@ -180,7 +180,7 @@ Evaluation scheduling decouples across two distinct policies matching the perfor
 | :--- | :--- | :--- |
 | **Applicable Primitives** | `switched(..., eager: false)` | `computed.future`, `computed.stream`, `switched(..., eager: true)` |
 | **Class Hierarchy** | `extends _DeltaWhat<T>` | `extends _DeltaWhat<T> implements _EagerSchedulable` |
-| **Switch Timing** | On-demand when consumers pull (`_read()`, `.peek`, `.snapshot`) | Scheduled preemptively in microtask tick while active |
+| **Switch Timing** | On-demand when consumers pull (`_read()`, `untracked(node)`, `.snapshot`) | Scheduled preemptively in microtask tick while active |
 | **Activation Behavior** | Activates `_deltaTerminal`; defers evaluation | Synchronously resolves switch if `_needsSwitch` or dirty |
 | **Deactivation Behavior** | Deactivates `_deltaTerminal` & decouples source | Cancels pending microtask, deactivates terminal & decouples source |
 | **Push-Origin Dispatch** | Passive: marks downstream `Check`/`Dirty` | Active: microtask dispatches `_PushScope.queueOrigin(this)` |
@@ -247,7 +247,7 @@ abstract base class _EagerDeltaWhat<T> extends _DeltaWhat<T> implements _EagerSc
 * **Preemptive Microtask Queue**: When active, `_onDeltaDirty()` enqueues the node into `_Scheduler.instance._scheduleEager(this)`.
 * **Immediate Origin Push**: When `_performScheduledEager()` runs in the microtask, it passes `queuePush = true` to `_performSwitchGuarded()`. This registers the relay as a push origin via `_PushScope.queueOrigin(this)`, broadcasting a push-dirty pulse downstream immediately upon branch swap.
 * **Activation Synchronization**: The moment an `_EagerDeltaWhat` transitions from inactive to active, `_activate()` synchronously evaluates the pending switch so downstream listeners receive the fresh active branch without a 1-frame microtask lag.
-* **Pull-Before-Tick Coalescing**: If a consumer reads `.peek` or `.snapshot` *before* the scheduled microtask tick runs, `_resolve()` executes `_performSwitchGuarded(false)` synchronously and resets `_needsSwitch = false`. When the microtask tick subsequently fires, it early-returns cleanly without redundant evaluation.
+* **Pull-Before-Tick Coalescing**: If a consumer reads `untracked(node)` or `.snapshot` *before* the scheduled microtask tick runs, `_resolve()` executes `_performSwitchGuarded(false)` synchronously and resets `_needsSwitch = false`. When the microtask tick subsequently fires, it early-returns cleanly without redundant evaluation.
 
 ---
 
@@ -483,7 +483,7 @@ Where `switched` provides **declarative routing** conditioned on reactive state,
 
 ### 8.1 Key Invariants
 1. **Producer-Consumer Capability Decoupling**:  
-   `WhatCoupler<T>` acts as the mutable manager handle, exposing the read-only `coupler.what` (`What<T>`) view to consumers. Direct state reading is supported via `_WhatStateMixin<T>` on the coupler itself (`coupler.data`, `coupler.peek`, `coupler.snapshot`, `coupler.isEmpty`, `coupler.hasData`, etc.).
+   `WhatCoupler<T>` acts as the mutable manager handle, exposing the read-only `coupler.what` (`What<T>`) view to consumers. Direct state reading is supported on the coupler itself (`coupler.data`, `coupler.snapshot`, `coupler.isEmpty`, `coupler.hasData`, etc.) or via `untracked(coupler.what)`.
 2. **Coupling Modalities**:
    - `WhatCoupler(inbound)`: Pre-coupled with initial pipeline.
    - `WhatCoupler.late()`: Uninitialized empty state awaiting the initial `couple()` call.

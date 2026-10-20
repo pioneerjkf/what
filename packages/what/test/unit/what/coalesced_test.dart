@@ -160,10 +160,10 @@ void main() {
       final coalesced = source.what.coalesced();
 
       final values = <String>[];
-      final terminal = RawWhatTerminal(coalesced, onInvalidated: () => values.add(coalesced.peek));
+      final terminal = RawWhatTerminal(coalesced, onInvalidated: () => values.add(untracked(coalesced)));
       terminal.activate();
 
-      expect(coalesced.peek, 'initial');
+      expect(untracked(coalesced), 'initial');
 
       source.data = 'step1';
       source.data = 'step2';
@@ -186,7 +186,7 @@ void main() {
       }).distinct();
 
       final captured = <String>[];
-      final terminal = RawWhatTerminal(pipeline, onInvalidated: () => captured.add(pipeline.peek));
+      final terminal = RawWhatTerminal(pipeline, onInvalidated: () => captured.add(untracked(pipeline)));
       terminal.activate();
 
       expect(terminal.data, 'LOW');
@@ -209,7 +209,7 @@ void main() {
       final coalesced = counter.what.coalesced();
 
       final effectValues = <int>[];
-      final effect = coalesced.effect(() => effectValues.add(coalesced.peek));
+      final effect = coalesced.effect(() => effectValues.add(untracked(coalesced)));
 
       final terminal = RawViaTerminal((via) {
         via.tether(effect);

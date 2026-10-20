@@ -49,12 +49,6 @@ void main() {
       expect(WhatTypeChecker.isControllerOrCouplerType('WhatCoupler'), isTrue);
       expect(WhatTypeChecker.isControllerOrCouplerType('WhatSignalController'),
           isTrue);
-      expect(
-          WhatTypeChecker.isControllerOrCouplerType(
-              'WhatTextEditingController'),
-          isTrue);
-      expect(WhatTypeChecker.isControllerOrCouplerType('BoundTextController'),
-          isTrue);
 
       // Terminals and non-producers are exempt
       expect(WhatTypeChecker.isControllerOrCouplerType('RawWhatTerminal'),
@@ -98,8 +92,6 @@ void main() {
     test(
         'isPipelineReadProperty identifies valid reactive payload getters on WhatState',
         () {
-      expect(WhatTypeChecker.isPipelineReadProperty('peek'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadProperty('peekState'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('data'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('dataOrNull'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('snapshot'), isTrue);

@@ -5,15 +5,18 @@
 part of '../../framework.dart';
 
 /// Dispatches an uncaught error to the global [LpdagUncaughtErrorHandler] (if registered)
-/// and delegates to [Zone.handleUncaughtError].
+/// or delegates to [Zone.handleUncaughtError] as a fallback.
 @pragma('vm:prefer-inline')
 void _dispatchUncaughtError(Object error, StackTrace stackTrace, {Object? context}) {
   final handler = LpdagUncaughtErrorHandler.instance;
   if (handler != null) {
     try {
       handler.onUncaughtError(error, stackTrace, context: context);
+      return;
     } catch (handlerError, handlerStack) {
       Zone.current.handleUncaughtError(handlerError, handlerStack);
+      Zone.current.handleUncaughtError(error, stackTrace);
+      return;
     }
   }
 

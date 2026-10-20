@@ -18,7 +18,7 @@ void main() {
 
     ctrl1.set(1);
 
-    expect(ctrl2.what.peek, 1);
-    expect(ctrl3.what.peek, 1);
+    expect(untracked(ctrl2.what), 1);
+    expect(untracked(ctrl3.what), 1);
   });
 }

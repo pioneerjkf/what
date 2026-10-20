@@ -75,6 +75,7 @@ abstract final class WhatTypeChecker {
 
     // 3. Dependency Manifest & Signals
     'WhatVia',
+    'WhatUntracked',
     'WhatSignal',
 
     // 4. Terminals & Boundary Sinks
@@ -96,8 +97,6 @@ abstract final class WhatTypeChecker {
     'WhatVsyncWidget',
     'WhatListener',
     'UnaryWhatListener',
-    'WhatTextEditingController',
-    'BoundTextController',
 
     // 7. Durable Animation Controllers
     'FrozenAnimationController',
@@ -228,8 +227,6 @@ abstract final class WhatTypeChecker {
     'WhatMapController',
     'WhatCoupler',
     'WhatSignalController',
-    'WhatTextEditingController',
-    'BoundTextController',
   };
 
   /// Returns `true` if the [typeName] is a stateful controller or coupler type.
@@ -285,10 +282,8 @@ abstract final class WhatTypeChecker {
   // 1. Pipeline Read (Payload Extraction) Members
   // ===========================================================================
 
-  /// Verified member properties that read reactive node payload on `WhatState` / `What`.
+  /// Verified member properties that read reactive node payload on `WhatState`.
   static const _pipelineReadProperties = {
-    'peek',
-    'peekState',
     'data',
     'dataOrNull',
     'snapshot',
@@ -606,6 +601,62 @@ abstract final class WhatTypeChecker {
     if (node is FunctionExpressionInvocation) {
       final func = node.function;
       if (func is SimpleIdentifier && func.name == 'via') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Returns `true` if the invocation represents a call to `untracked(what)` or `untracked.state(what)`.
+  static bool isWhatUntrackedInvocation(AstNode? node) {
+    if (node == null) return false;
+
+    // 1. Check for `untracked.state(...)`
+    if (node is MethodInvocation) {
+      final methodName = node.methodName.name;
+      if (methodName == 'state') {
+        final target = node.target;
+        if (target != null) {
+          final targetType = target.staticType;
+          if (targetType != null &&
+              targetType is! DynamicType &&
+              targetType is! InvalidType) {
+            if (_isWhatClass(targetType, 'WhatUntracked')) {
+              return true;
+            }
+          }
+          if (target is SimpleIdentifier && target.name == 'untracked') {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 2. Check for `untracked(...)`
+    Expression? function;
+    if (node is MethodInvocation) {
+      function = node.methodName;
+    } else if (node is FunctionExpressionInvocation) {
+      function = node.function;
+    }
+
+    if (function != null) {
+      final staticType = function.staticType;
+      if (staticType != null &&
+          staticType is! DynamicType &&
+          staticType is! InvalidType) {
+        if (_isWhatClass(staticType, 'WhatUntracked')) {
+          return true;
+        }
+      }
+    }
+
+    if (node is MethodInvocation) {
+      return node.methodName.name == 'untracked' && node.target == null;
+    }
+    if (node is FunctionExpressionInvocation) {
+      final func = node.function;
+      if (func is SimpleIdentifier && func.name == 'untracked') {
         return true;
       }
     }

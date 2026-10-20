@@ -7,7 +7,7 @@ import 'package:what_flutter/what_flutter.dart';
 import '../components/showcase_card.dart';
 import '../store/showcase_store.dart';
 
-/// Section 05: Zero-Jump Form Binding & WhatTextEditingController Showcase Demo.
+/// Section 05: Standard Form Input & Listenable Bridge (`toWhatBy`) Showcase Demo.
 base class TextEditingControllerSection extends WhatWidget {
   const TextEditingControllerSection({super.key});
 
@@ -16,19 +16,19 @@ base class TextEditingControllerSection extends WhatWidget {
     final store = via.of<ShowcaseStore>(context).sections.textEditingController;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final textController = via(store.textControllerWhat);
+    final textController = store.textController;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ---------------------------------------------------------------------
-        // Interactive Two-Way Form Sandbox Card
+        // Interactive Standard Form Input Sandbox Card
         // ---------------------------------------------------------------------
         ShowcaseCard(
-          title: 'Interactive Two-Way Reactive Form Sandbox',
-          badge: '2-Way Binding',
+          title: 'Native Flutter TextEditingController + toWhatBy Bridge',
+          badge: 'Listenable Bridge',
           description:
-              'Type in the TextField below or trigger external transformations. Notice that the cursor NEVER jumps to the end, Korean IME composition remains intact, and 0 re-entrant ping-pong loops occur.',
+              'Type in the native TextField below or trigger programmatic updates. Flutter manages the UI and IME input buffer natively, while toWhatBy((c) => c.text) bridges the string updates into What reactive graph with zero overhead.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -36,7 +36,7 @@ base class TextEditingControllerSection extends WhatWidget {
               TextField(
                 controller: textController,
                 decoration: InputDecoration(
-                  labelText: 'Reactive Two-Way Input',
+                  labelText: 'Native TextField with toWhatBy',
                   hintText: 'Type freely or test cursor placement...',
                   suffixIcon: IconButton(
                     tooltip: 'Clear Input',
@@ -123,7 +123,7 @@ base class TextEditingControllerSection extends WhatWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Underlying WhatController<String> State (SSOT):',
+                      'Reactive What<String> Stream via .toWhatBy((c) => c.text):',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -133,7 +133,7 @@ base class TextEditingControllerSection extends WhatWidget {
                     ),
                     const SizedBox(height: 8),
                     composed((context, via) {
-                      final currentText = via(store.query.what);
+                      final currentText = via(store.textWhat);
                       return SelectableText(
                         currentText.isEmpty
                             ? '(Empty String - Empty State)'
@@ -162,10 +162,10 @@ base class TextEditingControllerSection extends WhatWidget {
         // External State Transformation Card
         // ---------------------------------------------------------------------
         ShowcaseCard(
-          title: 'Zero-Jump Programmatic State Transformations',
-          badge: 'Smart Clamping',
+          title: 'Programmatic Text Transformations',
+          badge: 'Native Controller',
           description:
-              'Simulate backend API updates, formatting, or programmatic overrides. In naive Flutter code, these actions blow away cursor offsets. WhatTextEditingController clamps the cursor safely at the same relative position.',
+              'Modify the standard TextEditingController imperatively. The changes immediately propagate downstream to What computed graphs via toWhatBy.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -190,7 +190,7 @@ base class TextEditingControllerSection extends WhatWidget {
                     onPressed: () => store.appendSuffix('[V2]'),
                   ),
                   ActionChip(
-                    label: const Text('Korean IME Test'),
+                    label: const Text('Korean IME Sample'),
                     onPressed: store.setKoreanSample,
                   ),
                   ActionChip(
@@ -208,46 +208,46 @@ base class TextEditingControllerSection extends WhatWidget {
         // Architectural Comparison Breakdown
         // ---------------------------------------------------------------------
         ShowcaseCard(
-          title: 'Architectural Comparison: Why Native 2-Way Binding Fails',
-          badge: 'Core Invariants',
+          title: 'Architectural Comparison: Pure toWhatBy vs Heavy Wrappers',
+          badge: 'Architecture',
           description:
-              'Flutter TextEditingController was designed for imperative mutations. When connected to reactive state graphs, four fatal bugs arise.',
+              'Instead of subclassing TextEditingController or coupling it directly with a WhatController, standard Flutter controllers bridge cleanly into What via toWhatBy.',
           child: Column(
             children: [
               _buildComparisonRow(
                 context,
-                title: 'Cursor Jumping (Offset -1)',
+                title: 'Data Flow & Single Source of Truth',
                 badText:
-                    'Naive `controller.text = val` resets selection to -1, forcefully warping the cursor to the end of the text on every keystroke.',
+                    'Complex 2-way controllers tightly couple UI controllers with reactive states, causing ping-pong synchronization hazards.',
                 goodText:
-                    'WhatTextEditingController guards UI input from self-echo and clamps prior selection bounds safely on external updates.',
+                    'Unidirectional flow: Flutter TextEditingController owns the input buffer; What reacts via toWhatBy((c) => c.text).',
+              ),
+              const Divider(height: 24),
+              _buildComparisonRow(
+                context,
+                title: 'Ecosystem Compatibility',
+                badText:
+                    'Custom controller subclasses cannot be used with third-party form packages or specialized text controllers.',
+                goodText:
+                    'Any standard TextEditingController subclass works out of the box with toWhat and toWhatBy.',
               ),
               const Divider(height: 24),
               _buildComparisonRow(
                 context,
                 title: 'CJK / Korean IME Composition',
                 badText:
-                    'External string re-assignment destroys ongoing composing sessions (`composing`), splitting syllables into individual jamo (e.g. ㄱ+ㅏ).',
+                    'External state synchronizers that reassign .text during keystrokes break ongoing IME syllable composing ranges.',
                 goodText:
-                    '0-mutation short-circuit leaves `TextEditingValue.composing` 100% untouched while user types.',
-              ),
-              const Divider(height: 24),
-              _buildComparisonRow(
-                context,
-                title: 'Ping-Pong Infinite Loop',
-                badText:
-                    'UI input notifies controller, controller mutates state, state notifies controller listener, looping infinitely until crash.',
-                goodText:
-                    'Mutual exclusion flags (`_isUpdatingFromUI`, `_isUpdatingFromWhat`) enforce strict unidirectional single-turn propagation.',
+                    'Native Flutter input pipeline handles IME seamlessly without state interceptors destroying composing spans.',
               ),
               const Divider(height: 24),
               _buildComparisonRow(
                 context,
                 title: 'Lifecycle & Memory Leak',
                 badText:
-                    'Requires converting every widget to StatefulWidget and writing boilerplate `initState()` and `dispose()` for every field.',
+                    'Requires converting widgets to StatefulWidget to manage controller allocation and dispose() lifecycles.',
                 goodText:
-                    '`bindTextController(this)` binds directly to WhatWidget/Element lifecycle, disposing automatically upon unmount.',
+                    'Managed by What.managed<TextEditingController>() for clean auto-disposal upon unmount and Demand-Driven Dormancy.',
               ),
             ],
           ),

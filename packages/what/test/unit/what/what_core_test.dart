@@ -355,14 +355,14 @@ void main() {
         final terminal = RawWhatTerminal(distinctWhat, onInvalidated: () => dirtyCount++);
         terminal.activate();
 
-        expect(distinctWhat.peek, 10);
+        expect(untracked(distinctWhat), 10);
 
         controller.set(10);
         expect(dirtyCount, 0);
 
         controller.set(20);
         expect(dirtyCount, 1);
-        expect(distinctWhat.peek, 20);
+        expect(untracked(distinctWhat), 20);
 
         terminal.deactivate();
       });
@@ -375,7 +375,7 @@ void main() {
         final terminal = RawWhatTerminal(nameWhat, onInvalidated: () => dirtyCount++);
         terminal.activate();
 
-        expect(nameWhat.peek, 'Alice');
+        expect(untracked(nameWhat), 'Alice');
 
         controller.set((name: 'Alice', age: 21));
         // Under 2-Phase Lazy-Pull: Dirty pulse notifies terminal without eager computation
@@ -463,8 +463,8 @@ void main() {
         expect(() => terminal.hasError, returnsNormally);
         expect(terminal.hasError, isTrue);
         expect(terminal.error, isA<StateError>());
-        expect(distinctWhat.peekState.hasError, isTrue);
-        expect(distinctWhat.peekState.error, isA<StateError>());
+        expect(untracked.state(distinctWhat).hasError, isTrue);
+        expect(untracked.state(distinctWhat).error, isA<StateError>());
 
         terminal.deactivate();
       });
@@ -485,8 +485,8 @@ void main() {
         t1.activate();
         t2.activate();
 
-        expect(recoveredEmpty.peek, 'RecoveredEmpty');
-        expect(recoveredError.peek, 'RecoveredError: Failure');
+        expect(untracked(recoveredEmpty), 'RecoveredEmpty');
+        expect(untracked(recoveredError), 'RecoveredError: Failure');
 
         t1.deactivate();
         t2.deactivate();
@@ -499,8 +499,8 @@ void main() {
         final t = RawWhatTerminal(nullWhat, onInvalidated: () {});
         t.activate();
 
-        expect(nullWhat.peekState.hasData, isTrue);
-        expect(nullWhat.peek, isNull);
+        expect(untracked.state(nullWhat).hasData, isTrue);
+        expect(untracked(nullWhat), isNull);
 
         t.deactivate();
       });
@@ -512,7 +512,7 @@ void main() {
           t.activate();
         }
 
-        expect(list.map((w) => w.peekState).data.toList(), [10, 20, 30]);
+        expect(list.map((w) => untracked.state(w)).data.toList(), [10, 20, 30]);
         for (final t in terminals) {
           t.deactivate();
         }
@@ -534,7 +534,7 @@ void main() {
           What.constant(100),
           What<int>.empty(),
         ];
-        expect(mixedWhats.map((w) => w.peekState).dataOrNull.toList(), [100, null]);
+        expect(mixedWhats.map((w) => untracked.state(w)).dataOrNull.toList(), [100, null]);
       });
 
       test('4.7 What.constant creates a What node list from Iterable<What<T>>', () {
@@ -545,7 +545,7 @@ void main() {
         final terminal = RawWhatTerminal(group, onInvalidated: () {});
         terminal.activate();
 
-        expect(group.peek.map((c) => c.peek).toList(), ['a', 'b']);
+        expect(untracked(group).map((c) => untracked(c)).toList(), ['a', 'b']);
         terminal.deactivate();
       });
     });

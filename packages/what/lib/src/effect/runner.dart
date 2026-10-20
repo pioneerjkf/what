@@ -75,7 +75,7 @@ part of '../framework.dart';
 /// final query = WhatController('');
 /// final searchEffect = query.what.effect.debounce(
 ///   const Duration(milliseconds: 300),
-///   () => apiService.search(query.what.peek),
+///   () => apiService.search(untracked(query.what)),
 /// );
 ///
 /// // Start standalone execution:
@@ -171,7 +171,7 @@ extension EffectRunExtension on Effect {
   /// ## Examples
   /// ```dart
   /// final counter = WhatController(0);
-  /// final loggingEffect = counter.what.effect(() => log(counter.what.peek));
+  /// final loggingEffect = counter.what.effect(() => log(untracked(counter.what)));
   /// final runner = loggingEffect.run();
   ///
   /// // Clean up when finished:

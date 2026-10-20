@@ -30,17 +30,17 @@ void main() {
         );
 
         // Before activation, the managed node is dormant & empty
-        expect(driven.peekState.isEmpty, isTrue);
+        expect(untracked.state(driven).isEmpty, isTrue);
 
         final values = <int>[];
         final terminal = RawWhatTerminal(driven, onInvalidated: () {
-          if (driven.peekState.hasData) values.add(driven.peek);
+          if (untracked.state(driven).hasData) values.add(untracked(driven));
         });
         terminal.activate();
 
         // Activation evaluates onTick(Duration.zero) -> initial value 100
-        expect(driven.peekState.hasData, isTrue);
-        expect(driven.peek, equals(100));
+        expect(untracked.state(driven).hasData, isTrue);
+        expect(untracked(driven), equals(100));
 
         await tester.pump(const Duration(milliseconds: 30));
         await tester.pump(const Duration(milliseconds: 30));
@@ -71,16 +71,16 @@ void main() {
         );
 
         // Before activation, the node is dormant & empty
-        expect(driven.peekState.isEmpty, isTrue);
+        expect(untracked.state(driven).isEmpty, isTrue);
 
         final values = <int>[];
         final terminal = RawWhatTerminal(driven, onInvalidated: () {
-          if (driven.peekState.hasData) values.add(driven.peek);
+          if (untracked.state(driven).hasData) values.add(untracked(driven));
         });
         terminal.activate();
 
-        expect(driven.peekState.hasData, isTrue);
-        expect(driven.peek, equals(-999));
+        expect(untracked.state(driven).hasData, isTrue);
+        expect(untracked(driven), equals(-999));
 
         await tester.pump(const Duration(milliseconds: 30));
         await tester.pump(const Duration(milliseconds: 30));
@@ -112,14 +112,14 @@ void main() {
           },
         );
 
-        expect(driven.peekState.isEmpty, isTrue);
+        expect(untracked.state(driven).isEmpty, isTrue);
 
         final terminal = RawWhatTerminal(driven, onInvalidated: () {});
         terminal.activate();
 
-        expect(driven.peekState.hasError, isTrue);
-        expect(driven.peekState.error, isA<StateError>());
-        expect((driven.peekState.error as StateError).message,
+        expect(untracked.state(driven).hasError, isTrue);
+        expect(untracked.state(driven).error, isA<StateError>());
+        expect((untracked.state(driven).error as StateError).message,
             'onTick init error');
         expect(callCount, equals(1));
 
@@ -159,15 +159,15 @@ void main() {
         final terminal = RawWhatTerminal(driven, onInvalidated: () {});
         terminal.activate();
 
-        expect(driven.peekState.hasData, isTrue);
+        expect(untracked.state(driven).hasData, isTrue);
         expect(callCount, equals(1));
 
         // Pump frame: throws StateError, trips circuit breaker
         await tester.pump(const Duration(milliseconds: 30));
 
         expect(callCount, equals(2));
-        expect(driven.peekState.hasError, isTrue);
-        expect((driven.peekState.error as StateError).message,
+        expect(untracked.state(driven).hasError, isTrue);
+        expect((untracked.state(driven).error as StateError).message,
             equals('frame tick error'));
 
         // Subsequent pumps do NOT invoke onTick anymore (circuit breaker stopped ticker)
@@ -211,7 +211,7 @@ void main() {
 
         // When dormant, resource creation is deferred; onTick is never called
         expect(callCount, equals(0));
-        expect(driven.peekState.isEmpty, isTrue);
+        expect(untracked.state(driven).isEmpty, isTrue);
 
         await tester.pumpWidget(const SizedBox.shrink());
       });
@@ -296,10 +296,10 @@ void main() {
         );
 
         final terminal = RawWhatTerminal(driven, onInvalidated: () {
-          if (driven.peekState.hasData) emitted.add(driven.peek);
+          if (untracked.state(driven).hasData) emitted.add(untracked(driven));
         });
         terminal.activate();
-        if (driven.peekState.hasData) emitted.add(driven.peek);
+        if (untracked.state(driven).hasData) emitted.add(untracked(driven));
 
         // Pump 5 frames of 10ms each (all within same 100ms bucket -> 0)
         for (int i = 0; i < 5; i++) {
@@ -339,10 +339,10 @@ void main() {
         );
 
         final terminal = RawWhatTerminal(driven, onInvalidated: () {
-          if (driven.peekState.hasData) emitted.add(driven.peek);
+          if (untracked.state(driven).hasData) emitted.add(untracked(driven));
         });
         terminal.activate();
-        if (driven.peekState.hasData) emitted.add(driven.peek);
+        if (untracked.state(driven).hasData) emitted.add(untracked(driven));
 
         // Frame ticks at small increments (< 0.5)
         await tester
@@ -422,14 +422,14 @@ void main() {
         terminal.activate();
 
         await tester.pump(const Duration(milliseconds: 20));
-        expect(driven.peekState.hasData, isTrue);
-        expect(driven.peekState.hasError, isFalse);
+        expect(untracked.state(driven).hasData, isTrue);
+        expect(untracked.state(driven).hasError, isFalse);
 
         // Trigger exception inside onTick
         shouldThrow = true;
         await tester.pump(const Duration(milliseconds: 20));
 
-        expect(driven.peekState.hasError, isTrue);
+        expect(untracked.state(driven).hasError, isTrue);
         expect(capturedError, isA<StateError>());
         expect((capturedError as StateError).message,
             contains('Simulated calculation failure'));
@@ -458,21 +458,21 @@ void main() {
 
         final driven = vsync.drive<int>(
           (elapsed) => elapsed.inMilliseconds,
-          graceful: graceful,
+          graceful: Graceful.microtask,
         );
 
         final terminal = RawWhatTerminal(driven, onInvalidated: () {});
         terminal.activate();
 
         await tester.pump(const Duration(milliseconds: 20));
-        expect(driven.peekState.hasData, isTrue);
+        expect(untracked.state(driven).hasData, isTrue);
 
         terminal.deactivate();
         // Immediately reactivate in same frame/turn
         terminal.activate();
 
         await tester.pump(const Duration(milliseconds: 20));
-        expect(driven.peekState.hasData, isTrue);
+        expect(untracked.state(driven).hasData, isTrue);
 
         terminal.deactivate();
         await tester.pumpAndSettle();

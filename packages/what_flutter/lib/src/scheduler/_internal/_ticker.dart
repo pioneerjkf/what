@@ -59,9 +59,6 @@ final class _TickerDriver<T> {
 
   TickerProvider? _vsync;
 
-  /// The active [TickerProvider], or `null` when dormant.
-  TickerProvider? get vsync => _vsync;
-
   final T Function(Duration elapsed) onTick;
 
   late final WhatController<T> _controller;
@@ -70,39 +67,6 @@ final class _TickerDriver<T> {
 
   /// The underlying reactive [What] outputting the latest tick value.
   What<T> get what => _controller.what;
-
-  /// Recreates the underlying ticker with [newVsync] if different from current [vsync].
-  void resync(TickerProvider newVsync) {
-    if (_vsync == newVsync) return;
-    _ticker.stop();
-    _ticker.dispose();
-    _vsync = newVsync;
-    _ticker = newVsync.createTicker((elapsed) {
-      try {
-        _controller.set(onTick(elapsed));
-      } catch (error, stackTrace) {
-        _ticker.stop();
-        _controller.setError(error, stackTrace);
-      }
-    })
-      ..start();
-  }
-
-  /// Hibernates the ticker into a dormant state without clearing controller state.
-  void hibernate() {
-    _ticker.stop();
-    _ticker.dispose();
-    _vsync = null;
-  }
-
-  /// Hibernates the ticker if the bound provider matches [vsync].
-  bool tryHibernate(TickerProvider vsync) {
-    if (_vsync == vsync) {
-      hibernate();
-      return true;
-    }
-    return false;
-  }
 
   /// Disposes of resources if the bound provider matches [vsync].
   bool tryDispose(TickerProvider vsync) {

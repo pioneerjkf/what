@@ -21,11 +21,11 @@ void main() {
           return 'Count: ${s.data}';
         });
 
-        expect(mapped.peekState.hasData, isTrue);
-        expect(mapped.peek, equals('Count: 5'));
+        expect(untracked.state(mapped).hasData, isTrue);
+        expect(untracked(mapped), equals('Count: 5'));
 
         controller.set(10);
-        expect(mapped.peek, equals('Count: 10'));
+        expect(untracked(mapped), equals('Count: 10'));
       });
 
       test('1.2 computed uses onEmpty fallback when upstream is empty', () {
@@ -37,14 +37,14 @@ void main() {
           return 'Count: ${s.data}';
         });
 
-        expect(mapped.peekState.hasData, isTrue);
-        expect(mapped.peek, equals('Count: Default'));
+        expect(untracked.state(mapped).hasData, isTrue);
+        expect(untracked(mapped), equals('Count: Default'));
 
         controller.set(42);
-        expect(mapped.peek, equals('Count: 42'));
+        expect(untracked(mapped), equals('Count: 42'));
 
         controller.empty();
-        expect(mapped.peek, equals('Count: Default'));
+        expect(untracked(mapped), equals('Count: Default'));
       });
 
       test('1.3 computed uses onError fallback when upstream has error', () {
@@ -57,8 +57,8 @@ void main() {
         });
 
         controller.setError('NetworkFailed');
-        expect(mapped.peekState.hasData, isTrue);
-        expect(mapped.peek, equals('Recovered: NetworkFailed'));
+        expect(untracked.state(mapped).hasData, isTrue);
+        expect(untracked(mapped), equals('Recovered: NetworkFailed'));
       });
 
       test('1.4 computed catches exception thrown inside computation callback and isolates to Error', () {
@@ -70,13 +70,13 @@ void main() {
         });
 
         // compute threw FormatException -> transitions to error state
-        expect(mapped.peekState.hasError, isTrue);
-        expect(mapped.peekState.error, isA<FormatException>());
+        expect(untracked.state(mapped).hasError, isTrue);
+        expect(untracked.state(mapped).error, isA<FormatException>());
 
         // Mutating to valid input clears error
         controller.set(2);
-        expect(mapped.peekState.hasData, isTrue);
-        expect(mapped.peek, equals(50));
+        expect(untracked.state(mapped).hasData, isTrue);
+        expect(untracked(mapped), equals(50));
       });
 
       test('1.5 computed catches exception thrown inside onEmpty and onError branches gracefully', () {
@@ -89,13 +89,13 @@ void main() {
         });
 
         // onEmpty threw StateError
-        expect(mapped.peekState.hasError, isTrue);
-        expect(mapped.peekState.error, isA<StateError>());
+        expect(untracked.state(mapped).hasError, isTrue);
+        expect(untracked.state(mapped).error, isA<StateError>());
 
         // Trigger error
         controller.setError('OriginalError');
-        expect(mapped.peekState.hasError, isTrue);
-        expect(mapped.peekState.error, isA<StateError>());
+        expect(untracked.state(mapped).hasError, isTrue);
+        expect(untracked.state(mapped).error, isA<StateError>());
       });
     });
 
@@ -112,8 +112,8 @@ void main() {
           return s.data.name;
         }).distinct();
 
-        expect(selected.peekState.hasData, isTrue);
-        expect(selected.peek, equals('Guest'));
+        expect(untracked.state(selected).hasData, isTrue);
+        expect(untracked(selected), equals('Guest'));
 
         int dirtyCount = 0;
         final terminal = RawWhatTerminal(selected, onInvalidated: () => dirtyCount++);
@@ -144,12 +144,12 @@ void main() {
           return 10 ~/ c;
         });
 
-        expect(selected.peekState.hasError, isTrue);
-        expect(selected.peekState.error, isA<ArgumentError>());
+        expect(untracked.state(selected).hasError, isTrue);
+        expect(untracked.state(selected).error, isA<ArgumentError>());
 
         controller.set(2);
-        expect(selected.peekState.hasData, isTrue);
-        expect(selected.peek, equals(5));
+        expect(untracked.state(selected).hasData, isTrue);
+        expect(untracked(selected), equals(5));
       });
     });
 
@@ -168,14 +168,14 @@ void main() {
           return What.constant('Active: ${t.data}');
         });
 
-        expect(switchedWhat.peekState.hasData, isTrue);
-        expect(switchedWhat.peek, equals('DefaultBranch'));
+        expect(untracked.state(switchedWhat).hasData, isTrue);
+        expect(untracked(switchedWhat), equals('DefaultBranch'));
 
         trigger.set('User1');
-        expect(switchedWhat.peek, equals('Active: User1'));
+        expect(untracked(switchedWhat), equals('Active: User1'));
 
         trigger.setError('TriggerFailed');
-        expect(switchedWhat.peek, equals('ErrorBranch: TriggerFailed'));
+        expect(untracked(switchedWhat), equals('ErrorBranch: TriggerFailed'));
       });
 
       test('2.2 switched catches exception in switched builder callback', () {
@@ -187,12 +187,12 @@ void main() {
           return What.constant('Branch $data');
         });
 
-        expect(switchedWhat.peekState.hasError, isTrue);
-        expect(switchedWhat.peekState.error, isA<ArgumentError>());
+        expect(untracked.state(switchedWhat).hasError, isTrue);
+        expect(untracked.state(switchedWhat).error, isA<ArgumentError>());
 
         trigger.set(1);
-        expect(switchedWhat.peekState.hasData, isTrue);
-        expect(switchedWhat.peek, equals('Branch 1'));
+        expect(untracked.state(switchedWhat).hasData, isTrue);
+        expect(untracked(switchedWhat), equals('Branch 1'));
       });
     });
 
@@ -204,8 +204,8 @@ void main() {
         final completer = Completer<String>();
         final futureWhat = completer.future.toWhat(initialFactory: () => 'Initial');
 
-        expect(futureWhat.peekState.hasData, isTrue);
-        expect(futureWhat.peek, equals('Initial'));
+        expect(untracked.state(futureWhat).hasData, isTrue);
+        expect(untracked(futureWhat), equals('Initial'));
 
         final terminal = RawWhatTerminal(futureWhat, onInvalidated: () {});
         terminal.activate();
@@ -213,7 +213,7 @@ void main() {
         completer.complete('Resolved');
         await Future<void>.delayed(Duration.zero);
 
-        expect(futureWhat.peek, equals('Resolved'));
+        expect(untracked(futureWhat), equals('Resolved'));
         terminal.deactivate();
       });
 
@@ -224,7 +224,7 @@ void main() {
           onError: (err, [stack]) => -999,
         );
 
-        expect(futureWhat.peek, equals(0));
+        expect(untracked(futureWhat), equals(0));
 
         final terminal = RawWhatTerminal(futureWhat, onInvalidated: () {});
         terminal.activate();
@@ -232,8 +232,8 @@ void main() {
         completer.completeError(Exception('API error'));
         await Future<void>.delayed(Duration.zero);
 
-        expect(futureWhat.peekState.hasData, isTrue);
-        expect(futureWhat.peek, equals(-999));
+        expect(untracked.state(futureWhat).hasData, isTrue);
+        expect(untracked(futureWhat), equals(-999));
         terminal.deactivate();
       });
 
@@ -248,16 +248,16 @@ void main() {
         final terminal = RawWhatTerminal(streamWhat, onInvalidated: () {});
         terminal.activate();
 
-        expect(streamWhat.peek, equals(100));
+        expect(untracked(streamWhat), equals(100));
 
         streamController.add(200);
         await Future<void>.delayed(Duration.zero);
-        expect(streamWhat.peek, equals(200));
+        expect(untracked(streamWhat), equals(200));
 
         streamController.addError('StreamCrash');
         await Future<void>.delayed(Duration.zero);
-        expect(streamWhat.peekState.hasData, isTrue);
-        expect(streamWhat.peek, equals(-1));
+        expect(untracked.state(streamWhat).hasData, isTrue);
+        expect(untracked(streamWhat), equals(-1));
 
         terminal.deactivate();
         await streamController.close();
@@ -361,7 +361,7 @@ void main() {
         coupler.couple(liveBundle);
 
         expect(coupler.snapshot.hasData, isTrue);
-        expect(coupler.what.peek.map((g) => g.peek).toList(), equals([10, 20]));
+        expect(untracked(coupler.what).map((g) => untracked(g)).toList(), equals([10, 20]));
       });
     });
 
@@ -378,7 +378,7 @@ void main() {
         // Recovering with data
         controller.data = [What.constant(1), What.constant(2)];
         expect(controller.snapshot.hasData, isTrue);
-        expect(controller.data.map((g) => g.peek).toList(), equals([1, 2]));
+        expect(controller.data.map((g) => untracked(g)).toList(), equals([1, 2]));
       });
 
       test('7.2 WhatListController.setGuarded catches exception and isolates failure to error state', () {
@@ -408,7 +408,7 @@ void main() {
         // Recovery
         controller.data = [What.constant(100)];
         expect(controller.snapshot.hasData, isTrue);
-        expect(controller.data.first.peek, equals(100));
+        expect(untracked(controller.data.first), equals(100));
       });
     });
 
@@ -424,11 +424,11 @@ void main() {
           return via(controller.what).map((g) => via(g)).reduce((a, b) => a + b);
         });
 
-        expect(converged.peekState.hasData, isTrue);
-        expect(converged.peek, equals(30));
+        expect(untracked.state(converged).hasData, isTrue);
+        expect(untracked(converged), equals(30));
 
         controller.set([What.constant(1), What.constant(2), What.constant(3)]);
-        expect(converged.peek, equals(6));
+        expect(untracked(converged), equals(6));
       });
 
       test('9.2 dynamic aggregation handles empty upstream what list', () {
@@ -439,14 +439,14 @@ void main() {
           return via(controller.what).map((g) => via(g)).reduce((a, b) => a + b);
         });
 
-        expect(converged.peekState.hasData, isTrue);
-        expect(converged.peek, equals(100));
+        expect(untracked.state(converged).hasData, isTrue);
+        expect(untracked(converged), equals(100));
 
         controller.set([What.constant(5), What.constant(5)]);
-        expect(converged.peek, equals(10));
+        expect(untracked(converged), equals(10));
 
         controller.empty();
-        expect(converged.peek, equals(100));
+        expect(untracked(converged), equals(100));
       });
 
       test('9.3 dynamic aggregation handles error or throwing callback', () {
@@ -456,8 +456,8 @@ void main() {
           return via(controller.what).map((g) => via(g)).reduce((a, b) => a + b);
         });
 
-        expect(converged.peekState.hasData, isTrue);
-        expect(converged.peek, equals(555));
+        expect(untracked.state(converged).hasData, isTrue);
+        expect(untracked(converged), equals(555));
 
         // When callback throws
         final liveController = WhatListController<What<int>>([What.constant(1)]);
@@ -466,8 +466,8 @@ void main() {
           return 888;
         });
 
-        expect(throwingConverged.peekState.hasError, isTrue);
-        expect(throwingConverged.peekState.error, isA<FormatException>());
+        expect(untracked.state(throwingConverged).hasError, isTrue);
+        expect(untracked.state(throwingConverged).error, isA<FormatException>());
       });
 
       test('9.4 dynamic aggregation with throwing isolates to error state without crashing', () {
@@ -477,8 +477,8 @@ void main() {
           return 1;
         });
 
-        expect(converged.peekState.hasError, isTrue);
-        expect(converged.peekState.error, equals('onEmptyThrows'));
+        expect(untracked.state(converged).hasError, isTrue);
+        expect(untracked.state(converged).error, equals('onEmptyThrows'));
       });
     });
   });

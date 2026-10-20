@@ -12,15 +12,15 @@ void main() {
       final controller = WhatController<int>(10);
       final gracefulWhat = controller.what.graceful();
 
-      expect(gracefulWhat.peek, 10);
-      expect(gracefulWhat.peekState.hasData, isTrue);
+      expect(untracked(gracefulWhat), 10);
+      expect(untracked.state(gracefulWhat).hasData, isTrue);
       expect(gracefulWhat, isA<What<int>>());
 
       int observed = 0;
       final terminal = RawWhatTerminal(
         gracefulWhat,
         onInvalidated: () {
-          observed = gracefulWhat.peek;
+          observed = untracked(gracefulWhat);
         },
       );
       terminal.activate();
@@ -49,8 +49,8 @@ void main() {
         },
       );
 
-      // Wrap standard resource with GracefulWhat via graceful(duration) functor
-      final gracefulWhat = res.graceful(graceful(const Duration(milliseconds: 80)));
+      // Wrap standard resource with GracefulWhat via Graceful.period
+      final gracefulWhat = res.graceful(const Graceful.period(Duration(milliseconds: 80)));
 
       final t1 = RawWhatTerminal(gracefulWhat, onInvalidated: () {});
       final t2 = RawWhatTerminal(gracefulWhat, onInvalidated: () {});
@@ -88,22 +88,22 @@ void main() {
       expect(disposeCount, 1); // Cleanly disposed after grace period elapsed!
     });
 
-    test('3. Default graceful() uses 5-minute mooring period', () {
+    test('3. Default graceful() uses microtask deferral policy', () {
       final res = WhatController<int>(100);
       final defaultGraceful = res.what.graceful();
 
       expect(defaultGraceful, isA<What<int>>());
-      expect(defaultGraceful.peek, 100);
+      expect(untracked(defaultGraceful), 100);
     });
 
-    test('4. graceful(graceful.microtask) microtask deferral policy', () async {
+    test('4. graceful(Graceful.microtask) microtask deferral policy', () async {
       int disposeCount = 0;
       final res = managed<int>(
         create: (_) => 999,
         dispose: (_) => disposeCount++,
       );
 
-      final microtaskWhat = res.graceful(graceful.microtask);
+      final microtaskWhat = res.graceful(Graceful.microtask);
 
       final t = RawWhatTerminal(microtaskWhat, onInvalidated: () {});
       t.activate();

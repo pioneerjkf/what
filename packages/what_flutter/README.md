@@ -12,7 +12,7 @@
   <a href="https://pub.dev/packages/what_flutter"><img src="https://img.shields.io/pub/v/what_flutter.svg?style=flat-square" alt="Pub Version" /></a>
   <a href="https://pub.dev/packages/what_flutter/score"><img src="https://img.shields.io/pub/points/what_flutter.svg?style=flat-square" alt="Pub Points" /></a>
   <a href="https://github.com/pioneerjkf/what/blob/main/packages/what_flutter/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License" /></a>
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.10+-02569B.svg?style=flat-square&logo=flutter" alt="Flutter SDK" /></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.27+-02569B.svg?style=flat-square&logo=flutter" alt="Flutter SDK" /></a>
 </p>
 
 
@@ -26,7 +26,7 @@
 
 In traditional Flutter state management architectures, state updates trigger top-down subtree rebuilds across parent and sibling widgets. Even with selective builders, ambient tracking scopes often cause accidental dependencies, memory leaks during unmounts, and screen-flicker during asynchronous revalidations.
 
-`what_flutter` embeds zero-overhead reactive boundary terminals (`RawViaTerminal`) directly into specialized Flutter `Element` subclasses (`WhatElement`, `_ComposedElement`). When a reactive state node mutates, only the exact leaf widget listening to that node marks itself dirty, leaving parent layouts, sibling elements, and surrounding trees completely uninvoked.
+`what_flutter` embeds zero-overhead reactive boundary terminals (`RawComputedTerminal<Widget>`) directly into specialized Flutter `Element` subclasses (`WhatElement`, `composed` elements). When a reactive state node mutates, only the exact leaf widget listening to that node marks itself dirty, leaving parent layouts, sibling elements, and surrounding trees completely uninvoked.
 
 ---
 
@@ -36,28 +36,34 @@ In traditional Flutter state management architectures, state updates trigger top
 import 'package:flutter/material.dart';
 import 'package:what_flutter/what_flutter.dart';
 
-// 1. Pure reactive state nodes: strict producer/consumer separation (No Codegen, No Global State)
-final query = WhatController('');
+// 1. Pure reactive state nodes & managed resources (No Codegen, No Global State Traps)
 final likes = WhatController(0);
+
+// 🚀 Managed Flutter TextEditingController: auto-allocated upon mount, disposed upon unmount
+final textController = managed<TextEditingController>(
+  create: (via) => TextEditingController(),
+  dispose: (c) => c.dispose(),
+  graceful: Graceful.microtask,
+);
+
+// 🚀 Zero-Disposal Motion: pauses on unmount and resumes cleanly without boilerplate
+final pulse = DurableAnimationController(
+  duration: const Duration(milliseconds: 800),
+);
 
 // 2. Zero StatefulWidget: WhatWidget unifies forms, 60/120fps motion, and micro-rebuilds
 base class LiveSearchBar extends WhatWidget {
-  LiveSearchBar({super.key});
-
-  // 🚀 Zero-Jump CJK IME Shield: two-way text binding without Hangul syllable fragmentation
-  late final textController = query.bindTextController();
-
-  // 🚀 Zero-Disposal Motion: pauses on unmount and resumes cleanly without boilerplate
-  late final pulse = DurableAnimationController(
-    duration: const Duration(milliseconds: 800),
-  );
+  const LiveSearchBar({super.key});
 
   @override
   Widget build(BuildContext context, WhatVia via) {
     return Column(
       children: [
-        // A. Two-way form binding (typing keeps mid-text cursor offset & IME composing state intact)
-        TextField(controller: textController, decoration: const InputDecoration(hintText: 'Search...')),
+        // A. Standard form input (Flutter native IME & caret fidelity via managed lifecycle)
+        TextField(
+          controller: via(textController),
+          decoration: const InputDecoration(hintText: 'Search...'),
+        ),
 
         // B. 60/120fps inline animation (driven via composed.animate without manual TickerProvider)
         composed.animate(
@@ -99,8 +105,8 @@ base class LiveSearchBar extends WhatWidget {
 │     │    └── composed.vsync                    ((ctx, via, vsync) => W)    │
 │     │         └── .child / .children           (preserves static subtrees) │
 │     ├── Zero-Rebuild Declarative Side-Effects                              │
-│     │    ├── WhatListener                      ([targets], (context) => )  │
-│     │    └── UnaryWhatListener                 (target, (ctx, state) => )  │
+│     │    ├── WhatListener                      (target, (ctx, state) => )  │
+│     │    │    └── .debounce / .throttle        (time-domain rate limits)   │
 │     └── Fluent 1:1 Node Builders (Zero-Alloc)                              │
 │          ├── what.build                        ((context, data) => Widget)  │
 │          │    ├── .child / .children           (preserves static subtrees) │
@@ -118,11 +124,9 @@ base class LiveSearchBar extends WhatWidget {
 │     │    └── .child / .children           (preserves static subtrees)      │
 │     └── vsync.drive(onTick)               --> What<T> (Frame ticker)       │
 │                                                                            │
-│  3. CJK IME & Form Integrity (Zero-Jump & Anti-PingPong)                   │
-│     └── WhatTextEditingController         (whatController)            │
-│          ├── IME Syllable Shield               // Hangul/Kanji protection  │
-│          ├── Smart Selection Clamping          // Prevents cursor jumping  │
-│          └── Re-entrancy Guard                 // UI ↔ State ping-pong cut │
+│  3. Form Input & Listenable Interop                                        │
+│     ├── controller.toWhatBy((c) => c.text)   (Demand-Driven bridge)        │
+│     └── managed<TextEditingController>       (Auto-disposed form lifecycle)│
 │                                                                            │
 │  4. Async SWR UI & Progress                                                │
 │     ├── WhatAsyncBuilder<T>                    (what, {data, loading, ...})│
@@ -138,8 +142,8 @@ base class LiveSearchBar extends WhatWidget {
 │          └── context.whatOf<T>()               // Direct node extraction   │
 │                                                                            │
 │  6. Graceful Lifecycle & Mooring                                           │
-│     ├── graceful                               // Microtask remount buffer │
-│     ├── graceful.period(Duration)              // Time-bounded TTL mooring │
+│     ├── Graceful.microtask                     // Microtask remount buffer │
+│     ├── Graceful.period(Duration)              // Time-bounded TTL mooring │
 │     └── .graceful(policy)                      // Mooring attachment DSL   │
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
@@ -148,19 +152,19 @@ base class LiveSearchBar extends WhatWidget {
 
 ---
 
-## The Flutter Native Dilemma & What Flutter Architectural Resolution
+## Architectural Comparison: Conventional Flutter Approaches vs. What Flutter
 
-In standard Flutter production applications, reactive state, frame-isolated animations, asynchronous queries, and text inputs face persistent architectural trade-offs:
+In Flutter applications, balancing granular reactive state, frame-isolated animations, asynchronous queries, and text inputs involves distinct architectural trade-offs across common paradigms (such as `setState`, `ValueListenableBuilder`, or provider selectors):
 
-| Engineering Dimension | Standard Flutter Native Dilemma | What Flutter Resolution |
+| Engineering Dimension | Conventional Flutter Trade-offs & Limitations | What Flutter Resolution |
 | :--- | :--- | :--- |
-| **Widget Tree Invalidation** | Top-down subtree rebuild cascades across parent and sibling widgets | **Surgical Leaf Micro-Rebuild** (`composed`, parent/sibling rebuild count: 0) |
+| **Widget Tree Invalidation** | Naive `setState` cascades subtree rebuilds; `ValueListenableBuilder` or manual selectors require nested boilerplate for multiple dependencies | **Surgical Leaf Micro-Rebuild** (`composed`, parent/sibling rebuild count: 0, flat multi-dependency tracking) |
 | **Reactive Tracking Scopes** | Ambient context or boilerplate wrappers with hidden leaks | **Explicit `WhatVia` Injection** (Zero-ambient, deterministic AST analysis) |
 | **State Mutability Contracts** | Mixed mutable getters/setters on shared object boundaries | **Strict Separation of Concerns** (`What<T>` read-only vs `WhatController<T>`) |
 | **State Snapshot Integrity** | Ad-hoc flags or verbose union/sealed class hierarchies | **Deterministic 3-State FSM** (`Data`, `Empty`, `Error` + `emptyReason`) |
 | **Transient Lifecycle Mooring**| Immediate unmount disposal destroying state continuity | **Native `Graceful` Engine** (Microtask coalescing & `period` TTL mooring) |
-| **East Asian CJK / Form Input** | Composition fragmentation (Hangul jamo separation) & cursor jumping | **Built-in Zero-Jump & IME Shield** (`WhatTextEditingController`) |
-| **Animation Lifecycle Coupling** | Manual `AnimationController` lifecycle & leaks inside `StatefulWidget` | **Durable Engine** (Wall-clock `CatchUp` & state `Frozen` without `StatefulWidget`) |
+| **East Asian CJK / Form Input** | Custom wrapper controllers breaking IME buffers and causing ping-pong loops | **Native Controller + `toWhatBy`** (Native platform IME fidelity & zero listener leaks) |
+| **Animation Lifecycle Coupling** | Manual `AnimationController` lifecycle tied to `TickerProviderStateMixin` (state resets or ticker errors on unmount) | **Durable Engine** (Wall-clock `CatchUp` & state `Frozen` without `StatefulWidget`) |
 | **Asynchronous UI Ingestion** | Screen-flashing spinners during background revalidation | **Flicker-Free SWR** (`WhatAsyncBuilder`, stale data preserved on pending) |
 | **Component Hierarchy DI** | `InheritedWidget.updateShouldNotify` triggering wide rebuilds | **Rebuild-Suppressed DI** (`WhatProvider`, pointer-check only, 0-rebuild tunneling) |
 | **Dormancy & Resource Teardown** | Background timers/subscriptions running while offstage | **Subscriber-Driven Inactive Dormancy** (0 CPU/ticks on unmount) |
@@ -176,16 +180,16 @@ In standard Flutter production applications, reactive state, frame-isolated anim
 
 ### Pillar 1: Surgical Leaf Micro-Rebuilds (`composed`)
 
-In standard Flutter, placing a reactive value inside a large widget or card triggers rebuilds of the entire subtree, including heavy headers, graphics, and footers. With `what_flutter`, the `composed` functor isolates the reactive boundary to the smallest possible leaf element.
+In standard Flutter, updating a reactive value inside a large widget often leads to two extremes: broad subtree rebuilds via `setState` (re-evaluating heavy headers, graphics, and footers), or deeply nested builder pyramids (`ValueListenableBuilder` / manual selectors) when isolating rebuild boundaries for multiple values. With `what_flutter`, the `composed` functor eliminates both dilemmas by isolating the reactive boundary to the smallest possible leaf element while automatically tracking dependencies in a single flat scope.
 
 #### Rebuild Frequency Architecture
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│         Rebuild Frequency: Standard Flutter vs. what_flutter Leaf          │
+│      Rebuild Frequency: Conventional Approaches vs. what_flutter Leaf      │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
-│  Standard Flutter (Subtree Rebuild Cascade):                               │
+│  Conventional Approach (Naive setState Subtree Cascade):                   │
 │    [Card Widget]                ──> Rebuilds: 100 times                    │
 │      ├── [Heavy Header]         ──> Rebuilds: 100 times (WASTED)           │
 │      ├── [Expensive Chart]      ──> Rebuilds: 100 times (WASTED)           │
@@ -197,6 +201,9 @@ In standard Flutter, placing a reactive value inside a large widget or card trig
 │      ├── [Expensive Chart]      ──> Rebuilds: 1 time  (0 ON UPDATES)       │
 │      └── composed((via) => ...) ──> Rebuilds: 100 times (LEAF ONLY)        │
 │                                                                            │
+│  * Note: While ValueListenableBuilder can isolate rebuilds, observing N    │
+│    independent values requires N levels of nested builders. composed       │
+│    flattens all dependencies into a single reactive leaf.                  │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -266,42 +273,36 @@ class StockDashboardCard extends StatelessWidget {
 
 ---
 
-### Pillar 2: CJK IME Integrity & Zero-Jump Form Controller (`WhatTextEditingController`)
+### Pillar 2: Form Input & Listenable Interop (`toWhatBy` & `managed`)
 
-Two-way data binding between reactive state and Flutter `TextField` widgets suffers from critical bugs in East Asian languages (Korean, Japanese, Chinese):
-1. **CJK IME Disruption**: Re-assigning text values clears active composition ranges, fragmenting Hangul syllables (`'ㄱ'`, `'ㅏ'`, `'ㅇ'` separation) or resetting Hanja/Kanji candidate windows.
-2. **Cursor Jumping**: Updating the controller resets `selection.extentOffset` to the end of the text, preventing users from editing text in the middle of an input field.
-3. **Ping-Pong Re-entrancy**: Typing updates state, which triggers a controller listener, which updates typing in an infinite loop.
+In Flutter applications, text inputs and forms belong fundamentally to the platform UI layer. Forcing bidirectional wrapper controllers onto Flutter's `TextField` introduces critical bugs in composition-based languages (Korean, Japanese, Chinese) and risks infinite re-entrant ping-pong notification loops.
 
-`WhatTextEditingController` implements a 4-tier safety shield to guarantee input integrity:
+What solves form inputs through **Native Platform Ownership + Unidirectional Reactive Bridges**:
+1. **Native Flutter Caret & IME Integrity**: Standard `TextEditingController` handles OS typing buffers natively—preventing syllable fragmentation and caret jumping in CJK composition while ensuring seamless ecosystem compatibility with custom formatters.
+2. **Zero-Leak Listenable Bridge (`toWhatBy`)**: The input stream is bridged directly into What's reactive graph on-demand with automatic Demand-Driven Dormancy (listeners are active only when observed by the UI).
+3. **Automated Lifecycle (`What.managed`)**: Controllers are automatically allocated upon widget mount and cleanly disposed upon unmount without requiring `StatefulWidget` boilerplate.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│                WhatTextEditingController Flow                              │
+│                   Standard What Form Input Flow                            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
-│   [ Keyboard Input (UI) ]                 [ External State Mutation ]      │
-│              │                                         │                   │
-│              ▼                                         ▼                   │
-│      TextEditingValue                        WhatController<String>        │
-│              │                                         │                   │
-│              ▼ [_isUpdatingFromUI = true]              ▼                   │
-│       target.set(text)                        RawWhatTerminal              │
-│              │                                         │                   │
-│              ▼                                         ▼                   │
-│    _onWhatChanged ignores!                   _isUpdatingFromWhat = true    │
-│    (Cursor & IME preserved)                  Smart Selection Clamping      │
-│                                                        │                   │
-│                                                        ▼                   │
-│                                               TextEditingValue (Safe)      │
+│   [ Keyboard Input / IME ]                                                 │
+│              │                                                             │
+│              ▼                                                             │
+│     TextEditingController (Native Flutter UI Layer)                       │
+│              │                                                             │
+│              ▼ .toWhatBy((c) => c.text)                                    │
+│       What<String> (Reactive LPDAG Stream)                                 │
+│              │                                                             │
+│              ├──► computed((via) => via(textWhat).length)                  │
+│              └──► computed.future((via) => api.search(via(textWhat)))      │
+│                                                                            │
+│   [ Demand-Driven Dormancy ]:                                              │
+│   Listener is attached ONLY when active subscribers exist,                 │
+│   and automatically detached when the UI unmounts.                         │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
-
-#### 4-Tier Protection Invariants
-* **Cursor Jumping Immunity**: When a user types in the middle of a string, What avoids re-assigning the internal `TextEditingValue` object, preventing Flutter's default selection reset.
-* **CJK IME Composition Protection**: Active composition ranges (`value.isComposingRangeValid`) are strictly preserved during both typing and external state synchronizations.
-* **Ping-Pong Re-entrancy Shield**: Mutually exclusive boolean guards isolate UI-initiated events from state-initiated pushes, eliminating cyclic notification cascades.
-* **Smart Selection Clamping**: External state resets clamp cursor selection within `[0, newText.length]`, preventing out-of-bounds selection crashes.
 
 #### Production Code Example
 
@@ -309,27 +310,39 @@ Two-way data binding between reactive state and Flutter `TextField` widgets suff
 import 'package:flutter/material.dart';
 import 'package:what_flutter/what_flutter.dart';
 
-base class KoreanSearchForm extends WhatWidget {
-  KoreanSearchForm({super.key});
+// 1. Native Flutter TextEditingController
+final searchController = TextEditingController();
 
-  final queryController = WhatController<String>('');
-  late final textController = WhatTextEditingController(queryController);
+// 2. Extract reactive text stream with toWhatBy
+final queryWhat = searchController.toWhatBy((c) => c.text);
+
+// 3. Debounced derived computation
+final searchResults = computed.future<List<String>>((via) async {
+  final query = via(queryWhat.debounce(const Duration(milliseconds: 300)));
+  if (query.isEmpty) return const [];
+  return api.search(query);
+});
+
+// 4. Declarative WhatWidget consumer
+base class SearchForm extends WhatWidget {
+  const SearchForm({super.key});
 
   @override
   Widget build(BuildContext context, WhatVia via) {
-    // Reading reactive string state
-    final currentQuery = via(queryController.what);
+    final resultsState = via.state(searchResults);
 
     return Column(
       children: [
         TextField(
-          controller: textController,
+          controller: searchController,
           decoration: const InputDecoration(
-            labelText: 'Search Korean/Japanese/Chinese text',
-            hintText: '0% syllable fragmentation & zero cursor jump',
+            labelText: 'Search',
+            hintText: 'Type freely with native IME fidelity...',
           ),
         ),
-        Text('Live Echo: $currentQuery'),
+        if (resultsState.isPending) const LinearProgressIndicator(),
+        if (resultsState.hasData)
+          for (final item in resultsState.data) ListTile(title: Text(item)),
       ],
     );
   }
@@ -340,7 +353,7 @@ base class KoreanSearchForm extends WhatWidget {
 
 ### Pillar 3: Durable Animation Engine (`CatchUp` & `Frozen`)
 
-Standard Flutter `AnimationController` instances reset to zero or throw assertion errors when their hosting widget unmounts (e.g. switching tabs in `BottomNavigationBar`, popping navigation routes, or hiding bottom sheets).
+Standard Flutter `AnimationController` instances are bound to the host widget's `SingleTickerProviderStateMixin`. When the widget unmounts (e.g. switching tabs in `BottomNavigationBar`, popping navigation routes, or hiding bottom sheets), active tickers are detached—causing animation progress to reset upon remount or triggering assertion/leak errors if tickers remain active without proper lifecycle handling.
 
 `what_flutter` provides **Durable Animation Controllers** that seamlessly bridge dormant lifecycle states:
 
@@ -432,7 +445,7 @@ class LiveRadarScanner extends StatelessWidget {
 
 ---
 
-### Pillar 4: Graceful Lifecycle & Mooring (`graceful` & `graceful.period`)
+### Pillar 4: Graceful Lifecycle & Mooring (`Graceful.microtask` & `Graceful.period`)
 
 In standard Flutter reactive architectures, unmounting a widget instantly tears down its listeners or cancels asynchronous streams. This causes severe production defects:
 1. **Unmount-Remount Thrashing**: Re-parenting widgets, swapping tabs, or rapid list scrolling drops subscriber counts to 0 for a single frame, destroying expensive connections and recreating them immediately.
@@ -465,10 +478,10 @@ In standard Flutter reactive architectures, unmounting a widget instantly tears 
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 1. Microtask Buffer (`graceful` / `Graceful()`)
+#### 1. Microtask Buffer (`Graceful.microtask` / `Graceful()`)
 Defers node deallocation to the next Dart microtask. When Flutter elements are reparented or rebuilt across adjacent frames, the microtask buffer coalesces the tear-down and remount into a single operation, eliminating frame jank and redundant data re-fetching.
 
-#### 2. Time-Based Mooring (`graceful.period(Duration)`)
+#### 2. Time-Based Mooring (`Graceful.period(Duration)`)
 Deploys a global Mooring anchor to keep downstream nodes and their upstream dependencies warm and active for a designated time window (e.g. 5 minutes). Retains form inputs, cursor selections, and cached queries across screen navigation without requiring permanent global singletons.
 
 #### Production Code Example
@@ -479,12 +492,14 @@ import 'package:what_flutter/what_flutter.dart';
 
 // Stream moored for 3 minutes across route navigation
 final liveFeedWhat = stockStream.toWhat(
-  graceful: graceful.period(const Duration(minutes: 3)),
+  graceful: const Graceful.period(Duration(minutes: 3)),
 );
 
-// TextEditingController with 5-minute mooring: retains cursor and selection across tab switches
-final searchStore = TextEditingControllerStore(
-  gracefulPolicy: const Graceful.period(Duration(minutes: 5)),
+// Native TextEditingController bridged with 5-minute mooring: retains cursor and selection across tab switches
+final searchController = TextEditingController();
+final searchInputWhat = searchController.toWhatBy(
+  (c) => c.text,
+  graceful: const Graceful.period(Duration(minutes: 5)),
 );
 ```
 
@@ -515,11 +530,11 @@ Ad-hoc state management libraries treat state as either an ambient value or an u
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-* **Sound Fail-Fast Extraction**: Reading `.peek` while in an `Empty` or `Error` state synchronously throws `WhatSnapshotExtractionException`. Bugs are exposed immediately at the call-site rather than mutating silent UI states.
-* **Exhaustive Zero-Heap Pattern Matching**: Use `.peekState.match()` or `.peekState.matchOrElse()` to map states directly to UI or strings with zero intermediate collections and zero graph edge creation:
+* **Sound Fail-Fast Extraction**: Reading `untracked(node)` while in an `Empty` or `Error` state synchronously throws `WhatSnapshotExtractionException`. Bugs are exposed immediately at the call-site rather than mutating silent UI states.
+* **Exhaustive Zero-Heap Pattern Matching**: Use `untracked.state(node).match()` or `untracked.state(node).matchOrElse()` to map states directly to UI or strings with zero intermediate collections and zero graph edge creation:
 
 ```dart
-final statusWidget = stateWhat.peekState.match(
+final statusWidget = untracked.state(stateWhat).match(
   data: (value) => Text('Active: $value'),
   empty: () => const Text('Awaiting input...'),
   error: (err, stack) => Text('Failed: $err', style: const TextStyle(color: Colors.red)),
@@ -564,7 +579,7 @@ base class AnimatedCard extends WhatVsyncWidget {
 ```
 
 ### 2. `what.build((context, data) => ...)`: Direct Single-Node Builders
-Lightweight inline widgets bound 1:1 to a single `What<T>` node. Every builder receives `BuildContext` by default to prevent accidental outer context lexical capture, guaranteeing zero heap allocations via Dart `extension type const`.
+Lightweight inline widgets bound 1:1 to a single `What<T>` node. Every builder receives `BuildContext` by default to prevent accidental outer context lexical capture, incurring zero wrapper allocation overhead via Dart `extension type const`.
 
 ```dart
 // Single node direct build
@@ -661,7 +676,7 @@ base class StockListScreen extends WhatWidget {
 
 ## Flutter DevTools Inspector Live Diagnostics
 
-`what_flutter` integrates deeply with the Flutter DevTools Inspector. Every `WhatElement` and `_ComposedElement` overrides `debugFillProperties` to expose its active dependency graph directly in the DevTools UI.
+`what_flutter` integrates deeply with the Flutter DevTools Inspector. Every What element (such as `WhatElement` and `composed` elements) overrides `debugFillProperties` to expose its active dependency graph directly in the DevTools UI.
 
 When selecting any What-powered widget in the Widget Tree panel, the Diagnostic Details panel renders the active reactive subscriptions and lifecycle tethers in real time:
 
@@ -669,12 +684,10 @@ When selecting any What-powered widget in the Widget Tree panel, the Diagnostic 
 Diagnostic Details Tree:
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ WhatElement (LiveMarketCard)                                               │
-│  ├── whatDependencies:                                                     │
-│  │    ├── what[0]: What<double> (LivePriceNode, value: 142.50)             │
-│  │    └── what[1]: What<ThemeMode> (AppThemeNode, value: ThemeMode.dark)   │
-│  └── whatTethers:                                                          │
-│       ├── tether[0]: RawWhatTerminal (Status: Active)                      │
-│       └── tether[1]: EffectHandle (Status: Bound)                          │
+│  ├── what[0]: LivePriceNode: What<double> (value: 142.50)                  │
+│  ├── what[1]: AppThemeNode: What<ThemeMode> (value: ThemeMode.dark)        │
+│  ├── tether[0]: liveSearchDebounce (_DebounceEffect)                       │
+│  └── tether[1]: themeTelemetrySync (_ThrottleEffect)                       │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -731,6 +744,20 @@ import 'package:flutter/material.dart';
 import 'package:what_flutter/what_flutter.dart';
 ```
 
+### Package Ecosystem & Re-exported APIs
+
+`package:what_flutter` acts as a complete, unified entry point by re-exporting the pure Dart core [`package:what`](https://pub.dev/packages/what) and its declarative side-effect engine (`package:what/effect.dart`). A single import (`package:what_flutter/what_flutter.dart`) provides immediate access to both core reactive primitives and Flutter UI bindings:
+
+| Category | API / Primitive | Originating Package | Primary Architectural Role |
+| :--- | :--- | :--- | :--- |
+| **Core Reactive State** | `What<T>`, `WhatController<T>`, `computed`, `switched`, `managed` | [`package:what`](https://pub.dev/packages/what) | Canonical 2-Phase LPDAG state nodes, memoized derivations, and subscriber-driven lifecycle supervision |
+| **Transient Signals** | [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md), [`WhatSignalController`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) | [`package:what`](https://pub.dev/packages/what) | Monotonic discrete tick pulses for transient events (dialogs, toasts, router triggers) without zombie state |
+| **Safe State Inspection** | `WhatSnapshot<T>`, `untracked.state`, `.dataOrNull`, `.dataOrElse(...)` | [`package:what`](https://pub.dev/packages/what) | Fail-fast snapshot inspection and non-throwing nullable value extraction |
+| **Declarative Effects** | `Effect`, `DebounceEffect`, `ThrottleEffect` | [`package:what/effect`](https://pub.dev/packages/what) | Non-rendering reactive side-effect sinks and rate-limited async execution |
+| **Surgical Leaf UI** | `composed`, `WhatWidget`, `WhatListener`, `what.build` | `package:what_flutter` | Zero-overhead reactive boundary elements and surgical micro-rebuild widgets |
+| **Platform & Form Bridges** | `toWhat`, `toWhatBy`, `.toListenable()` | `package:what_flutter` | Seamless bidirectional bridging for `TextEditingController`, `Listenable`, and Routers |
+| **Durable Motion & Ticker** | `DurableAnimationController`, `composed.animate`, `composed.drive` | `package:what_flutter` | Wall-clock `CatchUp` and `Frozen` motion engines independent of `StatefulWidget` |
+
 ---
 
 ## Architectural Whitepaper Curation
@@ -753,6 +780,7 @@ For deep-dive architectural specifications, mathematical invariants, and interna
 * [Core Whitepaper 03: Subscriber-Driven Inactive Dormancy & Pure Lazy Lifecycle](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/03_subscriber_driven_dormancy.md)
 * [Core Whitepaper 09: Graceful Lifecycle & Mooring: Zero-Thrashing Transient Retention](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/09_graceful_lifecycle_and_mooring_terminal.md)
 * [Core Whitepaper 15: Zero-Allocation Reactive Graph: Dart VM Optimization](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/15_dart_vm_low_overhead_memory_engineering.md)
+* [Core Whitepaper 17: Imperative Signals & Transient Events](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md)
 
 ---
 
@@ -767,8 +795,8 @@ To validate UI thread responsiveness and event loop integrity under extreme high
 | **Processor** | Apple M5 Max (18 Cores) |
 | **Memory** | 36 GB Unified Memory |
 | **Operating System** | macOS 26.4 (Build 25E246) |
-| **Flutter SDK** | Flutter 3.47.5 (Channel stable) |
-| **Dart SDK** | Dart 3.13.4 |
+| **Flutter SDK** | Flutter 3.47.6 (Channel stable, revision `5fc346839b`) |
+| **Dart SDK** | Dart 3.13.5 |
 | **Execution Engine** | Real macOS GPU Window (`flutter drive -d macos --profile`) |
 | **Target Load** | 1,000,000,000 TPS (Extreme Ingestion Scenario) |
 | **Test Parameters** | Duration: 30s · Warmup: 3s · 10 Shuffled Sets (60 total runs) |
@@ -778,27 +806,23 @@ To validate UI thread responsiveness and event loop integrity under extreme high
 
 | Framework | Node Topology | Release Status | Architectural Characteristic |
 | :--- | :---: | :--- | :--- |
-| **What** | **1 : N** | **Upcoming on pub.dev** | 2-Phase LPDAG (Push-Dirty, Lazy-Pull) multi-subscriber graph with surgical leaf rebuilds. |
+| **What** | **1 : N** | **Published on pub.dev** ([`what_flutter`](https://pub.dev/packages/what_flutter)) | 2-Phase LPDAG (Push-Dirty, Lazy-Pull) multi-subscriber graph with surgical leaf rebuilds. |
 | **Coralline** | **1 : 1** | **Published on pub.dev** ([`coralline`](https://pub.dev/packages/coralline)) | Ultra-high throughput 1:1 direct chain node reactive graph. |
-| **Gem** | **1 : N** | Internal project (pre-optimization) | Swiss manifest 1:N multi-subscriber reactive graph engine. |
-| **Ruby** | **1 : N** | Internal project (pre-optimization) | Lightweight ambient context 1:N multi-subscriber reactive architecture. |
 | **Signals** | **1 : N** | Published on pub.dev ([`signals_flutter`](https://pub.dev/packages/signals_flutter) `^7.1.0`) | Fine-grained computed reactive primitives (community open-source). |
 | **Riverpod** | **1 : N** | Published on pub.dev ([`flutter_riverpod`](https://pub.dev/packages/flutter_riverpod) `^3.4.2`) | Ecosystem standard provider-based dependency graph (community open-source). |
 
 ### Main Isolate Responsiveness: Event Loop Lag (10-Set Aggregated)
 
-> **Event Loop Lag**: Delay until a scheduled `Timer.run()` microtask executes on Dart's main event loop ($\Delta t = T_{executed} - T_{scheduled}$). Lower lag indicates the UI thread remains unblocked and fully responsive during high-throughput ingest.
+> **Event Loop Lag**: Delay until a scheduled `Timer.run()` executes on Dart's main event loop ($\Delta t = T_{executed} - T_{scheduled}$). As the main event loop services both timer callbacks and UI rendering pipeline events on the main isolate, maintaining minimal event loop lag serves as a key proxy metric ensuring the UI thread remains unblocked and stutter-free during high-frequency ingestion.
 
 | Framework | Node Topology | Lag Median | Lag Trimmed Mean | Lag Mean | P99 Lag | Max Lag | Memory (RSS) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **What** | **1 : N** | **0.060 ms** | **0.154 ms** | **0.157 ms** | **3.391 ms** | **4.070 ms** | **194.4 MB** |
-| **Coralline** | **1 : 1** | 0.058 ms | 0.151 ms | 0.150 ms | 3.429 ms | 4.029 ms | 201.2 MB |
-| **Gem** | **1 : N** | 0.060 ms | 0.170 ms | 0.168 ms | 3.362 ms | 3.962 ms | 193.4 MB |
-| **Signals** | **1 : N** | 0.061 ms | 0.154 ms | 0.155 ms | 3.394 ms | 3.961 ms | 194.2 MB |
-| **Ruby** | **1 : N** | 0.061 ms | 0.156 ms | 0.155 ms | 3.385 ms | 4.052 ms | 190.6 MB |
-| **Riverpod** | **1 : N** | 0.294 ms | 0.450 ms | 0.448 ms | 3.285 ms | 4.676 ms | 201.1 MB |
+| **What** | 1 : N | 0.060 ms | 0.154 ms | 0.157 ms | 3.391 ms | 4.070 ms | 194.4 MB |
+| **Coralline** | 1 : 1 | **0.058 ms** | **0.151 ms** | **0.150 ms** | 3.429 ms | 4.029 ms | 201.2 MB |
+| **Signals** | 1 : N | 0.061 ms | 0.154 ms | 0.155 ms | 3.394 ms | **3.961 ms** | **194.2 MB** |
+| **Riverpod** | 1 : N | 0.294 ms | 0.450 ms | 0.448 ms | **3.285 ms** | 4.676 ms | 201.1 MB |
 
-*Note: Differences under 0.01 ms among reactive graph engines are within system run-to-run noise. Sustained TPS is intentionally omitted as the arithmetic tick accumulator does not discriminate between frameworks. For detailed statistical methodology and test suites, see [`BENCHMARK_METHODOLOGY.md`](https://github.com/coralwork/coralwork/blob/master/benchmark/nasdaq_order_book/mini/BENCHMARK_METHODOLOGY.md).*
+*Note: Bold numbers highlight the best metric in each column. Differences under 0.01 ms among reactive graph engines (What, Coralline, Signals) are within system run-to-run noise, whereas traditional provider graphs exhibit ~4–5× higher event loop latency under heavy load. Sustained TPS is intentionally omitted as the arithmetic tick accumulator does not discriminate between frameworks. For detailed statistical methodology and test suites, see [`BENCHMARK_METHODOLOGY.md`](https://github.com/coralwork/coralwork/blob/master/benchmark/nasdaq_order_book/mini/BENCHMARK_METHODOLOGY.md).*
 
 ---
 

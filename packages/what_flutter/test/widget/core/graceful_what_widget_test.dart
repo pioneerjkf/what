@@ -24,8 +24,8 @@ void main() {
           },
         );
 
-        final gracefulResource =
-            resource.graceful(graceful(const Duration(milliseconds: 100)));
+        final gracefulResource = resource
+            .graceful(const Graceful.period(Duration(milliseconds: 100)));
         bool showWidget = true;
 
         await tester.pumpWidget(
@@ -94,8 +94,8 @@ void main() {
           },
         );
 
-        final gracefulResource =
-            resource.graceful(graceful(const Duration(milliseconds: 80)));
+        final gracefulResource = resource
+            .graceful(const Graceful.period(Duration(milliseconds: 80)));
         bool showFirst = true;
         bool showSecond = true;
 
@@ -147,8 +147,8 @@ void main() {
       '1.3 composed with via explicit tracking works seamlessly with GracefulWhat',
       (tester) async {
         final count = WhatController<int>(1);
-        final gracefulCount =
-            count.what.graceful(graceful(const Duration(milliseconds: 60)));
+        final gracefulCount = count.what
+            .graceful(const Graceful.period(Duration(milliseconds: 60)));
 
         await tester.pumpWidget(
           Directionality(

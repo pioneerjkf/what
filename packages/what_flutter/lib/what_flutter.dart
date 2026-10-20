@@ -19,8 +19,8 @@
 /// embedding reactive terminals into [Element] nodes via `_ReactiveTerminalElementMixin`.
 ///
 /// Under the 2-Phase LPDAG architecture:
-/// 1. **Phase 1: Push-Dirty ($O(1)$ Invalidation)**: When an upstream [What] mutates, dirty notifications propagate
-///    topologically in $O(1)$ to leaf terminals, triggering [Element.markNeedsBuild] without recomputing values.
+/// 1. **Phase 1: Push-Dirty (Lightweight Invalidation)**: When an upstream [What] mutates, dirty notifications propagate
+///    topologically to leaf terminals, triggering [Element.markNeedsBuild] without recomputing values.
 /// 2. **Phase 2: Lazy-Pull (On-Demand Evaluation)**: During Flutter's render pipeline, only the exact invalidated leaf elements
 ///    pull and evaluate their dependencies inside [RawComputedTerminal.data], leaving the surrounding
 ///    widget tree completely untouched.
@@ -105,14 +105,14 @@
 /// - Do NOT execute state mutations inside a `build()` method or within an active
 ///   reactive evaluation pass. Mutations during build violate Flutter's single-pass
 ///   layout/render contract and trigger reentrancy exceptions.
-/// - Do NOT access `.peek` directly inside [WhatWidget.build] or `composed` without wrapping
-///   in `via(...)`. Directly reading `.peek` bypasses dependency registration.
+/// - Do NOT access `untracked(...)` directly inside [WhatWidget.build] or `composed` without wrapping
+///   in `via(...)`. Directly calling `untracked(...)` bypasses dependency registration.
 ///
 /// **BAD:**
 /// ```dart
-/// // [Anti-Pattern] Reading .peek without via() inside composed
+/// // [Anti-Pattern] Reading untracked without via() inside composed
 /// Widget build(BuildContext context) {
-///   return composed((context, via) => Text('${counter.what.peek}')); // Not tracked!
+///   return composed((context, via) => Text('${untracked(counter.what)}')); // Not tracked!
 /// }
 /// ```
 ///
@@ -127,4 +127,4 @@ library;
 
 export 'package:what/what.dart';
 export 'package:what/effect.dart';
-export 'framework.dart' hide DurableAnimationTestingExtension;
+export 'framework.dart' hide DurableAnimationTestingExtension, TestDurableVSync;

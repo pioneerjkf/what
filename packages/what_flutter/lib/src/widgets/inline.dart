@@ -36,7 +36,7 @@ part of '../../framework.dart';
 /// ```text
 /// [ Upstream What<T> Mutates ]
 ///              │
-///              │ (Phase 1: O(1) Push-Dirty Invalidation)
+///              │ (Phase 1: 0-Compute Push-Dirty Invalidation)
 ///              ▼
 /// [ RawWhatTerminal<T>.onInvalidated: markNeedsBuild() ]
 ///              │
@@ -44,14 +44,14 @@ part of '../../framework.dart';
 ///              ▼
 /// [ _InlineSingleWhatElement.build() ]
 ///              │
-///              ├─► .build()        ──► Evaluates builder(context, what.peek)
+///              ├─► .build()        ──► Evaluates builder(context, untracked(what))
 ///              ├─► .build.child()  ──► If hasData: builder(..., child) | Else: returns child (fallback)
 ///              └─► .build.children ──► If hasData: builder(..., children) | Else: returns SizedBox.shrink()
 /// ```
 ///
 /// ## Key Invariants & Architectural Benefits
 /// 1. **Zero-Copy Auto-Healing Gateway**: Directly routes dirty invalidation pulses to [Element.markNeedsBuild]
-///    in $O(1)$ without allocating intermediate tracking collections.
+///    without allocating intermediate tracking collections.
 /// 2. **Empty/Error State Fallback**: When [WhatState.hasData] is `false`, builder variants with a static
 ///    `child` parameter return the fallback `child` (or [SizedBox.shrink] for children), protecting
 ///    against extraction exceptions during uninitialized states.
@@ -63,7 +63,7 @@ part of '../../framework.dart';
 /// - Avoid instantiating static child trees inside the builder closure, which forces them to rebuild on every emission.
 ///   Pass static subtrees to the `child:` or `children:` parameter to isolate them from rebuilds.
 /// - When invoking `what.build((context, data) => ...)`, ensure this [What] node contains valid data.
-///   If the target node is uninitialized or in an error state, reading `.peek` throws [WhatSnapshotExtractionException].
+///   If the target node is uninitialized or in an error state, extracting data throws [WhatSnapshotExtractionException].
 ///   Use `what.build.child` or `what.build.async` for safe uninitialized/asynchronous state handling.
 ///
 /// **BAD:**
@@ -102,7 +102,7 @@ extension type const WhatBuildFunctor<T>._(What<T> _what) {
   /// **Requires:**
   /// * [builder] must be a pure widget construction callback.
   /// * [_what] should contain valid data of type [T]. If evaluated while [_what] has no data,
-  ///   reading `.peek` throws [WhatSnapshotExtractionException]. For uninitialized or asynchronous states,
+  ///   extracting data throws [WhatSnapshotExtractionException]. For uninitialized or asynchronous states,
   ///   use [child] or [async].
   ///
   /// **Ensures:**
@@ -261,16 +261,16 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   /// * [action]: Side-effect callback receiving [BuildContext] and current state payload.
   /// * [key]: Optional widget key.
   /// * [guard]: Optional boolean predicate gating execution. When false, execution is skipped.
-  /// * [take]: Optional limit on execution count before automatic deactivation (Early Teardown).
+  /// * [take]: Optional maximum number of times this listener may execute before automatic deactivation.
   /// * [onUncaughtError]: Optional error boundary callback for uncaught exceptions.
   /// * [child]: Optional static child widget preserved across reactive notifications.
   ///
   /// **Requires:**
   /// * [action] must be a non-null side-effect callback.
-  /// * [take], if provided, must be a positive integer ($> 0$).
+  /// * [take], if provided, must be greater than or equal to 0.
   ///
   /// **Ensures:**
-  /// * Returns a [UnaryWhatListener] attached 1:1 to [_target].
+  /// * Returns a [WhatListener] attached 1:1 to [_target].
   /// * Guarantees 0 rebuilds of the widget tree (Rebuild Count: 0).
   /// * Skips initial evaluation upon mount (0-Run on Mount Invariant); executes strictly upon subsequent mutations.
   ///
@@ -279,20 +279,19 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   /// counter.what.listen(
   ///   (context, count) => showToast(context, 'Count: $count'),
   ///   guard: (count) => count > 5,
-  ///   take: 1,
   ///   child: const MainContent(),
   /// );
   /// ```
   @pragma('vm:prefer-inline')
   Widget call(
-    WhatUnaryListenerActionCallback<T> action, {
+    WhatListenerActionCallback<T> action, {
     Key? key,
     bool Function(T state)? guard,
     int? take,
     WhatListenerUncaughtErrorCallback? onUncaughtError,
     Widget? child,
   }) =>
-      UnaryWhatListener<T>(
+      WhatListener<T>(
         _target,
         action,
         key: key,
@@ -310,16 +309,17 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   /// * [leading]: Whether to execute [action] immediately on the first mutation. Defaults to `false`.
   /// * [trailing]: Whether to execute [action] on the trailing edge after silence elapses. Defaults to `true`.
   /// * [guard]: Optional boolean predicate gating execution.
-  /// * [take]: Optional limit on execution count before automatic deactivation.
+  /// * [take]: Optional maximum number of times this listener may execute before automatic deactivation.
   /// * [onUncaughtError]: Optional error boundary callback for uncaught exceptions.
   /// * [child]: Optional static child widget preserved across reactive notifications.
   ///
   /// **Requires:**
   /// * [duration] must be a non-negative [Duration].
   /// * At least one of [leading] or [trailing] must be `true`.
+  /// * [take], if provided, must be greater than or equal to 0.
   ///
   /// **Ensures:**
-  /// * Returns a debounced [UnaryWhatListener] with guaranteed 0-rebuild execution.
+  /// * Returns a debounced [WhatListener] with guaranteed 0-rebuild execution.
   ///
   /// ## Examples
   /// ```dart
@@ -331,7 +331,7 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   @pragma('vm:prefer-inline')
   Widget debounce(
     Duration duration,
-    WhatUnaryListenerActionCallback<T> action, {
+    WhatListenerActionCallback<T> action, {
     Key? key,
     bool leading = false,
     bool trailing = true,
@@ -340,7 +340,7 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
     WhatListenerUncaughtErrorCallback? onUncaughtError,
     Widget? child,
   }) =>
-      UnaryWhatListener<T>.debounce(
+      WhatListener<T>.debounce(
         _target,
         action,
         duration: duration,
@@ -361,16 +361,17 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   /// * [leading]: Whether to execute [action] on the leading edge. Defaults to `true`.
   /// * [trailing]: Whether to execute [action] on the trailing edge if mutations occurred during the window. Defaults to `true`.
   /// * [guard]: Optional boolean predicate gating execution.
-  /// * [take]: Optional limit on execution count before automatic deactivation.
+  /// * [take]: Optional maximum number of times this listener may execute before automatic deactivation.
   /// * [onUncaughtError]: Optional error boundary callback for uncaught exceptions.
   /// * [child]: Optional static child widget preserved across reactive notifications.
   ///
   /// **Requires:**
   /// * [duration] must be a non-negative [Duration].
   /// * At least one of [leading] or [trailing] must be `true`.
+  /// * [take], if provided, must be greater than or equal to 0.
   ///
   /// **Ensures:**
-  /// * Returns a throttled [UnaryWhatListener] with guaranteed 0-rebuild execution.
+  /// * Returns a throttled [WhatListener] with guaranteed 0-rebuild execution.
   ///
   /// ## Examples
   /// ```dart
@@ -382,7 +383,7 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
   @pragma('vm:prefer-inline')
   Widget throttle(
     Duration duration,
-    WhatUnaryListenerActionCallback<T> action, {
+    WhatListenerActionCallback<T> action, {
     Key? key,
     bool leading = true,
     bool trailing = true,
@@ -391,7 +392,7 @@ extension type const WhatListenFunctor<T>._(What<T> _target) {
     WhatListenerUncaughtErrorCallback? onUncaughtError,
     Widget? child,
   }) =>
-      UnaryWhatListener<T>.throttle(
+      WhatListener<T>.throttle(
         _target,
         action,
         duration: duration,

@@ -29,8 +29,8 @@ part of '../framework.dart';
 /// ## Architectural Benefits
 /// 1. **Zero Hot-Path Overhead**: Handlers are queried only when an actual error escapes.
 /// 2. **Context-Aware Diagnostics**: Supplies the originating node or terminal instance via `context`.
-/// 3. **Fail-Safe Fallback**: Always delegates to [Zone.handleUncaughtError] so errors
-///    are never silently suppressed.
+/// 3. **Fail-Safe Fallback**: Delegates to [Zone.handleUncaughtError] when no handler is registered,
+///    preventing silent exception suppression while avoiding duplicate dispatches.
 ///
 /// ## Examples
 /// ```dart

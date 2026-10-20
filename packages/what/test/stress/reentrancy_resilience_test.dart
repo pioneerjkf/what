@@ -59,7 +59,7 @@ void main() {
 
         terminal.activate(); // Triggers onActivated on ctrlSource -> sets ctrlSecondary to 200
 
-        expect(pipeline.peek, 200); // 1 * 200
+        expect(untracked(pipeline), 200); // 1 * 200
 
         terminal.deactivate();
       });

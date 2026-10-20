@@ -223,9 +223,9 @@ void main() {
         final source = WhatController(1);
         final doubled = computed((via) => via(source.what) * 2);
 
-        expect(doubled.peek, 2);
+        expect(untracked(doubled), 2);
         source.data = 2;
-        expect(doubled.peek, 4);
+        expect(untracked(doubled), 4);
       });
 
       test('4.4 computed evaluates purely on pull and guarantees exactly 1 computation on diamond graph', () {
@@ -241,7 +241,7 @@ void main() {
 
         expect(evalCount, 0); // Lazy: not yet evaluated
 
-        expect(diamond.peek, 50); // 20 + 30 = 50
+        expect(untracked(diamond), 50); // 20 + 30 = 50
         expect(evalCount, 1);
 
         // Mutating root pushes dirty flag to diamond via both branches
@@ -249,7 +249,7 @@ void main() {
         expect(evalCount, 1); // Zero computation during push!
 
         // Evaluates exactly once on pull with complete, glitch-free state (40 + 60 = 100)
-        expect(diamond.peek, 100);
+        expect(untracked(diamond), 100);
         expect(evalCount, 2);
       });
     });

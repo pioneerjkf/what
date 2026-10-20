@@ -7,7 +7,7 @@ part of '../../framework.dart';
 // ignore_for_file: must_call_super
 
 abstract base class _ManagedWhat<T> extends _NaryRelay<_Node>
-    with _WhatViaEpochMixin, _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>
+    with _WhatViaEpochMixin, _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>
     implements What<T> {
   _ManagedWhat({
     WhatGuard Function(WhatVia via)? guard,
@@ -86,8 +86,13 @@ abstract base class _ManagedWhat<T> extends _NaryRelay<_Node>
           return _state = _ValidWhatState(res);
         }
       }
+    } on _ViaShortCircuit catch (e) {
+      succeeded = true;
+      _disposeCurrent();
+      _version++;
+      return _state = e.state._retype<T>();
     } catch (error, stackTrace) {
-      succeeded = error is _ViaShortCircuit;
+      succeeded = false;
       _disposeCurrent();
       _version++;
       return _state = _WhatState.fromCaught(error, stackTrace);

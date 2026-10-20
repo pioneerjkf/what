@@ -10,3 +10,5 @@ example/build/
 example/macos/
 example/web/
 example/test/
+.DS_Store
+*.log

@@ -53,7 +53,7 @@ final class GoodRawReadInCallback extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     return TextButton(
-      onPressed: () => print(source.peek),
+      onPressed: () => print(untracked(source)),
       child: Text('${via(source)}'),
     );
   }

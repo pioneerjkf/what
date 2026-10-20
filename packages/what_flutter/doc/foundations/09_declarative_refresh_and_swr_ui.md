@@ -106,6 +106,7 @@ final class WhatPendingIndicator extends WhatWidget implements PreferredSizeWidg
 ## 5. Production Integration Pattern
 
 ```dart
+// WhatSignalController is from package:what (re-exported by what_flutter)
 final refreshSignal = WhatSignalController();
 final userFeed = computed.future((via) {
   via(refreshSignal.what);

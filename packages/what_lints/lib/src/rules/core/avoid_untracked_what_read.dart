@@ -4,7 +4,7 @@
 
 part of '../../../what_lints.dart';
 
-/// A lint rule prohibiting direct, untracked reactive payload extraction (`.peek`, `.peekState`, `.data`, `.snapshot`, etc.)
+/// A lint rule prohibiting direct, untracked reactive payload extraction (`untracked(what)`, `untracked.state(what)`, `.data`, `.snapshot`, etc.)
 /// inside explicit `WhatVia` scopes without establishing dependency registration via `via()`.
 ///
 /// ### Rationale:
@@ -12,7 +12,7 @@ part of '../../../what_lints.dart';
 /// `switched((via) => ...)`, `Effect((via) => ...)`, `WhatWidget.build(context, via)`) to achieve
 /// zero-overhead raw reads with zero implicit tracking scope.
 ///
-/// Reading a reactive node's payload directly via `.peek`, `.peekState`, or controller `.data` inside a `WhatVia`
+/// Reading a reactive node's payload directly via `untracked(node)`, `untracked.state(node)`, or controller `.data` inside a `WhatVia`
 /// scope without wrapping it with `via(node)` or `via.state(node)` bypasses LPDAG edge creation. Consequently, when the
 /// upstream state mutates, the downstream derivation or widget **fails to invalidate and recalculate**
 /// (the fatal "silent unreactivity" bug).
@@ -20,12 +20,12 @@ part of '../../../what_lints.dart';
 /// **BAD:**
 /// ```dart
 /// final doubled = computed((via) {
-///   return counterWhat.peek * 2; // [Anti-Pattern] Unregistered dependency (silent bug: never recomputes!)
+///   return untracked(counterWhat) * 2; // [Anti-Pattern] Unregistered dependency (silent bug: never recomputes!)
 /// });
 ///
 /// class CounterWidget extends WhatWidget {
 ///   Widget build(BuildContext context, WhatVia via) {
-///     return Text('${counterWhat.peek}'); // [Anti-Pattern] Never rebuilds on count updates!
+///     return Text('${untracked(counterWhat)}'); // [Anti-Pattern] Never rebuilds on count updates!
 ///   }
 /// }
 /// ```
@@ -63,6 +63,15 @@ class AvoidUntrackedWhatRead extends DartLintRule {
     errorSeverity: DiagnosticSeverity.ERROR,
   );
 
+  static const _untrackedCode = LintCode(
+    name: 'avoid_untracked_what_read',
+    problemMessage:
+        'Avoid calling untracked(...) inside WhatVia scopes without establishing dependency tracking.',
+    correctionMessage:
+        'Use via(node) or via.state(node) instead of untracked(...) to establish dynamic dependency tracking.',
+    errorSeverity: DiagnosticSeverity.ERROR,
+  );
+
   @override
   List<Fix> getFixes() => [WrapWithViaFix()];
 
@@ -96,7 +105,7 @@ class AvoidUntrackedWhatRead extends DartLintRule {
       }
     });
 
-    // 3. MethodInvocation (e.g. counter.dataOrElse(...), userWhat.match(...))
+    // 3. MethodInvocation (e.g. counter.dataOrElse(...), userWhat.match(...), untracked.state(...))
     context.registry.addMethodInvocation((node) {
       final methodName = node.methodName.name;
       if (WhatTypeChecker.isPipelineReadMethod(methodName)) {
@@ -105,10 +114,23 @@ class AvoidUntrackedWhatRead extends DartLintRule {
             reporter.atNode(node, _code, arguments: [methodName]);
           }
         }
+      } else if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+        if (isUntrackedInWhatViaScope(node)) {
+          reporter.atNode(node, _untrackedCode);
+        }
       }
     });
 
-    // 4. AsExpression (e.g. count as WhatState)
+    // 4. FunctionExpressionInvocation (e.g. untracked(node))
+    context.registry.addFunctionExpressionInvocation((node) {
+      if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+        if (isUntrackedInWhatViaScope(node)) {
+          reporter.atNode(node, _untrackedCode);
+        }
+      }
+    });
+
+    // 5. AsExpression (e.g. count as WhatState)
     context.registry.addAsExpression((node) {
       if (isUntrackedInWhatViaScope(node)) {
         final targetType = node.type.type;

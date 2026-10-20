@@ -180,8 +180,8 @@ For continuous updates on scalar or collection states, `_ValidWhatState` provide
 
 ### 5.6. Bounded Retention with `_MooringTerminal`
 Transient nodes and in-flight subscriptions across tab or route switches are anchored via `graceful` policies:
-- `graceful.microtask` (default): Defers deallocation by 1 scheduler tick, coalescing rapid unmount/remount passes without object churn.
-- `graceful.period(duration)`: Anchors the node to the global `_MooringTerminal` via a topological `_MooringEdge`, holding upstream dependencies active until the specified grace window elapses without severing the LPDAG reactive chain.
+- `Graceful.microtask` (default): Defers deallocation by 1 scheduler tick, coalescing rapid unmount/remount passes without object churn.
+- `Graceful.period(duration)`: Anchors the node to the global `_MooringTerminal` via a topological `_MooringEdge`, holding upstream dependencies active until the specified grace window elapses without severing the LPDAG reactive chain.
 
 ### 5.7. `_ViaShortCircuit` Non-Data State Propagation
 When a derivation observes an upstream node in a non-data state (e.g. `WhatState.empty` or `WhatState.error`):

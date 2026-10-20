@@ -241,7 +241,7 @@ extension WhatTickerProviderDriveExtension on TickerProvider {
     return switched(
       (via) => via(resourceNode).what,
       guard: (via) => via.state(resourceNode).hasData.guarded(
-            resourceNode.peekState.emptyReason ?? 'TickerNotInitialized',
+            untracked.state(resourceNode).emptyReason ?? 'TickerNotInitialized',
           ),
       eager: true,
     );

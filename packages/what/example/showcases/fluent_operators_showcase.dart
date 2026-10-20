@@ -27,7 +27,7 @@ void main() async {
   final distinctCount = count.what.distinct();
   final distinctRunner = distinctCount.effect(() {
     distinctNotifications++;
-    print('  [Distinct Runner] Received: ${distinctCount.peek} (Total ticks: $distinctNotifications)');
+    print('  [Distinct Runner] Received: ${untracked(distinctCount)} (Total ticks: $distinctNotifications)');
   }).run();
 
   count.data = 1;
@@ -50,7 +50,7 @@ void main() async {
   final debouncedInput = searchInput.what.debounced(const Duration(milliseconds: 30));
 
   final debounceRunner = debouncedInput.effect(() {
-    print('  [Debounce Runner] Finalized Query: "${debouncedInput.peek}"');
+    print('  [Debounce Runner] Finalized Query: "${untracked(debouncedInput)}"');
   }).run();
 
   // Rapid typing burst
@@ -78,7 +78,7 @@ void main() async {
   );
 
   final throttleRunner = throttledScroll.effect(() {
-    print('  [Throttle Runner] Offset: ${throttledScroll.peek}');
+    print('  [Throttle Runner] Offset: ${untracked(throttledScroll)}');
   }).run();
 
   scrollOffset.data = 10.0; // Leading edge fires immediately
@@ -98,12 +98,12 @@ void main() async {
 
   final swrFeed = liveSource.what.retained(pending: pendingCoupler);
 
-  print('Current SWR Data: "${swrFeed.peek}"');
-  print('Is Pending Refresh: ${pendingCoupler.what.peek}');
+  print('Current SWR Data: "${untracked(swrFeed)}"');
+  print('Is Pending Refresh: ${untracked(pendingCoupler.what)}');
 
   // Simulating an asynchronous background invalidation
   liveSource.data = 'Fresh Remote Payload';
-  print('Updated SWR Data: "${swrFeed.peek}"\n');
+  print('Updated SWR Data: "${untracked(swrFeed)}"\n');
 
   // ---------------------------------------------------------------------------
   // 5. .graceful: Deactivation Buffer

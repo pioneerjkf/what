@@ -26,7 +26,7 @@ part of '../framework.dart';
 /// │   What<int> get count => _count.what;    // Consumer   │
 /// └────────────────────────────────────────────────────────┘
 ///              │                                 │
-///              ▼ (.data = 1 / .set(1))           ▼ (.peek / via(count))
+///              ▼ (.data = 1 / .set(1))           ▼ (untracked / via(count))
 /// ┌──────────────────────────┐     ┌──────────────────────────┐
 /// │   WhatController<int>    │ ──> │        What<int>         │
 /// └──────────────────────────┘     └──────────────────────────┘
@@ -74,9 +74,9 @@ part of '../framework.dart';
 /// final counter = WhatController<int>(0);
 /// final countView = counter.what;
 ///
-/// print(countView.peek); // 0
+/// print(untracked(countView)); // 0
 /// counter.set(10);
-/// print(countView.peek); // 10
+/// print(untracked(countView)); // 10
 /// ```
 abstract base class WhatController<T> implements WhatState<T> {
   /// Creates a distinct-filtered [WhatController] initialized with [data].

@@ -7,136 +7,167 @@ import 'package:what_flutter/what_flutter.dart';
 import '../../models/section.dart';
 import '../../sections/text_editing_controller_section.dart';
 
-/// Sub-store for Section 05: Zero-Jump Form Binding & WhatTextEditingController.
+/// Sub-store for Section 05: Standard Form Input & Listenable Bridge (`toWhatBy`).
 class TextEditingControllerStore {
   TextEditingControllerStore({
-    Graceful? gracefulPolicy = const Graceful.period(Duration(minutes: 5)),
-  })  : _query = WhatController<String>('Hello What World!'),
-        _mutationCount = WhatController<int>(0) {
-    _charCount = computed<int>((via) => via(_query.what).length);
+    Graceful? graceful = Graceful.microtask,
+  }) : _mutationCount = WhatController<int>(0) {
+    // 1. Flutter standard TextEditingController
+    textController = TextEditingController(text: 'Hello What World!');
+
+    // 2. Bridge Flutter TextEditingController -> What reactive state via toWhatBy
+    textWhat = textController.toWhatBy((c) => c.text, graceful: graceful);
+
+    // 3. Derived reactive computed metrics
+    _charCount = computed<int>((via) => via(textWhat).length);
     _wordCount = computed<int>((via) {
-      final text = via(_query.what).trim();
+      final text = via(textWhat).trim();
       if (text.isEmpty) return 0;
       return text.split(RegExp(r'\s+')).length;
     });
-    textControllerWhat = managed<WhatTextEditingController>(
-      create: (via) => _query.bindTextController(),
-      dispose: (c) => c.dispose(),
-      graceful: gracefulPolicy,
-    );
   }
 
-  final WhatController<String> _query;
   final WhatController<int> _mutationCount;
+
+  /// Native Flutter [TextEditingController].
+  late final TextEditingController textController;
+
+  /// Reactive string stream extracted directly from [textController] via `.toWhatBy((c) => c.text)`.
+  late final What<String> textWhat;
 
   late final What<int> _charCount;
   late final What<int> _wordCount;
 
-  /// Managed reactive [WhatTextEditingController] automatically disposed upon Inactive Dormancy
-  /// with a graceful mooring window to preserve cursor/selection across navigation.
-  late final What<WhatTextEditingController> textControllerWhat;
-
-  /// The underlying two-way reactive state controller.
-  WhatController<String> get query => _query;
-
   /// Number of programmatic external mutations dispatched.
   What<int> get mutationCount => _mutationCount.what;
 
-  /// Reactive character count derived from [query].
+  /// Reactive character count derived from [textWhat].
   What<int> get charCount => _charCount;
 
-  /// Reactive word count derived from [query].
+  /// Reactive word count derived from [textWhat].
   What<int> get wordCount => _wordCount;
 
-  /// Clears the query state.
-  void clear() {
-    _query.set('');
+  /// Programmatically mutates the text in the active controller while preserving cursor.
+  void _mutateController(
+      void Function(TextEditingController controller) action) {
+    action(textController);
     _mutationCount.set(_mutationCount.data + 1);
+  }
+
+  /// Clears the controller text.
+  void clear() {
+    _mutateController((c) => c.clear());
   }
 
   /// Transforms current query to uppercase.
   void toUpperCase() {
-    _query.set(_query.data.toUpperCase());
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      final current = c.text;
+      c.value = c.value.copyWith(
+        text: current.toUpperCase(),
+        selection: TextSelection.collapsed(offset: current.length),
+      );
+    });
   }
 
   /// Transforms current query to lowercase.
   void toLowerCase() {
-    _query.set(_query.data.toLowerCase());
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      final current = c.text;
+      c.value = c.value.copyWith(
+        text: current.toLowerCase(),
+        selection: TextSelection.collapsed(offset: current.length),
+      );
+    });
   }
 
   /// Prepends a tag prefix to current query.
   void prependTag(String tag) {
-    _query.set('$tag ${_query.data}');
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      final next = '$tag ${c.text}';
+      c.value = c.value.copyWith(
+        text: next,
+        selection: TextSelection.collapsed(offset: next.length),
+      );
+    });
   }
 
   /// Appends an emoji suffix to current query.
   void appendSuffix(String suffix) {
-    _query.set('${_query.data} $suffix');
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      final next = '${c.text} $suffix';
+      c.value = c.value.copyWith(
+        text: next,
+        selection: TextSelection.collapsed(offset: next.length),
+      );
+    });
   }
 
   /// Sets a sample Korean text for IME verification.
   void setKoreanSample() {
-    _query.set('리액티브 상태관리의 새로운 패러다임: What 프레임워크');
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      const sample = '리액티브 상태관리의 새로운 패러다임: What 프레임워크';
+      c.value = TextEditingValue(
+        text: sample,
+        selection: const TextSelection.collapsed(offset: sample.length),
+      );
+    });
   }
 
   /// Resets to default initial greeting.
   void resetDefault() {
-    _query.set('Hello What World!');
-    _mutationCount.set(_mutationCount.data + 1);
+    _mutateController((c) {
+      const sample = 'Hello What World!';
+      c.value = TextEditingValue(
+        text: sample,
+        selection: const TextSelection.collapsed(offset: sample.length),
+      );
+    });
   }
 
   /// Showcase section metadata.
   ShowcaseSection get section => ShowcaseSection(
         id: '05_text_editing_controller',
         number: '05',
-        title: 'Zero-Jump Form Binding & WhatTextEditingController',
+        title: 'Form Input & Listenable Bridge (toWhatBy)',
         subtitle:
-            'Two-way form synchronization, cursor jumping immunity & lifecycle auto-disposal',
-        badge: '2-Way Form',
+            'Standard Flutter TextEditingController with zero-leak toWhatBy bridge & managed lifecycle',
+        badge: 'Listenable Bridge',
         icon: Icons.edit_note_rounded,
         codeSnippet: _codeSnippet,
         highlights: const [
-          'Bidirectional Synchronization: UI typing seamlessly updates WhatController with 0 feedback ping-pong.',
-          'Zero-Jump Invariant: External state updates preserve cursor and selection via Smart Clamping.',
-          'CJK IME Composition Protection: Prevents Korean/Japanese/Chinese syllable separation during typing.',
-          'Lifecycle Management: Integrates seamlessly with managed() or standard Store/State lifecycles.',
+          'Standard Architecture: Uses native Flutter TextEditingController directly with 0 custom wrapper bloat.',
+          'Zero-Leak Bridge: Extracts reactive string updates via toWhatBy((c) => c.text) with Demand-Driven Dormancy.',
+          'Natural Unidirectional Flow: UI typing updates Flutter controller; What computed reacts surgically.',
+          'Lifecycle Management: Integrates seamlessly with managed() for automatic disposal on widget unmount.',
         ],
         roadmapTree: '''
-[What Form Binding Pipeline]
- ├── WhatTextEditingController(what)        -> Two-Way Reactive TextEditingController
- │    ├── .what                             -> Bound WhatController<String>
- │    ├── .graceful                         -> Debounced sync policy (e.g. 5m TTL)
- │    └── Smart Clamping                    -> Zero-Jump cursor / IME composition guard
+[What Form Input Architecture]
+ ├── TextEditingController                 -> Native Flutter UI Controller
  │
- ├── bindTextController(...)                -> Declarative Widget Extension
- │    └── textField.bind(controller)
+ ├── controller.toWhatBy((c) => c.text)   -> Demand-Driven Reactive Bridge
+ │    ├── Automatic Dormancy Detachment   -> Zero listener leaks when inactive
+ │    └── Derived computations            -> computed(() => via(textWhat).length)
  │
- └── managed(create, dispose)               -> Auto-disposed Lifecycle Binding
-      ├── create: (_) => WhatTextEditingController(what)
+ └── managed(create, dispose)              -> Auto-disposed Lifecycle Binding
+      ├── create: (_) => TextEditingController(...)
       ├── dispose: (ctrl) => ctrl.dispose()
-      └── graceful: graceful.period(...)    -> Dormant Mooring Preservation
+      └── graceful: Graceful.microtask     -> Dormant Mooring Preservation
 ''',
-        builder: () => TextEditingControllerSection(),
+        builder: () => const TextEditingControllerSection(),
       );
 
   static const _codeSnippet = '''
-// 1. Define reactive string controller in Store / ViewModel
-final query = WhatController<String>('Hello What!');
+// 1. Native Flutter TextEditingController
+final textController = TextEditingController(text: 'Hello What World!');
 
-// 2. Instantiate WhatTextEditingController bound to WhatController
-// In Store:
-late final controller = WhatTextEditingController(query);
+// 2. Bridge controller to reactive What node with toWhatBy
+late final textWhat = textController.toWhatBy((c) => c.text);
 
-// Or in UI with managed() reactive lifecycle:
-late final managedCtrl = managed(
-  create: (_) => WhatTextEditingController(query),
-  dispose: (c) => c.dispose(),
-  graceful: graceful.period(const Duration(minutes: 5)),
-);
+// 3. Surgical computations derived from text
+late final charCount = computed((via) => via(textWhat).length);
+
+// 4. In UI widget:
+TextField(controller: textController);
 ''';
 }

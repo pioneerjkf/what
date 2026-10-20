@@ -20,7 +20,7 @@ part of '../../framework.dart';
 /// ```text
 /// [ Upstream What<T> Mutation ]
 ///        │
-///        │ (Phase 1: O(1) Push-Dirty Invalidation)
+///        │ (Phase 1: 0-Compute Push-Dirty Invalidation)
 ///        ▼
 /// [ RawComputedTerminal<Widget>.onInvalidated: markNeedsBuild() ]
 ///        │
@@ -37,9 +37,11 @@ part of '../../framework.dart';
 /// ```
 ///
 /// ## Key Invariants & Architectural Benefits
-/// 1. **0-Compute Memoization**: When ancestor widgets rebuild without invalidating this widget's
-///    observed [What] dependencies, `terminal.data` returns the cached widget in $O(1)$ without
-///    re-evaluating [build].
+/// 1. **0-Compute Reactive Memoization**: When upstream state triggers frame invalidation but
+///    dependencies resolve to clean (e.g. unchanged distinct intermediates), `terminal.data`
+///    returns the cached widget in $O(1)$ without re-evaluating [build].
+///    (Note: Ancestor widget rebuilds pass new widget instances through [Element.update], which re-evaluates
+///    [build] to honor updated widget parameters; use `const` or `composed.child` for ancestor isolation).
 /// 2. **Zero Heap Overhead in Hot Path**: Dynamic edge tracking utilizes 1-pass zero-allocation
 ///    epoch stamping, avoiding intermediate list allocations during rebuilds.
 /// 3. **Dormancy Garbage Collection**: When the widget unmounts, all active graph subscriptions
@@ -48,21 +50,21 @@ part of '../../framework.dart';
 ///    state synchronously inside [build].
 ///
 /// **Warning (Anti-Pattern Prevention):**
-/// - Do NOT read `.peek` directly without wrapping in `via(...)`, as untracked reads will not
+/// - Do NOT read untracked values directly without wrapping in `via(...)`, as untracked reads will not
 ///   trigger widget rebuilds when state changes.
 /// - Do NOT mutate reactive state inside [build], as this triggers reentrancy loops and violates
 ///   Flutter's rendering contract.
 ///
 /// **BAD:**
 /// ```dart
-/// // [Anti-Pattern] Reading .peek directly bypasses dependency registration
+/// // [Anti-Pattern] Reading untracked directly bypasses dependency registration
 /// class BadCounterWidget extends WhatWidget {
 ///   BadCounterWidget(this.countWhat, {super.key});
 ///   final What<int> countWhat;
 ///
 ///   @override
 ///   Widget build(BuildContext context, WhatVia via) {
-///     return Text('Count: ${countWhat.peek}'); // NEVER rebuilds!
+///     return Text('Count: ${untracked(countWhat)}'); // NEVER rebuilds!
 ///   }
 /// }
 /// ```
@@ -83,18 +85,20 @@ part of '../../framework.dart';
 ///
 /// ## Examples
 /// ```dart
+/// // Pure reactive state node:
+/// final counter = WhatController(0);
+///
 /// class CounterPage extends StatelessWidget {
-///   CounterPage({super.key});
-///   final _counter = WhatController(0);
+///   const CounterPage({super.key});
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
-///     return CounterView(counterWhat: _counter.what);
+///     return CounterView(counterWhat: counter.what);
 ///   }
 /// }
 ///
 /// class CounterView extends WhatWidget {
-///   CounterView({required this.counterWhat, super.key});
+///   const CounterView({required this.counterWhat, super.key});
 ///   final What<int> counterWhat;
 ///
 ///   @override
@@ -160,7 +164,7 @@ base class WhatElement extends ComponentElement
 /// ```text
 /// [ Upstream What<T> Mutation ]
 ///        │
-///        │ (Phase 1: O(1) Push-Dirty Invalidation)
+///        │ (Phase 1: 0-Compute Push-Dirty Invalidation)
 ///        ▼
 /// [ RawComputedTerminal<Widget>.onInvalidated: markNeedsBuild() ]
 ///        │
@@ -183,7 +187,7 @@ base class WhatElement extends ComponentElement
 ///    preventing re-binding hazards and memory leaks across rebuilds.
 /// 4. **Automatic Ticker Muting**: Integrates with Flutter's [TickerMode], pausing tickers automatically
 ///    when routes or tabs are hidden or inactive.
-/// 5. **0-Compute Memoization**: Inherits [RawComputedTerminal] caching to skip rebuilds when dependencies remain clean.
+/// 5. **0-Compute Reactive Memoization**: Inherits [RawComputedTerminal] caching to skip [build] re-evaluation when dependencies resolve to clean.
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - Do NOT create raw [AnimationController] instances inside [build] directly, as rebuilding creates new

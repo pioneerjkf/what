@@ -33,7 +33,7 @@ void main() {
 
       ctrl.set(1);
 
-      expect(ctrl.what.peek, 1);
+      expect(untracked(ctrl.what), 1);
     });
 
     test('Multiple terminals push origin tail coverage (line 36)', () {
@@ -55,8 +55,8 @@ void main() {
       ctrl.set(1);
       print('Done triggering drain.');
 
-      expect(ctrl1.what.peek, 1);
-      expect(ctrl2.what.peek, 1);
+      expect(untracked(ctrl1.what), 1);
+      expect(untracked(ctrl2.what), 1);
     });
   });
 }

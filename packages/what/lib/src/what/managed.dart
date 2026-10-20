@@ -36,10 +36,10 @@ part of '../framework.dart';
 /// 1. **Zero-Leak Inactive Dormancy**: When no downstream subscribers are connected (inactive state),
 ///    the node is unconditionally dormant (0 CPU, 0 allocations, 0 open handles).
 /// 2. **Lazy On-Demand Activation**: Resource allocation occurs only upon active downstream connection.
-/// 3. **Microtask Thrashing Protection**: Supports [graceful] disposal to coalesce rapid unmount/remount cycles.
+/// 3. **Microtask Thrashing Protection**: Supports [Graceful] disposal to coalesce rapid unmount/remount cycles.
 ///
 /// See [ManagedFunctor.call] for complete parameter specifications, in-place reuse (`update`),
-/// and transient mooring (`graceful`).
+/// and transient mooring ([Graceful]).
 ///
 /// ## Examples
 /// ```dart
@@ -82,7 +82,7 @@ final class ManagedFunctor {
   ///     create: (via) => HttpClient(),
   ///     dispose: (c) => c.close(),
   ///   );
-  ///   return Text('${client.peekState.dataOrNull}');
+  ///   return Text('${untracked.state(client).dataOrNull}');
   /// }
   /// ```
   ///

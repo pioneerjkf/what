@@ -33,7 +33,6 @@ part 'src/widgets/framework.dart';
 part 'src/widgets/inline.dart';
 part 'src/widgets/async.dart';
 part 'src/widgets/listener.dart';
-part 'src/widgets/editable_text.dart';
 part 'src/widgets/provider.dart';
 
 // Framework Animation

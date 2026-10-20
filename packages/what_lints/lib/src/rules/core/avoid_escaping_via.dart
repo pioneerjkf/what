@@ -46,11 +46,11 @@ part of '../../../what_lints.dart';
 ///   return filter(profile, token);
 /// });
 ///
-/// // Approach 2: Use zero-overhead raw reads (.peek) inside event callbacks
+/// // Approach 2: Use zero-overhead raw reads (untracked) inside event callbacks
 /// class MyWidget extends WhatWidget {
 ///   Widget build(BuildContext context, WhatVia via) {
 ///     return ElevatedButton(
-///       onPressed: () => print(counterWhat.peek), // [Recommended] Safe raw read without tracking
+///       onPressed: () => print(untracked(counterWhat)), // [Recommended] Safe raw read without tracking
 ///       child: const Text('Tap'),
 ///     );
 ///   }
@@ -64,7 +64,7 @@ class AvoidEscapingVia extends DartLintRule {
     problemMessage:
         'Avoid calling via() across asynchronous gaps (after await) or deferred inside event/async callbacks.',
     correctionMessage:
-        'Extract all reactive dependencies via(node) synchronously before await, or use raw .peek reads inside event callbacks.',
+        'Extract all reactive dependencies via(node) synchronously before await, or use untracked(node) reads inside event callbacks.',
     errorSeverity: DiagnosticSeverity.ERROR,
   );
 

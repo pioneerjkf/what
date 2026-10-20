@@ -26,7 +26,7 @@ Add `what_test` to your `dev_dependencies` in `pubspec.yaml`:
 ```yaml
 dev_dependencies:
   test: ^1.25.0
-  what_test: ^0.1.0
+  what_test: ^0.2.0
 ```
 
 Or run:
@@ -79,7 +79,7 @@ void main() {
       expect: () => [0, 1, 2, 1],
       verify: (store) {
         expect(store.items.data, ['MacBook Pro']);
-        expect(store.itemCount.peek, 1);
+        expect(untracked(store.itemCount), 1);
       },
     );
   });

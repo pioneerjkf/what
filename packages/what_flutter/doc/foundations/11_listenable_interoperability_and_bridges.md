@@ -114,7 +114,7 @@ extension WhatListenableExtension<T> on What<T> {
 }
 ```
 
-* **Zero-Overhead Terminal Mooring**: Internally instantiates a [`RawWhatTerminal<T>`](../../../what/lib/src/engine/terminal.dart#L182) when the first listener attaches (`_listeners.length == 1`), and deactivates it when the last listener detaches (`_listeners.isEmpty`).
+* **Zero-Overhead Terminal Mooring**: Internally instantiates a [`RawWhatTerminal<T>`](../../../what/lib/src/engine/terminal.dart#L182) when the first listener attaches (`_head` becomes non-null), and deactivates it when the last listener detaches (`_head == null`). Traverses listeners via an intrusive doubly-linked list with zero heap allocation per notification pass.
 * **Synchronous vs. Coalesced Modes**:
   - `sync: true` (default): Synchronously dispatches notifications upon state mutation, satisfying Flutter's immediate contract.
   - `sync: false`: Routes through `_what.coalesced()`, batching high-frequency invalidations into a single microtask turn.
@@ -193,22 +193,31 @@ base class CollapsingHeaderView extends WhatWidget {
 Extracts raw text, bridges to a debounced derivation, and updates UI without re-rendering the whole form:
 
 ```dart
+// 1. Managed TextEditingController: auto-allocated upon mount, moored gracefully, auto-disposed
+final textController = managed<TextEditingController>(
+  create: (via) => TextEditingController(),
+  dispose: (c) => c.dispose(),
+  graceful: Graceful.microtask,
+);
+
+// 2. Bridge text changes to reactive What using toWhatBy
+final queryWhat =
+    computed((via) => via(textController).toWhatBy((c) => c.text));
+
+// 3. Debounced search derivation
+final searchWhat = queryWhat.debounce(const Duration(milliseconds: 300));
+
 class SearchBarWidget extends WhatWidget {
-  SearchBarWidget({super.key});
-
-  final textController = TextEditingController();
-
-  late final searchWhat = textController
-      .toWhatBy((c) => c.text, distinct: true)
-      .debounce(const Duration(milliseconds: 300));
+  const SearchBarWidget({super.key});
 
   @override
   Widget build(BuildContext context, WhatVia via) {
-    final query = via(searchWhat);
+    final search = via(searchWhat);
+
     return Column(
       children: [
-        TextField(controller: textController),
-        Text('Searching for: $query'),
+        TextField(controller: via(textController)),
+        Text('Searching for: $search'),
       ],
     );
   }
@@ -237,7 +246,7 @@ Widget build(BuildContext context) {
 | # | Invariant Name | Mathematical / Topological Rule | Verification Mechanism |
 | :---: | :--- | :--- | :--- |
 | **I** | **Subscriber-Driven Dormancy** | No consumer $\implies$ `addListener` is never called. Zero standing callbacks on idle Listenables. | Verified via mock Listenable listener count checks while dormant. |
-| **II** | **Activation Catch-Up** | Transition $0 \to 1 \implies$ immediately evaluates current `listenable.value` via `setGuarded`. | Confirmed by reading `.peek` immediately upon terminal activation. |
+| **II** | **Activation Catch-Up** | Transition $0 \to 1 \implies$ immediately evaluates current `listenable.value` via `setGuarded`. | Confirmed by reading `untracked(node)` immediately upon terminal activation. |
 | **III** | **Deduplication Filtering** | $v_{t} = v_{t-1} \implies \text{Push-Dirty dropped}$. High-frequency duplicates emit 0 DAG pulses. | Enforced by `_DistinctEntry` shallow equality checks. |
 | **IV** | **Deterministic Teardown** | All consumers detach $\implies$ `removeListener` executed synchronously in $O(1)$. | Verified by asserting `hasListeners == false` upon deactivation. |
 | **V** | **Reverse Mooring Integrity** | `toListenable()` attaches `RawWhatTerminal` if and only if Flutter listener count $\ge 1$. | Validated by `_WhatValueListenable.addListener` and `removeListener` tests. |

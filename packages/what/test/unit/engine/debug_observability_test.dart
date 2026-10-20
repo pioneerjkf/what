@@ -19,10 +19,10 @@ void main() {
 
       expect(base.what.debug.debugLabel, 'BaseNumber');
       expect(doubled.debug.debugLabel, 'DoubledNumber');
-      expect(doubled.peek, 20);
+      expect(untracked(doubled), 20);
 
       base.data = 15;
-      expect(doubled.peek, 30);
+      expect(untracked(doubled), 30);
     });
 
     test('1.3 targetCount and hasTargets reflect active terminal lifecycle', () {
@@ -94,7 +94,7 @@ void main() {
       final terminal = RawWhatTerminal(currentTheme, onInvalidated: () {})..activate();
 
       // Read data to evaluate switch
-      expect(currentTheme.peek, 'Light Theme');
+      expect(untracked(currentTheme), 'Light Theme');
 
       final snapshot1 = currentTheme.debug.snapshot();
       expect(snapshot1.name, 'CurrentThemeSwitch');
@@ -103,7 +103,7 @@ void main() {
 
       // Toggle condition
       isDark.data = true;
-      expect(currentTheme.peek, 'Dark Theme');
+      expect(untracked(currentTheme), 'Dark Theme');
 
       final snapshot2 = currentTheme.debug.snapshot();
       expect(snapshot2.customProperties['activeSource'], 'DarkThemeNode');

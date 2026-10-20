@@ -20,7 +20,7 @@ void main() {
 
         final captured = <int>[];
         final runner = doubled.effect(() {
-          captured.add(doubled.peek);
+          captured.add(untracked(doubled));
         }).run();
 
         expect(runner.isActive, isTrue);
@@ -51,7 +51,7 @@ void main() {
 
         final captured = <String>[];
         final runner = activeFeed.effect(() {
-          captured.add(activeFeed.peek);
+          captured.add(untracked(activeFeed));
         }).run();
 
         expect(captured, isEmpty);
@@ -107,7 +107,7 @@ void main() {
 
         final captured = <String>[];
         final runner = server.effect(() {
-          captured.add(server.peek);
+          captured.add(untracked(server));
         }).run();
 
         expect(created, 1, reason: 'Activation must prime managed resource');
@@ -138,7 +138,7 @@ void main() {
 
         final captured = <String>[];
         final runner = status.effect(() {
-          captured.add(status.peek);
+          captured.add(untracked(status));
         }).run();
 
         expect(captured, isEmpty);
@@ -166,7 +166,7 @@ void main() {
 
         final captured = <String>[];
         final runner = price.effect(() {
-          captured.add(price.peek);
+          captured.add(untracked(price));
         }).run();
 
         expect(captured, isEmpty);
@@ -201,7 +201,7 @@ void main() {
 
         final captured = <String>[];
         final runner = poolSummary.effect(() {
-          captured.add(poolSummary.peek);
+          captured.add(untracked(poolSummary));
         }).run();
 
         expect(created, 1);
@@ -233,7 +233,7 @@ void main() {
 
         final captured = <String>[];
         final runner = client.effect(() {
-          captured.add(client.peek);
+          captured.add(untracked(client));
         }).run();
 
         expect(created, 1);
@@ -278,7 +278,7 @@ void main() {
 
         final captured = <String>[];
         final runner = activeDb.effect(() {
-          captured.add(activeDb.peek);
+          captured.add(untracked(activeDb));
         }).run();
 
         expect(devCreated, 1);
@@ -318,7 +318,7 @@ void main() {
 
         final captured = <String>[];
         final runner = limiter.effect(() {
-          captured.add(limiter.peek);
+          captured.add(untracked(limiter));
         }).run();
 
         expect(created, 1);
@@ -377,7 +377,7 @@ void main() {
 
         final captured = <String>[];
         final runner = currentConnection.effect(() {
-          captured.add(currentConnection.peek);
+          captured.add(untracked(currentConnection));
         }).run();
 
         // 1. Priming: primary is active, backup is dormant
@@ -428,7 +428,7 @@ void main() {
 
         final captured = <String>[];
         final runner = session.effect(() {
-          captured.add(session.peek);
+          captured.add(untracked(session));
         }).run();
 
         expect(allocated, 1);
@@ -571,7 +571,7 @@ void main() {
 
         final captured = <String>[];
         final runner = feed.effect.debounce(const Duration(milliseconds: 30), () {
-          captured.add(feed.peek);
+          captured.add(untracked(feed));
         }).run();
 
         expect(captured, isEmpty);
@@ -605,7 +605,7 @@ void main() {
 
         final captured = <String>[];
         final runner = timerResource.effect.throttle(const Duration(milliseconds: 50), () {
-          captured.add(timerResource.peek);
+          captured.add(untracked(timerResource));
         }).run();
 
         expect(created, 1);
@@ -663,7 +663,7 @@ void main() {
         final captured = <String>[];
         final runner = activeSource
             .effect(
-              () => captured.add(activeSource.peek),
+              () => captured.add(untracked(activeSource)),
               take: 2,
             )
             .run();
@@ -721,7 +721,7 @@ void main() {
         final runnerCaptures = <String>[];
 
         final runner = derived.effect(() {
-          runnerCaptures.add(derived.peek);
+          runnerCaptures.add(untracked(derived));
         }).run(autoStart: false);
 
         expect(runner.isActive, isFalse);
@@ -786,7 +786,7 @@ void main() {
 
         final runner = calc
             .effect(
-              () => captured.add(calc.peek),
+              () => captured.add(untracked(calc)),
               guard: () => allowRuns,
               take: 2,
             )
@@ -841,7 +841,7 @@ void main() {
 
         final captured = <String>[];
         final runner = join.effect(() {
-          captured.add(join.peek);
+          captured.add(untracked(join));
         }).run();
 
         expect(captured, isEmpty);
@@ -891,7 +891,7 @@ void main() {
 
         final captured = <String>[];
         final runner = status.effect(() {
-          captured.add(status.peek);
+          captured.add(untracked(status));
         }).run();
 
         expect(managedLeftCreated, 1);
@@ -938,7 +938,7 @@ void main() {
         final pipeline = computed((via) => 'Wrapped(${via(resource)})');
 
         final runner = pipeline.effect.handled((handle) {
-          final current = pipeline.peek;
+          final current = untracked(pipeline);
           log.add('effect:run:$current');
 
           handle.onCleanup(() {

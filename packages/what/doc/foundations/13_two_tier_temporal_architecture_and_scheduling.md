@@ -10,7 +10,7 @@
 
 In reactive systems, debounce, throttle, and coalesce operators are essential for managing high-frequency user and sensor inputs (search typing, slider drags, sensor streams, window resizes). However, naively porting traditional Rx or event stream approaches directly into a synchronous **LPDAG (Lazy Push-Dirty, Pull-Evaluation Directed Acyclic Graph)** induces severe topological failures.
 
-The What Framework's 2-Phase LPDAG strictly adheres to the **Push-Dirty ($O(1)$) + Lazy-Pull (On-Demand)** model. Attempting to delay invalidation (dirty) pulses arbitrarily inside dynamic downstream terminals causes three critical anomalies:
+The What Framework's 2-Phase LPDAG strictly adheres to the **Push-Dirty (proportional to the affected subgraph) + Lazy-Pull (On-Demand)** model. Attempting to delay invalidation (dirty) pulses arbitrarily inside dynamic downstream terminals causes three critical anomalies:
 
 1. **The Initial Evaluation Dilemma**: Dynamic dependency scopes (`WhatVia`) must establish tracking edges synchronously upon mounting. If a terminal delays its initial execution, edges remain unformed (0 edges), dropping upstream mutations occurring during the delay. Conversely, if the terminal runs immediately on mount, side-effects (e.g., network queries) fire with uninitialized, empty payloads.
 2. **Cache Limbo & Read-Uncommitted Anomalies**: If an upstream node mutates to a fresh version while an observing terminal holds an asynchronous timer, allowing uncommitted reads leaks intermediate, transient state to sibling UI widgets, causing split-brain presentation glitches.
@@ -75,7 +75,7 @@ All state-domain temporal and batching relays inherit from [`_GatedRelayWhat<T>`
 ```dart
 // packages/what/lib/src/what/_internal/_what.dart
 abstract base class _GatedRelayWhat<T> extends _StaticUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>, _PushOriginMixin
+    with _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>, _PushOriginMixin
     implements What<T> {
   _GatedRelayWhat(
     super.source, {
@@ -105,7 +105,7 @@ abstract base class _GatedRelayWhat<T> extends _StaticUnaryRelay<What<T>>
 1. **Upstream Invalidation & Suppression (Ticking Window)**:  
    When the upstream `_source` mutates, `_invalidate()` intercepts the event. Instead of marking itself dirty or propagating flags downstream, it starts or resets a timer (or microtask). During this window, `_dirtyState` remains `_DirtyState.clean`.
 2. **Cache Integrity (Read Committed)**:  
-   If any downstream node or external caller reads `.data`, `.peek`, `.snapshot`, or `via(node)` during this delay window, `_PullResolver._resolve` sees `_dirtyState == _DirtyState.clean`, **completely bypasses `_pull()`**, and immediately returns the previously committed cached `_state`.  
+   If any downstream node or external caller reads `.data`, `untracked(node)`, `.snapshot`, or `via(node)` during this delay window, `_PullResolver._resolve` sees `_dirtyState == _DirtyState.clean`, **completely bypasses `_pull()`**, and immediately returns the previously committed cached `_state`.  
    *Guarantee*: Downstream computations (e.g. SWR, search API calls) are never contaminated by uncommitted intermediate mutations.
 3. **Gate Unlocking & Push Propagation (`_emitTrailing`)**:  
    When the timer or microtask elapses, `_emitTrailing()` transitions `_dirtyState` to `_DirtyState.dirty`, bumps `_version++`, and enqueues this node into `_PushScope.queueOrigin(this)`. Only then are downstream observers marked dirty and notified to pull the fresh upstream state via `_pull()`.
@@ -196,7 +196,7 @@ final class _DebouncedWhat<T> extends _TemporalRelayWhat<T> {
 ```
 * **Configurable Edges**: Supports `leading` (immediate fire on initial mutation) and `trailing` (fire after silence window).
 * **Assertion Validation**: Enforces `assert(leading || trailing)` at construction time to prevent no-op zombie relays.
-* **Inactive Dormancy & Raw Reads**: When unobserved (`!_lifecycle.isActive`), reading `.peek` or `.peekState` bypasses temporal timers and synchronously resolves the latest upstream state on demand. Deactivation cancels active timers synchronously.
+* **Inactive Dormancy & Raw Reads**: When unobserved (`!_lifecycle.isActive`), reading `untracked(node)` or `untracked.state(node)` bypasses temporal timers and synchronously resolves the latest upstream state on demand. Deactivation cancels active timers synchronously.
 
 ---
 
@@ -284,7 +284,7 @@ final searchInput = WhatController('');
 // Fluent unary debounce effect:
 final searchEffect = searchInput.what.effect.debounce(
   const Duration(milliseconds: 300),
-  () => api.search(searchInput.what.peek),
+  () => api.search(untracked(searchInput.what)),
 );
 
 // Standalone execution outside widget lifecycles:
@@ -399,7 +399,7 @@ final buttonClickCount = WhatController<int>(0);
 // Pure side-effect: Dispatches analytics at most once per second on leading edge
 final clickTracker = buttonClickCount.what.effect.throttle(
   const Duration(seconds: 1),
-  () => analyticsService.logEvent('button_tap', count: buttonClickCount.what.peek),
+  () => analyticsService.logEvent('button_tap', count: untracked(buttonClickCount.what)),
   leading: true,
   trailing: false,
 ).run();

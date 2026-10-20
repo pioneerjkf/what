@@ -16,9 +16,9 @@ void main() {
   final counterController = WhatController<int>(0);
   final What<int> counterView = counterController.what;
 
-  print('Initial Counter: ${counterView.peek}');
+  print('Initial Counter: ${untracked(counterView)}');
   counterController.data = 42;
-  print('Updated Counter: ${counterView.peek}\n');
+  print('Updated Counter: ${untracked(counterView)}\n');
 
   print('--- 2. Discrete Event Signals ---');
   // Signals model stateless pulses (e.g. button clicks, refresh events)
@@ -38,30 +38,30 @@ void main() {
     return 'Synced #$signalTick -> value: $value';
   });
 
-  print(autoRefreshed.peek);
-  print(syncCount.peek); // Initial tick 0
+  print(untracked(autoRefreshed));
+  print(untracked(syncCount)); // Initial tick 0
   refreshSignalController.emit(); // Emits next version tick
-  print(autoRefreshed.peek);
-  print(syncCount.peek); // Synced #1 -> value: 42\n
+  print(untracked(autoRefreshed));
+  print(untracked(syncCount)); // Synced #1 -> value: 42\n
 
   print('--- 3. 3-State FSM Snapshot ([WhatSnapshot]) ---');
   // State 1: Valid Data
   final validNode = What<String>.constant('Active Session');
-  print('State: hasData=${validNode.peekState.hasData}, data="${validNode.peek}"');
+  print('State: hasData=${untracked.state(validNode).hasData}, data="${untracked(validNode)}"');
 
   // State 2: Explicit Empty (null is a valid data, empty is a distinct FSM state)
   final emptyNode = What<String>.empty('WaitingForNetwork');
-  print('State: isEmpty=${emptyNode.peekState.isEmpty}, reason="${emptyNode.peekState.emptyReason}"');
+  print('State: isEmpty=${untracked.state(emptyNode).isEmpty}, reason="${untracked.state(emptyNode).emptyReason}"');
 
   // State 3: Failure Boundary
   final errorNode = What<String>.error(Exception('Connection timeout'));
-  print('State: hasError=${errorNode.peekState.hasError}, error="${errorNode.peekState.error}"\n');
+  print('State: hasError=${untracked.state(errorNode).hasError}, error="${untracked.state(errorNode).error}"\n');
 
   print('--- 4. Safe Pattern Matching via snapshot.match ---');
   void printStatus(What<String> node) {
-    node.peekState.snapshot.match(
+    untracked.state(node).snapshot.match(
       data: (value) => print('  -> [DATA]: $value'),
-      empty: () => print('  -> [EMPTY]: Unready (${node.peekState.emptyReason})'),
+      empty: () => print('  -> [EMPTY]: Unready (${untracked.state(node).emptyReason})'),
       error: (err, _) => print('  -> [ERROR]: Failed with $err'),
     );
   }

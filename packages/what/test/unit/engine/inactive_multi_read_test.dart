@@ -14,7 +14,7 @@ void main() {
       final doubleCount = computed((via) => via(source.what) + via(source.what));
 
       // 1. Initial evaluation while inactive
-      expect(doubleCount.peek, 20);
+      expect(untracked(doubleCount), 20);
 
       // 2. Verification: Despite multiple reads in the computation body,
       // the unique upstream dependency count must strictly be 1.
@@ -27,7 +27,7 @@ void main() {
 
       // 3. Re-evaluation on source mutation while still inactive
       source.set(25);
-      expect(doubleCount.peek, 50);
+      expect(untracked(doubleCount), 50);
       expect(
         doubleCount.debug.sourceCount,
         1,
@@ -46,7 +46,7 @@ void main() {
         return sum;
       });
 
-      expect(quintuple.peek, 10);
+      expect(untracked(quintuple), 10);
       expect(
         quintuple.debug.sourceCount,
         1,

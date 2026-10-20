@@ -951,7 +951,7 @@ class _SubAnimationTelemetryDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.whatOf<CompositeMotionStore>().peek;
+    final store = untracked(context.whatOf<CompositeMotionStore>());
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1398,7 +1398,7 @@ class _InteractiveControlConsole extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.whatOf<CompositeMotionStore>().peek;
+    final store = untracked(context.whatOf<CompositeMotionStore>());
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(

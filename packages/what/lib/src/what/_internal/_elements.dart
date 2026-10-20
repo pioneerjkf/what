@@ -5,7 +5,7 @@
 part of '../../framework.dart';
 
 final class _KeyedMapWhat<E, K, T> extends _StaticUnaryRelay<What<Iterable<E>>>
-    with _WhatStateMixin<List<T>>, _WhatPeekMixin<List<T>>, _PullResolver<List<T>>, _PullRelay<List<T>>
+    with _WhatStateMixin<List<T>>, _PullResolver<List<T>>, _PullRelay<List<T>>
     implements What<List<T>> {
   _KeyedMapWhat(
     super.inbound, {

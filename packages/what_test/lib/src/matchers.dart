@@ -223,8 +223,8 @@ final class _HasGlitchFreedomMatcher extends Matcher {
 WhatSnapshot? _toSnapshot(dynamic item) {
   if (item is WhatSnapshot) return item;
   if (item is WhatState) return item.snapshot;
-  if (item is What) return item.peekState.snapshot;
-  if (item is WhatController) return item.what.peekState.snapshot;
+  if (item is What) return untracked.state(item).snapshot;
+  if (item is WhatController) return untracked.state(item.what).snapshot;
   return null;
 }
 

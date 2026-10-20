@@ -36,7 +36,6 @@ part 'src/rules/flutter/avoid_bridging_in_build.dart';
 part 'src/rules/flutter/avoid_escaping_scoped_controller.dart';
 part 'src/rules/flutter/avoid_what_creation_in_build.dart';
 part 'src/rules/flutter/deactivate_effect_runner.dart';
-part 'src/rules/flutter/dispose_what_flutter_controller.dart';
 part 'src/rules/flutter/prefer_composed_child.dart';
 part 'src/rules/flutter/prefer_what_over_controller.dart';
 
@@ -64,7 +63,6 @@ class _WhatLinter extends PluginBase {
         AvoidEscapingScopedController(),
         AvoidWhatCreationInBuild(),
         DeactivateEffectRunner(),
-        DisposeWhatFlutterController(),
         PreferComposedChild(),
         PreferWhatOverController(),
       ];

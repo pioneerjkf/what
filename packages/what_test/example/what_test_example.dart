@@ -75,7 +75,7 @@ void main() {
       expect: () => [0, 1, 2, 1],
       verify: (store) {
         expect(store.items.data, ['MacBook Pro']);
-        expect(store.itemCount.peek, 1);
+        expect(untracked(store.itemCount), 1);
       },
     );
   });

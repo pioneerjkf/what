@@ -1,125 +1,91 @@
-# Zero-Jump Form Binding & IME Integrity Invariants Specification
-## (Zero-Jump Form Binding & IME Integrity Invariants: WhatTextEditingController)
+# Form Input & Listenable Interoperability Invariants Specification
+## (Form Input & Listenable Bridges: Native TextEditingController + toWhatBy)
 
-> **"When users type Korean or Japanese, cursor jumping or syllable fragmentation reveals synchronization defects between unidirectional reactive state and platform input methods. What guarantees total IME integrity through mutually exclusive ping-pong shields."**  
+> **"Forms in Flutter belong to the platform UI layer. By preserving native `TextEditingController` ownership over IME composition and caret kinematics, What bridges text updates into reactive graphs with zero overhead, zero wrappers, and zero listener leaks."**  
 > — *What Framework Core Systems Group*
 
 ---
 
-## 1. Overview and Background: The Collision Between Unidirectional State and Bidirectional Text Controllers
+## 1. Overview and Background: The Unidirectional State Paradigm
 
-Synchronizing Flutter's standard `TextEditingController` with a unidirectional reactive handle (`WhatController<String>`) induces three systemic defects:
+Synchronizing Flutter's standard `TextEditingController` with reactive state in complex apps has traditionally led developers to build heavy bidirectional wrapper controllers. However, bidirectional synchronization often introduces subtle edge cases:
+- Intermediate state re-assignments can accidentally disrupt ongoing OS IME composition (such as Korean Hangul syllable assembly or Japanese Kanji conversion).
+- Bidirectional listeners require complex mutexes to avoid infinite ping-pong notification loops.
 
-1. **Cursor Jumping**:
-   - When users edit text in the middle of a string, `controller.addListener` updates reactive state.
-   - Pushing the state back via `controller.text = newValue` triggers Flutter's default selection reset, snapping the cursor to the end of the input field.
-2. **CJK IME Buffer Corruption**:
-   - For composition-based scripts (Korean Hangul syllables, Japanese Kanji conversions, Chinese Pinyin), assigning text mid-composition destroys the OS composing buffer, fragmenting syllables (e.g., `'가'` -> `'ㄱㅏ'`).
-3. **Re-entrant Ping-Pong Loops**:
-   - Keyboard Input -> State Update -> Controller Notification -> Widget Rebuild creates infinite re-entrant loops that saturate CPU cycles.
-
-`package:what_flutter`'s `WhatTextEditingController` resolves this through **Mutual Exclusion Mutexes** and **Smart Selection Clamping**.
+`package:what_flutter` resolves this by embracing **Unidirectional Data Flow**:
+1. **Flutter owns the Input Buffer**: Standard `TextEditingController` handles typing, cursor movements, selection, and platform IME without third-party wrapper interference.
+2. **What bridges the stream via `.toWhatBy()`**: The controller's text stream is extracted into a reactive `What<String>` node on-demand with automatic **Demand-Driven Dormancy** (zero listener overhead when offstage).
+3. **Automated Lifecycle via `What.managed`**: Controllers are allocated on mount and cleanly disposed upon unmount without requiring `StatefulWidget` boilerplate.
 
 ---
 
-## 2. Bidirectional Form Pipeline Architecture
+## 2. Standard Form Pipeline Architecture
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│               WhatTextEditingController Flow                           │
+│                   Standard What Form Input Flow                        │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│   [ Keyboard Typing (UI) ]              [ External State Change ]      │
-│              │                                      │                  │
-│              ▼                                      ▼                  │
-│      TextEditingValue                     WhatController<String>       │
-│              │                                      │                  │
-│              ▼ [_isUpdatingFromUI = true]           ▼                  │
-│       target.set(text)                     RawWhatTerminal             │
-│              │                                      │                  │
-│              ▼                                      ▼                  │
-│    _onWhatChanged ignores!                _isUpdatingFromWhat = true   │
-│    (0-jump, IME intact)                   Smart Selection Clamping     │
-│                                                     │                  │
-│                                                     ▼                  │
-│                                            TextEditingValue (safe!)    │
+│   [ Keyboard Input / IME ]                                             │
+│              │                                                         │
+│              ▼                                                         │
+│     TextEditingController (Native Flutter UI Layer)                   │
+│              │                                                         │
+│              ▼ .toWhatBy((c) => c.text)                                │
+│       What<String> (Reactive LPDAG Stream)                             │
+│              │                                                         │
+│              ├──► computed((via) => via(textWhat).length)              │
+│              └──► computed.future((via) => api.search(via(textWhat)))  │
 │                                                                        │
+│   [ Demand-Driven Dormancy ]:                                          │
+│   Listener is attached ONLY when active subscribers exist,             │
+│   and automatically detached when the UI unmounts.                     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. The 5 Form Integrity Protection Mechanisms
+## 3. Production Code Patterns
 
-### 1) Cursor Jumping Immunity
-While the user types, `_isUpdatingFromUI` activates. Incoming state notifications during active typing never overwrite the controller's `value`, keeping the caret position intact.
-
-### 2) CJK IME Composition Buffer Protection
-During active composition, `TextEditingValue.isComposingRangeValid` evaluates to `true`. What defers external state pushes until the syllable completes, preventing character fragmentation.
-
-### 3) Ping-Pong Re-entrancy Shield
-UI mutation flags (`_isUpdatingFromUI`) and state mutation flags (`_isUpdatingFromWhat`) operate as mutually exclusive mutexes, collapsing bidirectional cycles into a single pass.
-
-### 4) Smart Selection Clamping
-When external business logic formats or resets text:
+### 1. Reactive Search Input with Debounced Query
 ```dart
-// packages/what_flutter/lib/src/widgets/editable_text.dart
-final newSelection = TextSelection(
-  baseOffset: currentSelection.baseOffset.clamp(0, newText.length),
-  extentOffset: currentSelection.extentOffset.clamp(0, newText.length),
+// 1. Lifecycle-managed TextEditingController: auto-allocated and disposed upon unmount
+final searchControllerWhat = managed<TextEditingController>(
+  create: (via) => TextEditingController(),
+  dispose: (c) => c.dispose(),
+  graceful: Graceful.microtask,
 );
-```
-The caret position clamps within `[0, newText.length]`, preventing `IndexOutOfRangeException` crashes.
 
-### 5) Declarative Form Resets via `clearOnEmpty`
-When `target.empty()` is called:
-```dart
-// packages/what_flutter/lib/src/widgets/editable_text.dart
-void _onWhatChanged() {
-  if (!_target.hasData) {
-    if (clearOnEmpty && text.isNotEmpty) {
-      _isUpdatingFromWhat = true;
-      try {
-        value = TextEditingValue.empty;
-      } finally {
-        _isUpdatingFromWhat = false;
-      }
-    }
-    return;
-  }
-  ...
-}
-```
-With `clearOnEmpty: true` (default), calling `queryController.empty()` in domain logic clears the UI field instantly without visual jank.
+// 2. Extract reactive text stream with toWhatBy
+late final queryWhat = searchControllerWhat.toWhatBy((c) => c.text);
 
----
+// 3. Debounce search query into an asynchronous API query
+late final searchResults = computed.future<List<String>>((via) async {
+  final query = via(queryWhat.debounce(const Duration(milliseconds: 300)));
+  if (query.isEmpty) return const [];
+  return api.search(query);
+});
 
-## 4. Production Code Patterns
-
-### 1. Reactive Search Input with Declarative Reset
-```dart
-class SearchBarWidget extends StatelessWidget {
-  SearchBarWidget({super.key});
-
-  final queryController = WhatController('');
-  late final textController = WhatTextEditingController(
-    queryController,
-    clearOnEmpty: true,
-  );
+// 4. Pure declarative WhatWidget
+base class SearchBarWidget extends WhatWidget {
+  const SearchBarWidget({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
+  Widget build(BuildContext context, WhatVia via) {
+    final results = via(searchResults);
+
+    return Column(
       children: [
-        Expanded(
-          child: TextField(
-            controller: textController,
-            decoration: const InputDecoration(hintText: 'Enter search query...'),
-          ),
+        TextField(
+          controller: via(searchControllerWhat),
+          decoration: const InputDecoration(hintText: 'Search anything...'),
         ),
-        IconButton(
-          icon: const Icon(Icons.clear),
-          onPressed: () => queryController.empty(), // Clears UI text automatically
+        if (results.isPending) const LinearProgressIndicator(),
+        Expanded(
+          child: ListView.builder(
+            itemCount: results.data?.length ?? 0,
+            itemBuilder: (context, i) => ListTile(title: Text(results.data![i])),
+          ),
         ),
       ],
     );
@@ -127,39 +93,54 @@ class SearchBarWidget extends StatelessWidget {
 }
 ```
 
-### 2. Multi-Field Form Validation with GlobalKey<FormState>
+### 2. Multi-Field Form with Validation
 ```dart
+final formKey = GlobalKey<FormState>();
+
+final emailCtrlWhat = managed<TextEditingController>(
+  create: (via) => TextEditingController(),
+  dispose: (c) => c.dispose(),
+  graceful: Graceful.microtask,
+);
+
+final passwordCtrlWhat = managed<TextEditingController>(
+  create: (via) => TextEditingController(),
+  dispose: (c) => c.dispose(),
+  graceful: Graceful.microtask,
+);
+
+late final emailWhat = emailCtrlWhat.toWhatBy((c) => c.text);
+late final passwordWhat = passwordCtrlWhat.toWhatBy((c) => c.text);
+
+// Reactive form validity computation without full widget rebuilds
+late final isFormValidWhat = computed<bool>((via) {
+  final email = via(emailWhat);
+  final password = via(passwordWhat);
+  return email.contains('@') && password.length >= 8;
+});
+
 base class LoginForm extends WhatWidget {
-  LoginForm({super.key});
-
-  final formKey = GlobalKey<FormState>();
-  final emailController = WhatController('');
-  final passwordController = WhatController('');
-
-  late final emailTextCtrl = WhatTextEditingController(emailController);
-  late final passwordTextCtrl = WhatTextEditingController(passwordController);
+  const LoginForm({super.key});
 
   @override
   Widget build(BuildContext context, WhatVia via) {
+    final isValid = via(isFormValidWhat);
+
     return Form(
       key: formKey,
       child: Column(
         children: [
           TextFormField(
-            controller: emailTextCtrl,
-            validator: (v) => v!.contains('@') ? null : 'Enter a valid email',
+            controller: via(emailCtrlWhat),
+            decoration: const InputDecoration(labelText: 'Email'),
           ),
           TextFormField(
-            controller: passwordTextCtrl,
+            controller: via(passwordCtrlWhat),
             obscureText: true,
-            validator: (v) => v!.length >= 8 ? null : 'Minimum 8 characters required',
+            decoration: const InputDecoration(labelText: 'Password'),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                // Submit credentials
-              }
-            },
+            onPressed: isValid ? () => submitForm() : null,
             child: const Text('Login'),
           ),
         ],
@@ -171,11 +152,11 @@ base class LoginForm extends WhatWidget {
 
 ---
 
-## 5. Foundational Engineering Invariants
+## 4. Foundational Engineering Invariants
 
-1. **Re-entrant Mutex Invariant**:
-   UI updates and state pushes execute under mutual exclusion, emitting at most one LPDAG Push-Dirty pulse per frame.
-2. **Composition Preservation Invariant**:
-   While `isComposingRangeValid == true`, external mutations never overwrite active composition buffers.
-3. **Selection Invariant**:
-   Text selections clamp monotonically within `[0, text.length]`, preventing out-of-bounds selection errors under all conditions.
+1. **Native IME & Caret Fidelity**:
+   By relying directly on Flutter's native `TextEditingController`, all platform-specific IME behaviors (Hangul assembly, Kanji candidates, accent diacritics) and mid-string caret positions are preserved with 100% platform fidelity.
+2. **Zero-Leak Dormancy**:
+   `toWhatBy` automatically attaches a listener to the controller when observed by active UI elements and detaches it upon Inactive Dormancy.
+3. **Ecosystem Compatibility**:
+   Any specialized `TextEditingController` subclass (e.g. masked inputs, currency formatters) can be plugged directly into What via `.toWhatBy((c) => c.text)` without requiring custom wrapper adapters.

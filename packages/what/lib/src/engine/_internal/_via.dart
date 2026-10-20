@@ -25,7 +25,7 @@ final class _WhatViaImpl implements WhatVia {
   @pragma('vm:prefer-inline')
   WhatState<T> state<T>(What<T> what) {
     _node._trackDependency(what);
-    return what.peekState;
+    return what as WhatState<T>;
   }
 
   @override
@@ -89,27 +89,42 @@ base mixin _WhatViaEpochMixin on _NaryEdgeMixin<_Node> {
   /// Records [source] as an upstream dependency for the current evaluation epoch.
   @pragma('vm:prefer-inline')
   void _trackDependency(_Node source) {
-    final currentEpoch = _epoch;
-
     // 1. Fast-path: Check expected cursor position (O(1) sequential match).
     final cursor = _cursor;
-    _Edge? matchedEdge;
     if (cursor != null && identical(cursor._source, source)) {
-      matchedEdge = cursor;
+      cursor._seenEpoch = _epoch;
       _cursor = cursor._nextSource;
-    } else {
-      // 2. Slow-path: Dynamic branch changed or order shifted; fallback to linear search.
-      // Re-reads of an edge already seen this epoch must not rewind the cursor.
-      matchedEdge = _findSourceEdge(source);
-      if (matchedEdge != null && matchedEdge._seenEpoch != currentEpoch) {
-        _cursor = matchedEdge._nextSource;
-      }
+      return;
     }
 
+    _trackDependencySlow(source, _epoch, cursor);
+  }
+
+  /// Cold-path fallback for branch changes, shifted ordering, or new dependencies.
+  /// Marked never-inline to preserve inlining budget and instruction-cache locality
+  /// for the hot sequential fast-path in [_trackDependency].
+  @pragma('vm:never-inline')
+  void _trackDependencySlow(_Node source, int currentEpoch, _Edge? cursor) {
+    final matchedEdge = _findSourceEdge(source);
     if (matchedEdge != null) {
-      matchedEdge._seenEpoch = currentEpoch;
+      if (matchedEdge._seenEpoch != currentEpoch) {
+        // Re-align edge order to match the evaluation sequence so future evaluations
+        // recover the O(1) sequential fast-path.
+        if (cursor != null) {
+          _moveSourceEdgeBefore(matchedEdge, cursor);
+        }
+        matchedEdge._seenEpoch = currentEpoch;
+      }
     } else {
-      final newEdge = _lifecycle.isActive ? _addAndAttachSourceEdge(source) : _addSourceEdge(source);
+      // New dependency: insert before cursor (or at tail if cursor is null)
+      // to preserve evaluation sequence in the edge list.
+      final newEdge = _lifecycle.isActive
+          ? (cursor != null
+              ? _addAndAttachSourceEdgeBefore(source, cursor)
+              : _addAndAttachSourceEdge(source))
+          : (cursor != null
+              ? _addSourceEdgeBefore(source, cursor)
+              : _addSourceEdge(source));
       newEdge._seenEpoch = currentEpoch;
     }
   }

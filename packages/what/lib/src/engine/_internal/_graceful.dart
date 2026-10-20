@@ -47,7 +47,7 @@ final class _MicrotaskGraceHandle extends _GraceHandle {
 // Graceful Policy Implementations & Mixin
 // =============================================================================
 
-/// Functor and default microtask-deferred graceful policy instance.
+/// Default microtask-deferred graceful policy implementation.
 base class _MicrotaskGraceful implements Graceful {
   const _MicrotaskGraceful();
 

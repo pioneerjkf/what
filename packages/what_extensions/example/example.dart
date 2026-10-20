@@ -10,9 +10,9 @@ void main() async {
   final avgWhat = numbersController.what.elements.average;
 
   // 3. Actively observe collection aggregations using EffectRunner
-  final sumRunner = sumWhat.effect(() => print('Sum: ${sumWhat.peek}')).run();
+  final sumRunner = sumWhat.effect(() => print('Sum: ${untracked(sumWhat)}')).run();
   final avgRunner =
-      avgWhat.effect(() => print('Average: ${avgWhat.peek}')).run();
+      avgWhat.effect(() => print('Average: ${untracked(avgWhat)}')).run();
 
   // 4. Update collection reactively
   numbersController.set([5.0, 15.0, 25.0, 35.0]);

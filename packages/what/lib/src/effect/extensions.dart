@@ -59,7 +59,7 @@ part of '../framework.dart';
 ///
 /// // Create a multi-target effect off a tuple:
 /// final syncEffect = (user.what, auth.what).effect(() {
-///   syncProfile(user.what.peek, auth.what.peek);
+///   syncProfile(untracked(user.what), untracked(auth.what));
 /// });
 /// ```
 extension type const WhatEffectScope(Iterable<What> _targets) {
@@ -89,7 +89,7 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
   /// ```dart
   /// // [Anti-Pattern] Mutating target inside its own effect action
   /// [counter.what].effect(() {
-  ///   counter.set(counter.what.peek + 1); // Triggers infinite invalidation loop!
+  ///   counter.set(untracked(counter.what) + 1); // Triggers infinite invalidation loop!
   /// });
   /// ```
   ///
@@ -97,14 +97,14 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
   /// ```dart
   /// // [Recommended] Perform external side-effects
   /// [counter.what].effect(() {
-  ///   analyticsService.log(counter.what.peek);
+  ///   analyticsService.log(untracked(counter.what));
   /// });
   /// ```
   ///
   /// ## Examples
   /// ```dart
   /// final effect = [user.what, role.what].effect(() {
-  ///   refreshPermissions(user.what.peek, role.what.peek);
+  ///   refreshPermissions(untracked(user.what), untracked(role.what));
   /// });
   /// ```
   @pragma('vm:prefer-inline')
@@ -146,7 +146,7 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
   /// ## Examples
   /// ```dart
   /// final effect = (room.what, server.what).effect.handled((handle) {
-  ///   final client = connect(room.what.peek, server.what.peek);
+  ///   final client = connect(untracked(room.what), untracked(server.what));
   ///   handle.onCleanup(client.close);
   /// });
   /// ```
@@ -188,7 +188,7 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
   /// ```dart
   /// final effect = (scrollX.what, scrollY.what).effect.throttle(
   ///   const Duration(milliseconds: 100),
-  ///   () => syncViewport(scrollX.what.peek, scrollY.what.peek),
+  ///   () => syncViewport(untracked(scrollX.what), untracked(scrollY.what)),
   /// );
   /// ```
   @pragma('vm:prefer-inline')
@@ -235,7 +235,7 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
   /// ```dart
   /// final effect = (filter.what, sort.what).effect.debounce(
   ///   const Duration(milliseconds: 300),
-  ///   () => fetchFiltered(filter.what.peek, sort.what.peek),
+  ///   () => fetchFiltered(untracked(filter.what), untracked(sort.what)),
   /// );
   /// ```
   @pragma('vm:prefer-inline')
@@ -305,7 +305,7 @@ extension type const WhatEffectScope(Iterable<What> _targets) {
 /// ```dart
 /// final counter = WhatController(0);
 /// final effect = counter.what.effect(() {
-///   print('New counter value: ${counter.what.peek}');
+///   print('New counter value: ${untracked(counter.what)}');
 /// });
 /// ```
 extension type const UnaryWhatEffectScope(What _target) {
@@ -332,7 +332,7 @@ extension type const UnaryWhatEffectScope(What _target) {
   /// ```dart
   /// final counter = WhatController(0);
   /// final effect = counter.what.effect(() {
-  ///   analyticsService.logCounter(counter.what.peek);
+  ///   analyticsService.logCounter(untracked(counter.what));
   /// });
   /// ```
   @pragma('vm:prefer-inline')
@@ -418,7 +418,7 @@ extension type const UnaryWhatEffectScope(What _target) {
   /// final scroll = WhatController(0.0);
   /// final effect = scroll.what.effect.throttle(
   ///   const Duration(milliseconds: 100),
-  ///   () => syncScroll(scroll.what.peek),
+  ///   () => syncScroll(untracked(scroll.what)),
   /// );
   /// ```
   @pragma('vm:prefer-inline')
@@ -466,7 +466,7 @@ extension type const UnaryWhatEffectScope(What _target) {
   /// final query = WhatController('');
   /// final effect = query.what.effect.debounce(
   ///   const Duration(milliseconds: 300),
-  ///   () => apiService.search(query.what.peek),
+  ///   () => apiService.search(untracked(query.what)),
   /// );
   /// ```
   @pragma('vm:prefer-inline')

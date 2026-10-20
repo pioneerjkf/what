@@ -182,7 +182,7 @@ void main() {
           disposeCount++;
         },
         eager: true,
-        graceful: graceful.microtask,
+        graceful: Graceful.microtask,
       );
 
       final terminal = RawWhatTerminal<int>(comp, onInvalidated: () {});
@@ -191,7 +191,7 @@ void main() {
       // Microtask loop allows eager evaluation to take place
       await Future<void>.delayed(Duration.zero);
       expect(createCount, 1);
-      expect(comp.peek, 999);
+      expect(untracked(comp), 999);
 
       terminal.deactivate();
       // Graceful microtask defers disposal
@@ -212,9 +212,9 @@ void main() {
       final b = WhatController(10);
       final c = WhatController(20);
 
-      expect(a.what.peekState.equals(b.what.peekState), isTrue);
-      expect(a.what.peekState.equals(c.what.peekState), isFalse);
-      expect(a.what.peekState.equals(c.what.peekState, (prev, next) => true), isTrue);
+      expect(untracked.state(a.what).equals(untracked.state(b.what)), isTrue);
+      expect(untracked.state(a.what).equals(untracked.state(c.what)), isFalse);
+      expect(untracked.state(a.what).equals(untracked.state(c.what), (prev, next) => true), isTrue);
     });
 
     test('What.elements handles error in convert callback and resets cache', () {
@@ -235,19 +235,19 @@ void main() {
       terminal.activate();
 
       // Normal conversion
-      expect(converted.peek, ['item_1', 'item_2', 'item_3']);
+      expect(untracked(converted), ['item_1', 'item_2', 'item_3']);
 
       // Error during conversion of new item triggers catch block (lines 73-74)
       shouldThrow = true;
       source.set([1, 2, 4]); // 4 will throw because it is not in cache!
-      expect(() => converted.peek, throwsA(isA<WhatSnapshotExtractionException>()));
-      expect(converted.peekState.hasError, isTrue);
-      expect(converted.peekState.error, isA<StateError>());
+      expect(() => untracked(converted), throwsA(isA<WhatSnapshotExtractionException>()));
+      expect(untracked.state(converted).hasError, isTrue);
+      expect(untracked.state(converted).error, isA<StateError>());
 
       // Recovery
       shouldThrow = false;
       source.set([1, 5]);
-      expect(converted.peek, ['item_1', 'item_5']);
+      expect(untracked(converted), ['item_1', 'item_5']);
 
       terminal.deactivate();
     });
@@ -265,14 +265,14 @@ void main() {
       final terminal = RawWhatTerminal(mapped, onInvalidated: () {});
       terminal.activate();
 
-      expect(mapped.peek, ['val_1', 'val_2']);
+      expect(untracked(mapped), ['val_1', 'val_2']);
 
       // Setting k1.shouldThrow = true causes k1 == k2 inside activeKeys.contains(k2) to throw
       k1.shouldThrow = true;
       source.set([k1]);
-      expect(() => mapped.peek, throwsA(isA<WhatSnapshotExtractionException>()));
-      expect(mapped.peekState.hasError, isTrue);
-      expect(mapped.peekState.error, isA<StateError>());
+      expect(() => untracked(mapped), throwsA(isA<WhatSnapshotExtractionException>()));
+      expect(untracked.state(mapped).hasError, isTrue);
+      expect(untracked.state(mapped).error, isA<StateError>());
 
       terminal.deactivate();
     });
@@ -386,8 +386,8 @@ void main() {
       t1.activate();
       t2.activate();
 
-      expect(distinctRelay.peek, 1);
-      expect(switched.peek, 1);
+      expect(untracked(distinctRelay), 1);
+      expect(untracked(switched), 1);
 
       t1.debugForceInvalidate();
       t2.debugForceInvalidate();
@@ -417,13 +417,13 @@ void main() {
       );
 
       // Read while dormant (inactive) triggers _isGuarded and delta lines 82-84
-      expect(streamWhat.peekState.isEmpty, isTrue);
-      expect(streamWhat.peekState.emptyReason, 'Stream is guarded');
+      expect(untracked.state(streamWhat).isEmpty, isTrue);
+      expect(untracked.state(streamWhat).emptyReason, 'Stream is guarded');
 
       final terminal = RawWhatTerminal(streamWhat, onInvalidated: () {});
       terminal.activate();
 
-      expect(streamWhat.peekState.isEmpty, isTrue);
+      expect(untracked.state(streamWhat).isEmpty, isTrue);
       terminal.deactivate();
     });
 
@@ -432,17 +432,17 @@ void main() {
       final sLazy = switched((via) => What.constant(2), eager: false);
       final sGuarded = switched((via) => What.constant(3), guard: (via) => WhatGuard.block('switched_guarded'));
 
-      expect(sEager.peek, 1);
-      expect(sLazy.peek, 2);
-      expect(sGuarded.peekState.isEmpty, isTrue);
-      expect(sGuarded.peekState.emptyReason, 'switched_guarded');
+      expect(untracked(sEager), 1);
+      expect(untracked(sLazy), 2);
+      expect(untracked.state(sGuarded).isEmpty, isTrue);
+      expect(untracked.state(sGuarded).emptyReason, 'switched_guarded');
     });
 
     test('Top-level managed functor creates all eager/lazy and graceful variants', () {
       final m1 = managed<int>(create: (_) => 1, dispose: (_) {}, eager: true);
-      final m2 = managed<int>(create: (_) => 2, dispose: (_) {}, eager: true, graceful: graceful.microtask);
+      final m2 = managed<int>(create: (_) => 2, dispose: (_) {}, eager: true, graceful: Graceful.microtask);
       final m3 = managed<int>(create: (_) => 3, dispose: (_) {}, eager: false);
-      final m4 = managed<int>(create: (_) => 4, dispose: (_) {}, eager: false, graceful: graceful.microtask);
+      final m4 = managed<int>(create: (_) => 4, dispose: (_) {}, eager: false, graceful: Graceful.microtask);
 
       final t1 = RawWhatTerminal(m1, onInvalidated: () {});
       final t2 = RawWhatTerminal(m2, onInvalidated: () {});
@@ -454,15 +454,66 @@ void main() {
       t3.activate();
       t4.activate();
 
-      expect(m1.peek, 1);
-      expect(m2.peek, 2);
-      expect(m3.peek, 3);
-      expect(m4.peek, 4);
+      expect(untracked(m1), 1);
+      expect(untracked(m2), 2);
+      expect(untracked(m3), 3);
+      expect(untracked(m4), 4);
 
       t1.deactivate();
       t2.deactivate();
       t3.deactivate();
       t4.deactivate();
+    });
+
+    test('Scheduler try/finally chain ensures Graceful and downstream flush even on unhandled error', () async {
+      final errors = <Object>[];
+      var gracefulExecuted = false;
+      var shouldThrow = false;
+
+      await runZonedGuarded(() async {
+        final ctrl = WhatController(0);
+        // Create an effect that rethrows in onUncaughtError during microtask flush
+        final effectHandle = ctrl.what.effect(
+          () {
+            if (shouldThrow) {
+              throw StateError('Intentional crash in effect');
+            }
+          },
+          onUncaughtError: (e, s) {
+            throw StateError('Rethrown from handler');
+          },
+        ).run();
+
+        // Create a managed node with microtask graceful policy
+        final managedCtrl = What.managed<int>(
+          create: (via) => 100,
+          graceful: Graceful.microtask,
+          dispose: (val) {
+            gracefulExecuted = true;
+          },
+        );
+        final term = RawWhatTerminal(managedCtrl, onInvalidated: () {});
+        term.activate();
+        final _ = term.data; // Initialize managed resource
+        // Deactivating queues a microtask grace handle
+        term.deactivate();
+
+        shouldThrow = true;
+        // Mutate ctrl to trigger effect execution in the same microtask pass
+        ctrl.set(1);
+
+        // Yield to allow microtask to run
+        await Future<void>.delayed(Duration.zero);
+
+        effectHandle.deactivate();
+      }, (error, stack) {
+        errors.add(error);
+      });
+
+      expect(errors, isNotEmpty);
+      expect(errors.any((e) => e.toString().contains('Rethrown from handler')), isTrue);
+      // Graceful stage must have executed via try/finally unwinding!
+      expect(gracefulExecuted, isTrue);
     });
   });
 }

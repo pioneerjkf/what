@@ -13,7 +13,7 @@ void main() {
       final controller = WhatController<int>(100);
       final whatView = controller.what;
 
-      expect(whatView.peek, 100);
+      expect(untracked(whatView), 100);
 
       var effectRuns = 0;
       var lastValue = 0;
@@ -79,13 +79,13 @@ void main() {
       final b = WhatController(20);
 
       final group = WhatListController([a.what, b.what]);
-      expect(group.data.map((g) => g.peek).toList(), [10, 20]);
+      expect(group.data.map((g) => untracked(g)).toList(), [10, 20]);
 
       a.data = 100;
-      expect(group.data.map((g) => g.peek).toList(), [100, 20]);
+      expect(group.data.map((g) => untracked(g)).toList(), [100, 20]);
     });
 
-    test('What implements WhatState directly', () {
+    test('WhatController implements WhatState directly', () {
       final r1 = WhatController(10);
       final r2 = WhatController<int>.late();
 
@@ -265,14 +265,14 @@ void main() {
       final r1 = What<int>.error('ErrorMsg');
       final r2 = What<int>.error('ConstructorError');
 
-      expect(r1.peekState.hasError, isTrue);
-      expect(r1.peekState.error, 'ErrorMsg');
-      expect(() => r1.peek, throwsA(isA<WhatSnapshotExtractionException>()));
-      expect(r1.peekState.dataOrNull, isNull);
-      expect(r1.peekState.dataOrElse(() => 999), 999);
+      expect(untracked.state(r1).hasError, isTrue);
+      expect(untracked.state(r1).error, 'ErrorMsg');
+      expect(() => untracked(r1), throwsA(isA<WhatSnapshotExtractionException>()));
+      expect(untracked.state(r1).dataOrNull, isNull);
+      expect(untracked.state(r1).dataOrElse(() => 999), 999);
 
-      expect(r2.peekState.hasError, isTrue);
-      expect(r2.peekState.error, 'ConstructorError');
+      expect(untracked.state(r2).hasError, isTrue);
+      expect(untracked.state(r2).error, 'ConstructorError');
     });
 
     test('What.resource creates topology-aware resource bound to subscriptions', () async {
@@ -299,7 +299,7 @@ void main() {
 
       await Future<void>.delayed(Duration.zero);
       expect(createCalls, 1);
-      expect(resWhat.peek, 'DynamicResource');
+      expect(untracked(resWhat), 'DynamicResource');
 
       dispose();
       expect(disposeCalls, 1);
@@ -327,7 +327,7 @@ void main() {
       await Future.microtask(() {});
 
       expect(isEvenRuns, 1);
-      expect(multiplied.peek, 14);
+      expect(untracked(multiplied), 14);
 
       dispose();
     });
@@ -364,7 +364,7 @@ void main() {
       await Future.microtask(() {});
 
       expect(effectRuns, 2);
-      expect(guarded.peekState.isEmpty, isTrue);
+      expect(untracked.state(guarded).isEmpty, isTrue);
       expect(observedReason, 'Access Denied');
 
       dispose();
@@ -382,10 +382,10 @@ void main() {
       });
       final nullView = computed<String?>((via) => via.state(uninit.what).hasData ? via(uninit.what) : null);
 
-      expect(safeUninit.peek, 'DefaultUninit');
-      expect(safeFailing.peek, 'Safe: NetworkError');
-      expect(nullView.peek, isNull);
-      expect(nullView.peekState.hasData, isTrue);
+      expect(untracked(safeUninit), 'DefaultUninit');
+      expect(untracked(safeFailing), 'Safe: NetworkError');
+      expect(untracked(nullView), isNull);
+      expect(untracked.state(nullView).hasData, isTrue);
     });
 
     test('what.resource auto-tracks upstream and creates lifecycle-bound resource', () async {
@@ -403,7 +403,7 @@ void main() {
       });
 
       await Future<void>.delayed(Duration.zero);
-      expect(derivedRes.peek, 'Resource_x2');
+      expect(untracked(derivedRes), 'Resource_x2');
 
       dispose();
       expect(disposedResource, 'Resource_x2');
@@ -427,7 +427,7 @@ void main() {
       );
 
       // Before activation, no resource created
-      expect(sessionWhat.peekState.isEmpty, isTrue);
+      expect(untracked.state(sessionWhat).isEmpty, isTrue);
       expect(createdList, isEmpty);
 
       String? activeSession;
@@ -442,7 +442,7 @@ void main() {
 
       // Upstream changes -> old session is disposed, new session is created upon read
       config.data = 'wss://server-2';
-      expect(sessionWhat.peek, 'Session(wss://server-2)');
+      expect(untracked(sessionWhat), 'Session(wss://server-2)');
       expect(disposedList, ['Session(wss://server-1)']);
       expect(createdList, ['Session(wss://server-1)', 'Session(wss://server-2)']);
 
@@ -453,7 +453,7 @@ void main() {
       // Downstream deactivates (e.g. unmount) -> active session is disposed
       disposeEffect();
       expect(disposedList, ['Session(wss://server-1)', 'Session(wss://server-2)']);
-      expect(sessionWhat.peekState.isEmpty, isTrue);
+      expect(untracked.state(sessionWhat).isEmpty, isTrue);
     });
 
     test('WhatCollectionExtension extracts data and dataOrNull with fail-fast validation', () {
@@ -466,7 +466,7 @@ void main() {
       expect(validList.data.toList(), [10, 20]);
       expect(validList.dataOrNull.toList(), [10, 20]);
 
-      final mixedList = [r1, rEmpty, rError.peekState];
+      final mixedList = [r1, rEmpty, untracked.state(rError)];
       expect(mixedList.dataOrNull.toList(), [10, null, null]);
       expect(() => mixedList.data.toList(), throwsA(isA<WhatSnapshotExtractionException>()));
     });
@@ -521,9 +521,9 @@ void main() {
 
       await Future<void>.delayed(Duration.zero);
       expect(effectRuns, 1);
-      expect(guarded.peekState.isEmpty, isTrue);
-      expect(guarded.peekState.snapshot.emptyReason, 'Access Denied');
-      expect(guarded.peekState.dataOrNull, isNull);
+      expect(untracked.state(guarded).isEmpty, isTrue);
+      expect(untracked.state(guarded).snapshot.emptyReason, 'Access Denied');
+      expect(untracked.state(guarded).dataOrNull, isNull);
 
       // Change permission & update query
       allowed.data = true;
@@ -531,8 +531,8 @@ void main() {
       await Future.microtask(() {});
 
       expect(effectRuns, 2);
-      expect(guarded.peekState.hasData, isTrue);
-      expect(guarded.peek, 'sensitive_data_v2');
+      expect(untracked.state(guarded).hasData, isTrue);
+      expect(untracked(guarded), 'sensitive_data_v2');
 
       dispose();
     });
@@ -552,7 +552,7 @@ void main() {
       });
 
       await Future<void>.delayed(Duration.zero);
-      expect(derivedRes.peek, 'Managed(res_1)');
+      expect(untracked(derivedRes), 'Managed(res_1)');
 
       // Unsubscribe (deactivate)
       dispose();
@@ -582,11 +582,11 @@ void main() {
       });
 
       await Future<void>.delayed(Duration.zero);
-      expect(derivedRes.peek, 'Client(initial_endpoint)');
+      expect(untracked(derivedRes), 'Client(initial_endpoint)');
       expect(disposals, isEmpty);
 
       source.set('new_endpoint');
-      expect(derivedRes.peek, 'Client(new_endpoint)');
+      expect(untracked(derivedRes), 'Client(new_endpoint)');
       expect(disposals, equals(['Client(initial_endpoint)']));
 
       dispose();

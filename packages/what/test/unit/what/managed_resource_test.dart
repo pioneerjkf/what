@@ -448,7 +448,7 @@ void main() {
       );
 
       // Reading while inactive
-      expect(res.peekState.snapshot.isEmpty, isTrue);
+      expect(untracked.state(res).snapshot.isEmpty, isTrue);
 
       // Activating now should reset _state and evaluate
       final terminal = RawWhatTerminal(res, onInvalidated: () {})..activate();

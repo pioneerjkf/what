@@ -8,7 +8,7 @@
 
 ## 1. Overview: The Intrinsic Asymmetry Between Synchronous and Asynchronous Computation
 
-In reactive systems, on-demand lazy evaluation is the optimal strategy for purely synchronous derivations. Synchronous nodes ([`computed`](../../lib/src/what/computed.dart)) eliminate redundant work by deferring execution until a downstream consumer reads [`.peek`](../../lib/src/what/what.dart) or calls `via(node)` (On-Demand Lazy-Pull).
+In reactive systems, on-demand lazy evaluation is the optimal strategy for purely synchronous derivations. Synchronous nodes ([`computed`](../../lib/src/what/computed.dart)) eliminate redundant work by deferring execution until a downstream consumer reads [`untracked(node)`](../../lib/src/what/untracked.dart) or calls `via(node)` (On-Demand Lazy-Pull).
 
 However, **attempting to apply identical on-demand lazy semantics to asynchronous queries ([`computed.future`](../../lib/src/what/computed.dart), [`computed.stream`](../../lib/src/what/computed.dart)) violates the physics of asynchronous event loops**, inducing severe pipeline stalls, transient deadlocks, and event drops.
 
@@ -20,10 +20,10 @@ The What Framework formalizes the mechanics of asynchronous I/O and enforces the
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   [ Synchronous Derivation: computed ]                                          │
-│   Consumer Pulls (.peek / via) ──► Evaluates on Call Stack (0ms) ──► Fresh Data │
+│   Consumer Pulls (untracked / via) ──► Evaluates on Call Stack (0ms) ──► Fresh Data │
 │                                                                                 │
 │   [ Asynchronous Derivation: computed.future / computed.stream ]               │
-│   Consumer Pulls (.peek / via) ──► Initiates I/O across Event Loop ──► ???      │
+│   Consumer Pulls (untracked / via) ──► Initiates I/O across Event Loop ──► ???  │
 │   (Cannot return future value synchronously; requires Active-Eager pre-dispatch)│
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -35,13 +35,13 @@ The What Framework formalizes the mechanics of asynchronous I/O and enforces the
 
 Synchronous derivations achieve zero-latency pull evaluation because **results are computed within the active call stack synchronously (0ms)**:
 
-$$\text{Consumer reads } c\text{.peek / via}(c) \;\longrightarrow\; \text{Evaluate } c \text{ (0ms CPU)} \;\longrightarrow\; \text{Return fresh value } V$$
+$$\text{Consumer reads } \text{untracked}(c) \text{ / } \text{via}(c) \;\longrightarrow\; \text{Evaluate } c \text{ (0ms CPU)} \;\longrightarrow\; \text{Return fresh value } V$$
 
 The moment a consumer pulls, the derivation yields its latest state immediately.
 
 ### 2.1 What Happens if Asynchronous Nodes Are Evaluated Lazily?
 
-$$\text{Consumer reads } b\text{.peek / via}(b) \;\longrightarrow\; \text{Dispatch } \text{Future} \text{ (I/O Initiated)} \;\longrightarrow\; \mathbf{???}$$
+$$\text{Consumer reads } \text{untracked}(b) \text{ / } \text{via}(b) \;\longrightarrow\; \text{Dispatch } \text{Future} \text{ (I/O Initiated)} \;\longrightarrow\; \mathbf{???}$$
 
 Because asynchronous operations resolve on future ticks of the event loop, **there is no physical mechanism to return the resolved value synchronously at the moment of the pull**:
 
@@ -246,7 +246,7 @@ Executing deactivations last in Phase 5 ensures that:
 | Characteristic | Synchronous Computation (`computed`) | Asynchronous Pipeline (`computed.future`, `computed.stream`) |
 | :--- | :--- | :--- |
 | **Scheduling Model** | **Lazy-Pull** (On-Demand Evaluation) | **Active-Eager** (Preemptive Microtask Dispatch) |
-| **Execution Trigger**| Consumer reads `.peek` or `via(node)` | Upstream parameter mutation queues microtask |
+| **Execution Trigger**| Consumer reads `untracked(node)` or `via(node)` | Upstream parameter mutation queues microtask |
 | **Batching Strategy**| Evaluates once on consumer pull | **Microtask Coalescing (`_Scheduler._scheduleEager`)** |
 | **Inactive State** | Dormant (No evaluations) | **Completely Dormant (Zero I/O, Zero Sockets)** |
 | **Microtask Priority**| Immediate Call Stack | **Phase 3 (Pre-empts Terminals & Effects)** |
@@ -258,7 +258,7 @@ Executing deactivations last in Phase 5 ensures that:
 | :---: | :--- | :--- | :--- |
 | **I** | **Subscriber-Conditioned Eager Scheduling** | Node $N$ schedules eager microtask $\iff N.\text{isActive} == \text{true}$. | Verified by `_lifecycle.isActive` check in `_onDeltaDirty()`. |
 | **II** | **Zero-Cost Cold Dormancy** | $N.\text{isActive} == \text{false} \implies \text{IORequests}(N) = 0$. Parameter changes while dormant emit 0 network calls. | Proved by mock I/O count assertions during dormant state. |
-| **III** | **Immediate Synchronous Activation** | Transition $0 \to 1$ synchronously evaluates `_performSwitchGuarded(false)`, eliminating initial frame roundtrip latency. | Verified by synchronous assertion on `.peekState` immediately after mooring. |
+| **III** | **Immediate Synchronous Activation** | Transition $0 \to 1$ synchronously evaluates `_performSwitchGuarded(false)`, eliminating initial frame roundtrip latency. | Verified by synchronous assertion on `untracked.state` immediately after mooring. |
 | **IV** | **Microtask Deduplication** | $M$ mutations in turn $T \implies \text{dispatches} = 1$. Intermediate pulses coalesce into single settled request. | Enforced by `_eagerSet.add()` set deduplication. |
 | **V** | **Zero-Allocation Double-Buffered Swap** | Iteration sets swap via $O(1)$ pointer assignment, preventing re-entrant corruption. | Proved by `_eagerSet = _eagerSwapSet` implementation. |
 | **VI** | **Linearized Phase Order** | $\text{Coalesced} \prec \text{Eager} \prec \text{Terminal} \prec \text{Graceful}$. Deactivation executes strictly after all effects settle. | Enforced by Dart mixin linearization order on `_Scheduler`. |

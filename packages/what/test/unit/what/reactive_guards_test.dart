@@ -318,9 +318,9 @@ void main() {
 
         final num = WhatController(42);
         final pureComputed = computed((via) => via(num.what) + 1);
-        expect(pureComputed.peek, 43);
+        expect(untracked(pureComputed), 43);
         num.data = 100;
-        expect(pureComputed.peek, 101);
+        expect(untracked(pureComputed), 101);
       });
 
       test('2.3 top-level computed() forwarding', () {
@@ -332,12 +332,12 @@ void main() {
           guard: (via) => via(ready.what).guarded('WaitingReady'),
         );
 
-        expect(comp.peekState.isEmpty, isTrue);
-        expect(comp.peekState.snapshot.emptyReason, 'WaitingReady');
+        expect(untracked.state(comp).isEmpty, isTrue);
+        expect(untracked.state(comp).snapshot.emptyReason, 'WaitingReady');
 
         ready.data = true;
-        expect(comp.peekState.hasData, isTrue);
-        expect(comp.peek, 'Hello, What');
+        expect(untracked.state(comp).hasData, isTrue);
+        expect(untracked(comp), 'Hello, What');
       });
 
       test('2.4 Exception in guard transitions computed into error state', () {
@@ -510,16 +510,16 @@ void main() {
             computeCount++;
             return via(guarded) * 10;
           },
-          guard: (via) => via.state(guarded).hasData.guarded(guarded.peekState.emptyReason ?? 'PrerequisiteNotMet'),
+          guard: (via) => via.state(guarded).hasData.guarded(untracked.state(guarded).emptyReason ?? 'PrerequisiteNotMet'),
         );
-        expect(mapped.peekState.isEmpty, isTrue);
-        expect(mapped.peekState.snapshot.emptyReason, 'GuardedEmpty');
+        expect(untracked.state(mapped).isEmpty, isTrue);
+        expect(untracked.state(mapped).snapshot.emptyReason, 'GuardedEmpty');
         expect(computeCount, 0);
 
         // dataOrElse intercepts empty and recovers with valid value
         final recovered = computed((via) => via.state(guarded).dataOrElse(() => 999));
-        expect(recovered.peekState.hasData, isTrue);
-        expect(recovered.peek, 999);
+        expect(untracked.state(recovered).hasData, isTrue);
+        expect(untracked(recovered), 999);
       });
     });
 
@@ -556,13 +556,13 @@ void main() {
 
       test('5.3 What.empty([emptyReason]) static leaf node carries emptyReason', () {
         final leaf = What<String>.empty('StaticReason');
-        expect(leaf.peekState.isEmpty, isTrue);
-        expect(leaf.peekState.snapshot.emptyReason, 'StaticReason');
+        expect(untracked.state(leaf).isEmpty, isTrue);
+        expect(untracked.state(leaf).snapshot.emptyReason, 'StaticReason');
       });
 
       test('5.4 Direct .emptyReason getter access across What hierarchy', () {
         final leaf = What.empty('LeafReason');
-        expect(leaf.peekState.emptyReason, 'LeafReason');
+        expect(untracked.state(leaf).emptyReason, 'LeafReason');
 
         final writeableLate = WhatController<int>.late();
         expect(writeableLate.emptyReason, isNull);
@@ -571,10 +571,10 @@ void main() {
           (via) => via(writeableLate.what),
           guard: (via) => WhatGuard.block('GuardReason'),
         );
-        expect(guarded.peekState.emptyReason, 'GuardReason');
+        expect(untracked.state(guarded).emptyReason, 'GuardReason');
 
         final whatView = writeableLate.what;
-        expect(whatView.peekState.emptyReason, isNull);
+        expect(untracked.state(whatView).emptyReason, isNull);
         expect(() => (whatView as dynamic) as WhatController, throwsA(isA<TypeError>()));
       });
 
@@ -582,7 +582,7 @@ void main() {
         final ctrl = WhatController<String>.late(reason: 'AwaitingLogin');
         expect(ctrl.isEmpty, isTrue);
         expect(ctrl.emptyReason, 'AwaitingLogin');
-        expect(ctrl.what.peekState.emptyReason, 'AwaitingLogin');
+        expect(untracked.state(ctrl.what).emptyReason, 'AwaitingLogin');
 
         ctrl.set('Alice');
         expect(ctrl.hasData, isTrue);
@@ -591,13 +591,13 @@ void main() {
         ctrl.empty('UserLoggedOut');
         expect(ctrl.isEmpty, isTrue);
         expect(ctrl.emptyReason, 'UserLoggedOut');
-        expect(ctrl.what.peekState.emptyReason, 'UserLoggedOut');
+        expect(untracked.state(ctrl.what).emptyReason, 'UserLoggedOut');
 
         // Test RawWhatController as well
         final rawCtrl = RawWhatController<int>.late(reason: 'RawPending');
         expect(rawCtrl.isEmpty, isTrue);
         expect(rawCtrl.emptyReason, 'RawPending');
-        expect(rawCtrl.what.peekState.emptyReason, 'RawPending');
+        expect(untracked.state(rawCtrl.what).emptyReason, 'RawPending');
 
         rawCtrl.set(42);
         expect(rawCtrl.hasData, isTrue);
@@ -606,7 +606,7 @@ void main() {
         rawCtrl.empty('RawReset');
         expect(rawCtrl.isEmpty, isTrue);
         expect(rawCtrl.emptyReason, 'RawReset');
-        expect(rawCtrl.what.peekState.emptyReason, 'RawReset');
+        expect(untracked.state(rawCtrl.what).emptyReason, 'RawReset');
       });
     });
   });

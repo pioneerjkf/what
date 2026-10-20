@@ -11,7 +11,7 @@ import 'package:what_flutter/framework.dart';
 // =============================================================================
 
 base class DynamicListWhatWidget extends WhatWidget {
-  DynamicListWhatWidget({
+  const DynamicListWhatWidget({
     super.key,
     required this.listWhat,
     this.onBuilt,
@@ -36,7 +36,7 @@ base class DynamicListWhatWidget extends WhatWidget {
 }
 
 base class BranchSwitchingWhatWidget extends WhatWidget {
-  BranchSwitchingWhatWidget({
+  const BranchSwitchingWhatWidget({
     super.key,
     required this.useBranchA,
     required this.listA,

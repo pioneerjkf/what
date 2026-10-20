@@ -19,13 +19,13 @@
 
 ## Overview
 
-**What** is an ultra-fast, zero-overhead reactive state framework engineered for high-throughput Dart applications (Server, CLI, Backend, and Shared Core Logic). Built upon the **2-Phase LPDAG (Lazy Pull Directed Acyclic Graph)** architecture, What eliminates redundant intermediate calculations, memory thrashing, and "glitches" (diamond dependency race conditions).
+**What** is a high-performance reactive state engine engineered for high-throughput Dart applications (Server, CLI, Backend, and Shared Core Logic). Built upon the **2-Phase LPDAG (Lazy Pull Directed Acyclic Graph)** architecture, What eliminates redundant intermediate calculations, memory thrashing, and "glitches" (diamond dependency race conditions).
 
 ### The LPDAG Paradigm: Lazy Pull vs. Eager Push
 
-Traditional reactive streams and observables push eager data payloads through the entire graph on every mutation (**Eager Push DAG**), causing redundant intermediate calculations and memory thrashing. In contrast, What's **LPDAG** divides reactive propagation into two distinct, high-efficiency phases:
+Traditional reactive streams and observables push eager data payloads through the entire graph on every mutation (**Eager Push DAG**), causing redundant intermediate calculations and transient inconsistent states. Following the proven principles of modern 2-phase signals (such as Preact Signals and alien-signals), What's **LPDAG** divides reactive propagation into two distinct phases:
 
-1. **Push-Dirty (Lightweight Invalidation Pulse)**: When an upstream source mutates, an O(1) dirty bit travels downstream through the directed acyclic graph. No intermediate data payloads are evaluated or copied during this phase.
+1. **Push-Dirty (Lightweight Invalidation Pulse)**: When an upstream source mutates, a lightweight dirty flag propagates downstream through the directed acyclic graph. No intermediate data payloads are evaluated or copied during this invalidation phase.
 2. **Lazy-Pull (On-Demand Synchronous Evaluation)**: Downstream consumers (terminals, active effect runners, UI elements) pull data only when observed. Intermediate nodes compute and cache their `WhatSnapshot` synchronously. If an upstream node was marked dirty but its computed value has not changed, downstream propagation terminates immediately (Distinct Short-Circuit).
 
 ---
@@ -38,7 +38,7 @@ Traditional reactive streams and observables push eager data payloads through th
 
 * **Separation of Producer and Consumer**: `What<T>` is the read-only, observation-only reactive interface. Mutation methods (`set`, `empty`, `setError`) are encapsulated strictly within `WhatController<T>` / `RawWhatController<T>`.
 * **Explicit Dependency Manifest (`WhatVia`)**: All dynamic derivations and effects explicitly declare observed nodes via injected `WhatVia` (e.g., `computed((via) => via(a) + via(b))`). No ambient thread-local stacks.
-* **Zero-Overhead Raw Reads**: Accessing `.peek`, `.peekState` on a node is a direct field dereference with zero tracking overhead.
+* **Zero-Overhead Raw Reads**: Accessing `untracked(node)` or `untracked.state(node)` provides direct raw reads with zero tracking overhead.
 * **1-Pass Epoch Sweeping**: Dynamic branches (e.g., ternary conditions inside `computed` or `switched`) immediately prune and detach unobserved upstream edges in O(edges) during evaluation.
 * **Subscriber-Driven Inactive Dormancy**: When a pipeline has no active downstream terminals (effect runners, active UI elements), all upstream computation edges detach and enter zero-leak dormant state.
 * **Pure Dart**: Zero external runtime dependencies; operates seamlessly across Dart VM, AOT, Server, CLI, and Web.
@@ -85,14 +85,14 @@ void main() async {
 
   // 3. Standalone Active Runner with microtask batch compression
   final runner = total.effect(() {
-    print('[Effect] Total updated: \$${total.peek}');
+    print('[Effect] Total updated: \$${untracked(total)}');
   }).run();
 
   // Initial value read via zero-overhead raw read:
-  print('Initial total: \$${total.peek}'); // Prints: "Initial total: $190"
+  print('Initial total: \$${untracked(total)}'); // Prints: "Initial total: $190"
 
   // 4. Mutate upstream producers
-  // Phase 1 (Push-Dirty): Invalidation pulse propagates in O(1). No recomputation yet.
+  // Phase 1 (Push-Dirty): Invalidation pulse propagates with zero computation. No recomputation yet.
   price.set(150);
   quantity.set(3);
   discount.set(50);
@@ -101,8 +101,8 @@ void main() async {
   await Future<void>.delayed(Duration.zero);
   // Prints: "[Effect] Total updated: $400" (Calculated once: 150 * 3 - 50 = 400)
 
-  // 5. Zero-Overhead Raw Read (pure field dereference, zero ambient overhead)
-  print('Raw read: ${total.peek}'); // 400
+  // 5. Zero-Overhead Raw Read (0-allocation, zero ambient overhead)
+  print('Raw read: ${untracked(total)}'); // 400
 
   // 6. Clean up: Enters Subscriber-Driven Inactive Dormancy
   runner.deactivate();
@@ -168,7 +168,7 @@ final WhatController<String> userController = WhatController('Alice');
 final userWhat = userController.what;
 
 // Zero-overhead raw read:
-print(userWhat.peek); // "Alice" (pure field dereference)
+print(untracked(userWhat)); // "Alice" (0-allocation, direct read)
 
 // Mutation via controller:
 userController.set('Bob');
@@ -186,7 +186,9 @@ rawController.data = 10;
 
 ### 2. Universal State Protocol & Built-in Fault Tolerance (`WhatState` & `WhatSnapshot`)
 
-Unlike primitive value containers that collapse failures or uninitialized states into ambiguous `null`s, every What node implements **`WhatState<T>`**, a universal protocol governed by an exact **3-State Algebraic Finite State Machine (FSM)**:
+Unlike primitive value containers that collapse failures or uninitialized states into ambiguous `null`s, reactive states in What are governed by **`WhatState<T>`**, a universal protocol based on an exact **3-State Algebraic Finite State Machine (FSM)**.
+
+While the consumer handle `What<T>` is strictly an opaque DAG node handle (whose state is inspected via `via.state(what)` or `untracked.state(what)` with zero heap allocation), state producers, headless terminals, and snapshots (`WhatController`, `RawWhatTerminal`, and `WhatSnapshot`) implement `WhatState<T>` directly:
 
 ```text
                ┌────────────────────────────────────────┐
@@ -211,14 +213,14 @@ Unlike primitive value containers that collapse failures or uninitialized states
 * **Data State (`hasData == true`)**: Holds a valid payload of type `T`. For nullable types (`What<User?>`), `null` is a completely valid payload and never aliases to `Empty`.
 * **Empty State (`isEmpty == true`)**: Represents uninitialized or dormant state with an optional causal `emptyReason` (e.g., `'AwaitingAuthCredentials'`).
 * **Error State (`hasError == true`)**: Encapsulates caught exceptions as first-class state data alongside original `error` and `stackTrace`.
-* **Fail-Fast vs. Safe Fallback**: Reading `.peek` while in `Empty` or `Error` state throws `WhatSnapshotExtractionException` immediately. For safe inspection, use `.peekState` (`.dataOrNull`, `.dataOrElse(() => fallback)`, or exhaustive matching).
+* **Fail-Fast vs. Safe Fallback**: Reading `untracked(node)` while in `Empty` or `Error` state throws `WhatSnapshotExtractionException` immediately. For safe inspection, use `untracked.state(node)` (`.dataOrNull`, `.dataOrElse(() => fallback)`, or exhaustive matching).
 
 #### B. Zero-Heap Total Pattern Matching & Record Tuple Guards
-All entities implementing `WhatState` support zero-allocation synchronous pattern matching and compile-time multi-state guarding across Dart 3 Record tuples (arity 2 through 9):
+All entities implementing `WhatState` (as well as views returned by `via.state(node)` and `untracked.state(node)`) support zero-allocation synchronous pattern matching and compile-time multi-state guarding across Dart 3 Record tuples (arity 2 through 9):
 
 ```dart
-// 1. Zero-Heap Synchronous Exhaustive Matching via peekState view
-final status = userWhat.peekState.match(
+// 1. Zero-Heap Synchronous Exhaustive Matching via untracked.state
+final status = untracked.state(userWhat).match(
   data: (v) => 'Active: $v',
   empty: () => 'Awaiting initialization...',
   error: (err, stack) => 'Failed: $err',
@@ -357,7 +359,7 @@ reconnectTrigger.emit();
 
 * **Inactive Dormancy**: When no terminals observe the managed node, `dispose` is executed synchronously, leaving zero lingering resources or memory leaks.
 * **Precondition Guards (`guard`)**: Halts allocation until prerequisites are ready (e.g. auth token available), gracefully emitting `Empty(emptyReason)` without throwing exceptions.
-* **Transient Mooring (`graceful`)**: Pass `graceful: graceful.period(Duration(...))` to prevent disposal thrashing during UI route transitions.
+* **Transient Mooring (`graceful`)**: Pass `graceful: const Graceful.period(Duration(...))` to prevent disposal thrashing during UI route transitions.
 
 ---
 
@@ -479,24 +481,24 @@ What eliminates subscription thrashing through **Graceful Deactivation Policies*
 ```dart
 // 1. Time-Based Mooring: retain warm cache across screen navigation (0ms instant reuse)
 final userFeedWhat = computed.future((via) => api.fetchUserFeed())
-    .graceful(graceful.period(const Duration(minutes: 2)));
+    .graceful(const Graceful.period( Duration(minutes: 2)));
 
 // 2. Microtask Buffer: coalesces 1-tick frame transitions (Hero animations / unmount-remount)
 final telemetryStream = What.stream(
   stockMarketChannel.streamFor('AAPL'),
-  graceful: graceful.microtask,
+  graceful: Graceful.microtask,
 );
 
 // 3. Supervised managed resource with mooring buffer (strictly synchronous lifecycle)
 final liveClient = managed<ApiClient>(
   create: (via) => ApiClient(port: 8080),
   dispose: (client) => client.close(),
-  graceful: graceful.period(const Duration(seconds: 30)),
+  graceful: const Graceful.period( Duration(seconds: 30)),
 );
 ```
 
-* **Microtask Buffer (`graceful.microtask` / `graceful()`)**: Defers disposal by 1 Dart microtask tick (default), completely eliminating subscription thrashing during rapid widget unmount/remount cycles without GC allocations.
-* **Time-Based Mooring (`graceful.period(Duration)`)**: Deploys a topological anchor (`_MooringTerminal`) that keeps the node and its upstream dependencies active and warm for the specified duration.
+* **Microtask Buffer (`Graceful.microtask` / `Graceful()`)**: Defers disposal by 1 Dart microtask tick (default), completely eliminating subscription thrashing during rapid widget unmount/remount cycles without GC allocations.
+* **Time-Based Mooring (`Graceful.period(Duration)`)**: Deploys a topological anchor (`_MooringTerminal`) that keeps the node and its upstream dependencies active and warm for the specified duration.
 
 ---
 
@@ -518,7 +520,7 @@ final filter = WhatController('all');
 final searchPipeline = computed((via) {
   // Automatically activated and deactivated in lockstep with searchPipeline:
   via.tether((searchQuery.what, filter.what).effect(() {
-    analytics.logSearch(searchQuery.what.peek, filter.what.peek);
+    analytics.logSearch(untracked(searchQuery.what), untracked(filter.what));
   }));
   return via(searchQuery.what);
 });
@@ -530,7 +532,7 @@ Outside UI scopes, run standalone effects with full pause and resume capability:
 ```dart
 final syncEffect = userWhat.effect.debounce(
   const Duration(milliseconds: 300),
-  () => cloudSync(userWhat.peek),
+  () => cloudSync(untracked(userWhat)),
 );
 
 // Start standalone execution:
@@ -552,7 +554,7 @@ Effect.handled([roomId.what], (handle) async {
   final timer = Timer.periodic(const Duration(seconds: 1), (_) => ping());
   handle.onCleanup(timer.cancel);
 
-  final socket = await WebSocket.connect('ws://example.com/rooms/${roomId.peek}');
+  final socket = await WebSocket.connect('ws://example.com/rooms/${untracked(roomId.what)}');
   handle.onCleanup(socket.close);
 
   // 2. In-flight cancellation guard: prevent stale overwrite across async gaps

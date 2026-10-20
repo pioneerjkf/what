@@ -12,7 +12,7 @@ void main() {
   group('WhatSignal & WhatSignalController Suite', () {
     test('1.1 Basic pulse emission advances version and notifies downstream terminal', () {
       final sig = WhatSignalController();
-      expect(sig.what.peek, 0);
+      expect(untracked(sig.what), 0);
       expect(sig.isActive, isFalse);
 
       var pulses = 0;
@@ -25,12 +25,12 @@ void main() {
       // Emit 1
       sig.emit();
       expect(pulses, 1);
-      expect(sig.what.peek, 1);
+      expect(untracked(sig.what), 1);
 
       // Emit 2
       sig.emit();
       expect(pulses, 2);
-      expect(sig.what.peek, 2);
+      expect(untracked(sig.what), 2);
 
       term.deactivate();
       expect(sig.isActive, isFalse);
@@ -76,22 +76,22 @@ void main() {
       term.activate();
 
       expect(pulseCount, 0);
-      expect(distinctSignal.peek, 0);
+      expect(untracked(distinctSignal), 0);
 
       // 1st pulse
       sig.emit();
       expect(pulseCount, 1);
-      expect(distinctSignal.peek, 1);
+      expect(untracked(distinctSignal), 1);
 
       // 2nd pulse (Must NOT be dropped by distinct()!)
       sig.emit();
       expect(pulseCount, 2, reason: 'Consecutive signal pulses must never be dropped by distinct()');
-      expect(distinctSignal.peek, 2);
+      expect(untracked(distinctSignal), 2);
 
       // 3rd pulse
       sig.emit();
       expect(pulseCount, 3);
-      expect(distinctSignal.peek, 3);
+      expect(untracked(distinctSignal), 3);
 
       term.deactivate();
     });

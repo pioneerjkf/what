@@ -1,7 +1,7 @@
 # Declarative Routing & Navigation Sync Specification
 ## (Declarative Routing & Navigation Sync)
 
-> **"Routing is inherently stateful. When URL paths drift from the actual internal application state (e.g. Auth, Theme, Permissions), the application breaks. The reactive graph must bridge seamlessly to the Router's refresh listenables to guarantee 100% synchronization."**  
+> **"Routing is inherently stateful. When URL paths drift from the actual internal application state (e.g. Auth, Theme, Permissions), the application breaks. The reactive graph must bridge seamlessly to the Router's refresh listenables to guarantee deterministic routing synchronization."**  
 > — *What Framework Core Systems Group*
 
 ---
@@ -13,7 +13,7 @@ Modern Flutter development heavily utilizes declarative routers like `GoRouter` 
 2. **Duplicate Renders**: Firing route rebuilds aggressively when state values haven't meaningfully changed (no distinct filtering) destroys 60fps scrolling and layout performance.
 3. **Impedance Mismatch**: Flutter Routers expect `Listenable` (ChangeNotifier/ValueNotifier), while modern declarative state management uses directed acyclic graphs (DAGs).
 
-`package:what_flutter` bridges this gap safely through **`.toListenable()`** and **`WhatSignal`**.
+`package:what_flutter` bridges this gap safely through **`.toListenable()`** (from `package:what_flutter`) and discrete transient event pulses via **[`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md)** (from core [`package:what`](https://pub.dev/packages/what), re-exported by `what_flutter`).
 
 ---
 
@@ -41,7 +41,8 @@ class AuthRouter {
     
     // 2. Redirect logic evaluates synchronously based on the pure state
     redirect: (context, state) {
-      final isLoggedIn = authStore.currentUserWhat.peekState.dataOrNull != null;
+      // .dataOrNull: safe snapshot payload extraction from package:what (WhatSnapshot/WhatState)
+      final isLoggedIn = untracked.state(authStore.currentUserWhat).dataOrNull != null;
       final isLoggingIn = state.uri.path == '/login';
 
       if (!isLoggedIn && !isLoggingIn) return '/login';
@@ -62,20 +63,35 @@ class AuthRouter {
 
 ---
 
-## 3. Transient Navigation Events (Push/Pop via `WhatSignal`)
+## 3. Transient Navigation Events (Push/Pop via [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md))
 
 While URL-driven routing is bound to persistent state (`.toListenable()`), imperative navigation (e.g., popping a modal, pushing a transient success dialog) belongs to **Transient Events**.
 
-Attempting to model "Show Dialog" as a boolean state (`What<bool>`) leads to zombie payloads where the dialog reappears on remount.
+Modeling one-off UI side-effects (such as dialog popups or route transitions) as persistent boolean state (`What<bool>`) creates zombie dialog bugs where navigating back or remounting the view re-executes the dialog. Transient events are resolved via [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) / [`WhatSignalController`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) (from core [`package:what`](https://pub.dev/packages/what), re-exported by `what_flutter`) or one-shot bounded listeners (`take: 1`).
 
-### Production Example: Navigation Dialog via Signal
+**BAD:**
 ```dart
+// [Anti-Pattern] Persistent boolean state triggers zombie dialogs upon remount
+class BadFormStore {
+  final showSuccessDialogState = WhatController<bool>(false);
+
+  Future<void> submit() async {
+    await api.submit();
+    showSuccessDialogState.set(true); // Persists across screen navigation!
+  }
+}
+```
+
+**GOOD:**
+```dart
+// [Recommended] Pure transient signal or one-shot bounded listener (take: 1)
 class FormStore {
+  // WhatSignalController is from package:what (re-exported by what_flutter)
   final showSuccessDialogSignal = WhatSignalController();
 
   Future<void> submit() async {
     await api.submit();
-    // Fire exactly once; leaves no zombie state behind
+    // Emits transient pulse; leaves zero standing zombie state
     showSuccessDialogSignal.emit();
   }
 }
@@ -87,9 +103,9 @@ base class FormView extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     return WhatListener(
-      [store.showSuccessDialogSignal.what],
-      (context) {
-        // 2. Execute imperative navigation
+      store.showSuccessDialogSignal.what,
+      (context, _) {
+        // Execute imperative navigation outside Flutter's build pass
         showDialog(
           context: context,
           builder: (_) => const AlertDialog(title: Text('Success')),
@@ -105,4 +121,4 @@ base class FormView extends WhatWidget {
 
 ## 4. Architectural Conclusions
 
-By providing `.toListenable()` for persistent route-sync and `WhatSignal` for transient imperative pops/pushes, `what_flutter` covers the entire spectrum of declarative routing constraints while maintaining 100% memory dormancy and avoiding zombie navigation bugs.
+By providing `.toListenable()` for persistent route-sync and [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) (from `package:what`) for transient imperative pops/pushes, `what_flutter` covers the entire spectrum of declarative routing constraints while maintaining 100% memory dormancy and avoiding zombie navigation bugs.

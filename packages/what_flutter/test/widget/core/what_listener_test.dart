@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:what_flutter/framework.dart';
 
 void main() {
-  group('UnaryWhatListener Widget & Element Tests', () {
+  group('WhatListener Widget & Element Tests', () {
     testWidgets(
         '1. Rebuild Count: 0 Invariant - child never rebuilds on state mutations',
         (WidgetTester tester) async {
@@ -19,7 +19,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<int>(
+            body: WhatListener<int>(
               counter.what,
               (context, state) {
                 listenerLogs.add(state);
@@ -63,7 +63,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<String>(
+            body: WhatListener<String>(
               message.what,
               (context, state) {
                 results.add(state);
@@ -101,16 +101,17 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<int>(
+            body: WhatListener<int>(
               number.what,
               (context, state) => recorded.add(state),
-              guard: (state) => state.isEven,
+              guard: (state) => state % 2 == 0,
               child: const SizedBox.shrink(),
             ),
           ),
         ),
       );
 
+      // Filtered out by guard:
       for (int i = 1; i <= 5; i++) {
         number.data = i;
         await tester.pump();
@@ -120,86 +121,8 @@ void main() {
           reason: 'Only even states should pass the guard');
     });
 
-    testWidgets('4. take limits execution count and tears down early',
-        (WidgetTester tester) async {
-      final counter = WhatController<int>(0);
-      final recorded = <int>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: UnaryWhatListener<int>(
-              counter.what,
-              (context, state) => recorded.add(state),
-              take: 2,
-              child: const SizedBox.shrink(),
-            ),
-          ),
-        ),
-      );
-
-      counter.data = 1;
-      await tester.pump();
-      counter.data = 2;
-      await tester.pump();
-      counter.data = 3;
-      await tester.pump();
-      counter.data = 4;
-      await tester.pump();
-
-      expect(recorded, equals([1, 2]),
-          reason: 'Must stop executing after exactly 2 runs');
-    });
-
-    testWidgets('5. take + guard preserves take tickets on false guard',
-        (WidgetTester tester) async {
-      final counter = WhatController<int>(0);
-      final recorded = <int>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: UnaryWhatListener<int>(
-              counter.what,
-              (context, state) => recorded.add(state),
-              guard: (state) => state >= 10,
-              take: 2,
-              child: const SizedBox.shrink(),
-            ),
-          ),
-        ),
-      );
-
-      // Filtered out by guard: tickets are preserved
-      counter.data = 1;
-      await tester.pump();
-      counter.data = 2;
-      await tester.pump();
-      expect(recorded, isEmpty);
-
-      // Meets guard: consume ticket 1
-      counter.data = 10;
-      await tester.pump();
-      expect(recorded, equals([10]));
-
-      // Filtered out again
-      counter.data = 3;
-      await tester.pump();
-      expect(recorded, equals([10]));
-
-      // Meets guard: consume ticket 2 (take exhausted)
-      counter.data = 20;
-      await tester.pump();
-      expect(recorded, equals([10, 20]));
-
-      // Further mutations never run
-      counter.data = 30;
-      await tester.pump();
-      expect(recorded, equals([10, 20]));
-    });
-
     testWidgets(
-        '6. onUncaughtError callback catches exceptions thrown in action',
+        '4. onUncaughtError callback catches exceptions thrown in action',
         (WidgetTester tester) async {
       final trigger = WhatController<int>(0);
       Object? capturedError;
@@ -208,7 +131,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<int>(
+            body: WhatListener<int>(
               trigger.what,
               (context, state) {
                 throw StateError('Simulated Action Crash: $state');
@@ -231,102 +154,37 @@ void main() {
       expect(capturedStackTrace, isNotNull);
     });
 
-    testWidgets('7. UnaryWhatListener Element debugFillProperties diagnostics',
+    testWidgets('5. WhatListener Element debugFillProperties diagnostics',
         (WidgetTester tester) async {
       final testWhat = WhatController<int>(1);
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<int>(
+            body: WhatListener<int>(
               testWhat.what,
               (context, state) {},
-              take: 5,
               child: const Text('Child'),
             ),
           ),
         ),
       );
 
-      final element = tester.element(find.byType(UnaryWhatListener<int>));
+      final element = tester.element(find.byType(WhatListener<int>));
       final builder = DiagnosticPropertiesBuilder();
       element.debugFillProperties(builder);
 
       expect(builder.properties.any((p) => p.name == 'isActive'), isTrue);
       expect(builder.properties.any((p) => p.name == 'hasChild'), isTrue);
     });
-  });
-
-  group('WhatListener (Multi-Target) Tests', () {
-    testWidgets('1. WhatListener monitors multiple targets',
-        (WidgetTester tester) async {
-      final a = WhatController<int>(1);
-      final b = WhatController<int>(2);
-      final logs = <int>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WhatListener(
-              [a.what, b.what],
-              (context) {
-                logs.add(a.what.peek + b.what.peek);
-              },
-              child: const Text('Multi Static Child'),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Multi Static Child'), findsOneWidget);
-      expect(logs, isEmpty);
-
-      a.data = 10;
-      await tester.pump();
-      expect(logs, equals([12]));
-
-      b.data = 20;
-      await tester.pump();
-      expect(logs, equals([12, 30]));
-    });
 
     testWidgets(
-        '2. WhatListener with guard filtering multi-target invalidations',
-        (WidgetTester tester) async {
-      final a = WhatController<int>(5);
-      final logs = <int>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WhatListener(
-              [a.what],
-              (context) => logs.add(a.what.peek * 2),
-              guard: () => a.what.peek > 5,
-              child: const SizedBox.shrink(),
-            ),
-          ),
-        ),
-      );
-
-      expect(logs, isEmpty);
-
-      a.data = 4;
-      await tester.pump();
-      expect(logs, isEmpty);
-
-      a.data = 6;
-      await tester.pump();
-      expect(logs, equals([12]));
-    });
-
-    testWidgets('3. WhatListener debugFillProperties and reassemble()',
+        '6. WhatListener debugFillProperties on widget and reassemble()',
         (WidgetTester tester) async {
       final a = WhatController<int>(1);
-      final widget = WhatListener(
-        [a.what],
-        (ctx) {},
-        take: 5,
+      final widget = WhatListener<int>(
+        a.what,
+        (ctx, state) {},
         child: const Text('Listener Child'),
       );
 
@@ -338,12 +196,11 @@ void main() {
         ),
       );
 
-      final element = tester.element(find.byType(WhatListener));
+      final element = tester.element(find.byType(WhatListener<int>));
       final builder = DiagnosticPropertiesBuilder();
       element.widget.debugFillProperties(builder);
-      expect(builder.properties.any((p) => p.name == 'targets'), isTrue);
+      expect(builder.properties.any((p) => p.name == 'target'), isTrue);
       expect(builder.properties.any((p) => p.name == 'action'), isTrue);
-      expect(builder.properties.any((p) => p.name == 'take'), isTrue);
 
       // Reassemble
       // ignore: invalid_use_of_protected_member
@@ -352,13 +209,13 @@ void main() {
     });
 
     testWidgets(
-        '4. WhatListener error handling with custom onUncaughtError and uncaught fallback',
+        '7. WhatListener error handling with custom onUncaughtError and uncaught fallback',
         (WidgetTester tester) async {
       final a = WhatController<int>(1);
       Object? capturedError;
-      final widgetWithOnError = WhatListener(
-        [a.what],
-        (ctx) => throw Exception('error in action'),
+      final widgetWithOnError = WhatListener<int>(
+        a.what,
+        (ctx, state) => throw Exception('error in action'),
         onUncaughtError: (el, err, st) => capturedError = err,
         child: const Text('With Error'),
       );
@@ -376,8 +233,8 @@ void main() {
       expect(capturedError, isNotNull);
       expect(capturedError.toString(), contains('error in action'));
 
-      // Test uncaught fallback directly via visibleForTesting hook
-      final element = tester.element(find.byType(WhatListener)) as dynamic;
+      // Test uncaught fallback directly via terminal hook
+      final element = tester.element(find.byType(WhatListener<int>)) as dynamic;
       FlutterErrorDetails? reportedError;
       final prevOnError = FlutterError.onError;
       FlutterError.onError = (details) => reportedError = details;
@@ -396,29 +253,27 @@ void main() {
         FlutterError.onError = prevOnError;
       }
     });
-  });
 
-  group('composed.listen Functor Tests', () {
-    testWidgets(
-        '1. composed.listen(targets, action) monitors multiple targets with Rebuild Count: 0',
+    testWidgets('8. Composed multi-target listening via computed derived state',
         (WidgetTester tester) async {
       final a = WhatController<int>(10);
       final b = WhatController<int>(20);
+      final sum = computed<int>((via) => via(a.what) + via(b.what));
       int childBuildCount = 0;
       final sumLogs = <int>[];
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: WhatListener(
-              [a.what, b.what],
-              (context) {
-                sumLogs.add(a.what.peek + b.what.peek);
+            body: WhatListener<int>(
+              sum,
+              (context, total) {
+                sumLogs.add(total);
               },
               child: Builder(
                 builder: (context) {
                   childBuildCount++;
-                  return const Text('Composed Static Child');
+                  return const Text('Composed Derived Child');
                 },
               ),
             ),
@@ -426,7 +281,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Composed Static Child'), findsOneWidget);
+      expect(find.text('Composed Derived Child'), findsOneWidget);
       expect(childBuildCount, equals(1));
       expect(sumLogs, isEmpty);
 
@@ -443,68 +298,7 @@ void main() {
       expect(childBuildCount, equals(1));
     });
 
-    testWidgets(
-        '2. composed.listen.unary(target, action) directly observes a single node',
-        (WidgetTester tester) async {
-      final status = WhatController<String>('init');
-      final logs = <String>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: UnaryWhatListener(
-              status.what,
-              (context, state) => logs.add(state),
-              child: const Text('Status Body'),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Status Body'), findsOneWidget);
-      expect(logs, isEmpty);
-
-      status.data = 'loading';
-      await tester.pump();
-      status.data = 'done';
-      await tester.pump();
-      expect(logs, equals(['loading', 'done']));
-    });
-
-    testWidgets('3. composed.listen defers and coalesces bursts',
-        (WidgetTester tester) async {
-      final count = WhatController<int>(0);
-      final logs = <int>[];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WhatListener(
-              [count.what],
-              (context) {
-                logs.add(count.what.peek * 10);
-              },
-              child: const Text('Scheduled Composed'),
-            ),
-          ),
-        ),
-      );
-
-      // Bursty mutations within same turn
-      for (var i = 1; i <= 5; i++) {
-        count.data = i;
-      }
-
-      // Not invoked synchronously
-      expect(logs, isEmpty);
-
-      // Flushed after microtask
-      await tester.pump();
-      expect(logs, equals([50]));
-    });
-
-    testWidgets(
-        '4. Dynamic widget update preserves reactivity with new targets',
+    testWidgets('9. Dynamic widget update preserves reactivity with new target',
         (WidgetTester tester) async {
       final a = WhatController<int>(1);
       final b = WhatController<int>(2);
@@ -513,17 +307,17 @@ void main() {
       Widget buildHost({required bool swapToB}) {
         return MaterialApp(
           home: Scaffold(
-            body: WhatListener(
-              swapToB ? [b.what] : [a.what],
-              (context) => logs.add(swapToB ? b.what.peek : a.what.peek),
-              child: const Text('Dynamic Targets Content'),
+            body: WhatListener<int>(
+              swapToB ? b.what : a.what,
+              (context, state) => logs.add(state),
+              child: const Text('Dynamic Target Content'),
             ),
           ),
         );
       }
 
       await tester.pumpWidget(buildHost(swapToB: false));
-      expect(find.text('Dynamic Targets Content'), findsOneWidget);
+      expect(find.text('Dynamic Target Content'), findsOneWidget);
       expect(logs, isEmpty);
 
       a.data = 10;
@@ -546,7 +340,7 @@ void main() {
   });
 
   group('What<T>.listen Extension Tests', () {
-    testWidgets('1. counter.what.listen(...) creates unary listener correctly',
+    testWidgets('1. counter.what.listen(...) creates listener correctly',
         (WidgetTester tester) async {
       final counter = WhatController<int>(10);
       final logs = <int>[];
@@ -656,34 +450,56 @@ void main() {
       await tester.pump(const Duration(milliseconds: 60));
       expect(logs, equals([42]));
     });
-  });
 
-  group('WhatListener Time-Domain (Debounce & Throttle) Tests', () {
-    testWidgets(
-        '1. WhatListener.debounce delays execution until multi-target mutations settle',
+    testWidgets('5. counter.what.listen respects take limit and deactivates',
         (WidgetTester tester) async {
-      final a = WhatController<int>(0);
-      final b = WhatController<int>(0);
+      final counter = WhatController<int>(0);
       final logs = <int>[];
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: WhatListener.debounce(
-              [a.what, b.what],
-              (context) {
-                logs.add(a.what.peek + b.what.peek);
-              },
+            body: counter.what.listen(
+              (context, state) => logs.add(state),
+              take: 1,
+            ),
+          ),
+        ),
+      );
+
+      counter.data = 1;
+      await tester.pump();
+      expect(logs, equals([1]));
+
+      counter.data = 2;
+      await tester.pump();
+      expect(logs, equals([1]),
+          reason: 'take: 1 must prevent second execution');
+    });
+  });
+
+  group('WhatListener Time-Domain (Debounce & Throttle) Tests', () {
+    testWidgets('1. WhatListener.debounce delays execution until settled',
+        (WidgetTester tester) async {
+      final a = WhatController<int>(0);
+      final logs = <int>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>.debounce(
+              a.what,
+              (context, state) => logs.add(state),
               duration: const Duration(milliseconds: 100),
             ),
           ),
         ),
       );
 
-      // Mutate a and b rapidly
+      // Mutate a rapidly
       a.data = 10;
       await tester.pump(const Duration(milliseconds: 40));
-      b.data = 20;
+      a.data = 20;
       await tester.pump(const Duration(milliseconds: 40));
       a.data = 15;
       await tester.pump(const Duration(milliseconds: 40));
@@ -692,7 +508,7 @@ void main() {
 
       // Settle
       await tester.pump(const Duration(milliseconds: 110));
-      expect(logs, equals([35])); // 15 + 20
+      expect(logs, equals([15]));
     });
 
     testWidgets(
@@ -704,11 +520,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: WhatListener.throttle(
-              [a.what],
-              (context) {
-                logs.add(a.what.peek);
-              },
+            body: WhatListener<int>.throttle(
+              a.what,
+              (context, state) => logs.add(state),
               duration: const Duration(milliseconds: 100),
             ),
           ),
@@ -732,7 +546,7 @@ void main() {
       expect(logs, equals([1, 3]));
     });
 
-    testWidgets('3. UnaryWhatListener.debounce and diagnostics',
+    testWidgets('3. WhatListener.debounce diagnostics and edge modes',
         (WidgetTester tester) async {
       final target = WhatController<String>('init');
       final logs = <String>[];
@@ -740,7 +554,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<String>.debounce(
+            body: WhatListener<String>.debounce(
               target.what,
               (context, state) => logs.add(state),
               duration: const Duration(milliseconds: 80),
@@ -752,8 +566,8 @@ void main() {
       );
 
       // Verify diagnostics
-      final element = tester.element(
-          find.byWidgetPredicate((w) => w is UnaryWhatListener<String>));
+      final element = tester
+          .element(find.byWidgetPredicate((w) => w is WhatListener<String>));
       final desc = element.toString();
       expect(desc.toLowerCase(), contains('debounce'));
 
@@ -808,7 +622,7 @@ void main() {
     });
 
     testWidgets(
-        '5. UnaryWhatListener.debounce and UnaryWhatListener.throttle factory constructors',
+        '5. WhatListener.debounce and WhatListener.throttle factory constructors',
         (WidgetTester tester) async {
       final target = WhatController<int>(1);
       final logs = <int>[];
@@ -816,7 +630,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UnaryWhatListener<int>.debounce(
+            body: WhatListener<int>.debounce(
               target.what,
               (context, val) => logs.add(val),
               duration: const Duration(milliseconds: 50),
@@ -828,6 +642,628 @@ void main() {
       target.data = 2;
       await tester.pump(const Duration(milliseconds: 60));
       expect(logs, equals([2]));
+    });
+
+    testWidgets(
+        '6. Parent rebuild with identical targets reuses existing EffectRunner instance',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(1);
+      final logs = <int>[];
+
+      Widget buildTree(int parentVersion) {
+        return MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                Text('Version $parentVersion'),
+                WhatListener<int>(
+                  target.what,
+                  (context, val) => logs.add(val),
+                  child: const Text('Child'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(1));
+      final element = tester.element(find.byType(WhatListener<int>));
+      final initialRunner = (element as dynamic).terminal as EffectRunner;
+
+      // Parent rebuilds with version 2, but listener target is unchanged
+      await tester.pumpWidget(buildTree(2));
+      final updatedRunner = (element as dynamic).terminal as EffectRunner;
+
+      // Runner must be preserved (identical) across parent rebuilds with same config
+      expect(identical(initialRunner, updatedRunner), isTrue,
+          reason:
+              'EffectRunner should be reused when listener configuration is identical');
+
+      // Verify listener continues to fire correctly
+      target.data = 2;
+      await tester.pump();
+      expect(logs, equals([2]));
+    });
+
+    testWidgets(
+        '7. Parent rebuild with altered targets cleanly replaces EffectRunner',
+        (WidgetTester tester) async {
+      final targetA = WhatController<int>(1);
+      final targetB = WhatController<int>(10);
+      final logs = <int>[];
+
+      Widget buildTree(What<int> currentTarget) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>(
+              currentTarget,
+              (context, val) => logs.add(val),
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(targetA.what));
+      final element = tester.element(find.byType(WhatListener<int>));
+      final initialRunner = (element as dynamic).terminal as EffectRunner;
+
+      // Rebuild with targetB
+      await tester.pumpWidget(buildTree(targetB.what));
+      final updatedRunner = (element as dynamic).terminal as EffectRunner;
+
+      expect(identical(initialRunner, updatedRunner), isFalse,
+          reason: 'EffectRunner must be cleanly replaced when target changes');
+
+      // Old target must no longer trigger
+      targetA.data = 2;
+      await tester.pump();
+      expect(logs, isEmpty);
+
+      // New target must trigger
+      targetB.data = 20;
+      await tester.pump();
+      expect(logs, equals([20]));
+    });
+
+    testWidgets(
+        '8. Parent rebuild with inline lambda guard preserves EffectRunner and evaluates latest scope',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(int threshold) {
+        return MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                Text('Threshold $threshold'),
+                WhatListener<int>(
+                  target.what,
+                  (context, val) => logs.add(val),
+                  // Inline lambda guard creates a new function object on each build, capturing latest threshold
+                  guard: (val) => val > threshold,
+                  child: const Text('Child'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(5));
+      final element = tester.element(find.byType(WhatListener<int>));
+      final runner1 = (element as dynamic).terminal as EffectRunner;
+
+      // Mutation with 3 does not meet threshold (5)
+      target.data = 3;
+      await tester.pump();
+      expect(logs, isEmpty);
+
+      // Mutation with 10 meets threshold (5)
+      target.data = 10;
+      await tester.pump();
+      expect(logs, equals([10]));
+
+      // Parent rebuilds updating threshold to 15 (creates new inline lambda guard)
+      await tester.pumpWidget(buildTree(15));
+      final runner2 = (element as dynamic).terminal as EffectRunner;
+
+      // EffectRunner must remain identical despite inline lambda guard update
+      expect(identical(runner1, runner2), isTrue,
+          reason: 'Inline lambda guard must not destroy EffectRunner');
+
+      // Mutation with 12 was > 5, but is NOT > 15 (must use latest captured threshold!)
+      target.data = 12;
+      await tester.pump();
+      expect(logs, equals([10]),
+          reason: 'Must evaluate updated guard from parent rebuild');
+
+      // Mutation with 20 meets new threshold (> 15)
+      target.data = 20;
+      await tester.pump();
+      expect(logs, equals([10, 20]),
+          reason: 'Must evaluate updated guard and allow execution');
+    });
+
+    testWidgets(
+        '9. Dynamically adding or changing guard preserves EffectRunner while applying new predicate',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(1);
+      final logs = <int>[];
+
+      Widget buildTree(bool hasGuard) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>(
+              target.what,
+              (context, val) => logs.add(val),
+              guard: hasGuard ? (val) => val > 5 : null,
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(false));
+      final element = tester.element(find.byType(WhatListener<int>));
+      final initialRunner = (element as dynamic).terminal as EffectRunner;
+
+      // Rebuild adding a guard — target is unchanged, so runner is preserved!
+      await tester.pumpWidget(buildTree(true));
+      final updatedRunner = (element as dynamic).terminal as EffectRunner;
+
+      expect(identical(initialRunner, updatedRunner), isTrue,
+          reason: 'EffectRunner should be preserved when target is unchanged');
+
+      // Value <= 5 should now be filtered by the newly attached guard
+      target.data = 3;
+      await tester.pump();
+      expect(logs, isEmpty);
+
+      // Value > 5 passes through the dynamic guard
+      target.data = 10;
+      await tester.pump();
+      expect(logs, equals([10]));
+    });
+
+    testWidgets(
+        '10. WhatListener.debounce dynamic duration update rebinds runner with new silence window',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(Duration duration) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>.debounce(
+              target.what,
+              (context, val) => logs.add(val),
+              duration: duration,
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 200)));
+
+      // Rebuild with shortened debounce duration (50ms)
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 50)));
+
+      target.data = 42;
+      // After 60ms: if old 200ms duration remained, logs would be empty.
+      // With rebound 50ms duration, it must have already fired!
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(logs, equals([42]),
+          reason:
+              'Debounce duration update must rebind runner and take effect');
+    });
+
+    testWidgets(
+        '11. WhatListener.throttle dynamic duration update rebinds runner with new window',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(Duration duration) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>.throttle(
+              target.what,
+              (context, val) => logs.add(val),
+              duration: duration,
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 300)));
+
+      // Rebuild with 50ms duration
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 50)));
+
+      // First mutation fires leading edge
+      target.data = 1;
+      await tester.pump();
+      expect(logs, equals([1]));
+
+      // Wait 60ms (past new 50ms window, but within old 300ms window)
+      await tester.pump(const Duration(milliseconds: 60));
+
+      // Second mutation should fire immediately as a new leading edge under 50ms window
+      target.data = 2;
+      await tester.pump();
+      expect(logs, equals([1, 2]),
+          reason: 'Throttle duration update must apply new window');
+    });
+
+    testWidgets(
+        '12. WhatListener.debounce dynamic leading/trailing edge update rebinds runner',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree({required bool leading, required bool trailing}) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>.debounce(
+              target.what,
+              (context, val) => logs.add(val),
+              duration: const Duration(milliseconds: 80),
+              leading: leading,
+              trailing: trailing,
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      // Start with trailing-only
+      await tester.pumpWidget(buildTree(leading: false, trailing: true));
+
+      // Rebuild with leading-only
+      await tester.pumpWidget(buildTree(leading: true, trailing: false));
+
+      // Mutation should now fire immediately on leading edge
+      target.data = 99;
+      await tester.pump();
+      expect(logs, equals([99]),
+          reason: 'Leading edge must fire immediately with updated setting');
+
+      // Further mutations within 80ms should not fire trailing edge because trailing is false
+      target.data = 100;
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(logs, equals([99]),
+          reason: 'Trailing edge must NOT fire when trailing=false');
+    });
+
+    testWidgets(
+        '13. Pending debounce timer survives across parent rebuilds with identical configuration',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(int parentVersion) {
+        return MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                Text('Version $parentVersion'),
+                WhatListener<int>.debounce(
+                  target.what,
+                  (context, val) => logs.add(val),
+                  duration: const Duration(milliseconds: 100),
+                  child: const Text('Child'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(1));
+
+      // 1. Mutate target: starts a 100ms debounce timer
+      target.data = 42;
+      // Advance by 40ms: timer is in-flight, callback has not fired yet
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(logs, isEmpty);
+
+      // 2. Parent rebuilds with Version 2 (configuration remains identical)
+      // In the original bug, update() would deactivate and kill the pending debounce timer!
+      await tester.pumpWidget(buildTree(2));
+
+      // 3. Advance remaining 70ms (total 110ms > 100ms duration)
+      await tester.pump(const Duration(milliseconds: 70));
+
+      // Debounce MUST survive parent rebuild and fire cleanly with the latest value
+      expect(logs, equals([42]),
+          reason:
+              'Pending debounce timer must survive parent rebuilds if configuration is identical');
+    });
+
+    testWidgets(
+        '14. Pending throttle trailing timer survives across parent rebuilds with identical configuration',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(int parentVersion) {
+        return MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                Text('Version $parentVersion'),
+                WhatListener<int>.throttle(
+                  target.what,
+                  (context, val) => logs.add(val),
+                  duration: const Duration(milliseconds: 100),
+                  child: const Text('Child'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(1));
+
+      // 1. Leading edge fires immediately
+      target.data = 1;
+      await tester.pump();
+      expect(logs, equals([1]));
+
+      // 2. Second mutation within 100ms window schedules a trailing edge
+      target.data = 2;
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(logs, equals([1]));
+
+      // 3. Parent rebuilds at 40ms with identical configuration
+      await tester.pumpWidget(buildTree(2));
+
+      // 4. Advance remaining 70ms (total 110ms > 100ms duration)
+      await tester.pump(const Duration(milliseconds: 70));
+
+      // Trailing edge MUST survive parent rebuild and fire
+      expect(logs, equals([1, 2]),
+          reason:
+              'Pending throttle trailing timer must survive parent rebuilds if configuration is identical');
+    });
+
+    testWidgets(
+        '15. take limits execution count and tears down early (auto deactivation)',
+        (WidgetTester tester) async {
+      final counter = WhatController<int>(0);
+      final recorded = <int>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>(
+              counter.what,
+              (context, state) => recorded.add(state),
+              take: 2,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      );
+
+      final element = tester.element(find.byType(WhatListener<int>));
+      final runner = (element as dynamic).terminal as EffectRunner;
+      expect(runner.isActive, isTrue);
+
+      counter.data = 1;
+      await tester.pump();
+      expect(recorded, equals([1]));
+      expect(runner.isActive, isTrue);
+
+      counter.data = 2;
+      await tester.pump();
+      expect(recorded, equals([1, 2]));
+      // After reaching take: 2 limit, runner must auto-deactivate
+      expect(runner.isActive, isFalse,
+          reason: 'Runner must self-deactivate when take quota is exhausted');
+
+      counter.data = 3;
+      await tester.pump();
+      counter.data = 4;
+      await tester.pump();
+
+      expect(recorded, equals([1, 2]),
+          reason: 'Must stop executing after exactly 2 runs');
+    });
+
+    testWidgets('16. take + guard preserves take tickets on false guard',
+        (WidgetTester tester) async {
+      final counter = WhatController<int>(0);
+      final recorded = <int>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>(
+              counter.what,
+              (context, state) => recorded.add(state),
+              guard: (state) => state.isEven,
+              take: 2,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      );
+
+      final element = tester.element(find.byType(WhatListener<int>));
+      final runner = (element as dynamic).terminal as EffectRunner;
+
+      // 1. Odd state: guard returns false -> ticket preserved
+      counter.data = 1;
+      await tester.pump();
+      expect(recorded, isEmpty);
+      expect(runner.isActive, isTrue);
+
+      // 2. Even state: guard returns true -> ticket 1 consumed
+      counter.data = 2;
+      await tester.pump();
+      expect(recorded, equals([2]));
+      expect(runner.isActive, isTrue);
+
+      // 3. Odd state: guard returns false -> ticket preserved
+      counter.data = 3;
+      await tester.pump();
+      expect(recorded, equals([2]));
+      expect(runner.isActive, isTrue);
+
+      // 4. Even state: guard returns true -> ticket 2 consumed (exhausted)
+      counter.data = 4;
+      await tester.pump();
+      expect(recorded, equals([2, 4]));
+      expect(runner.isActive, isFalse,
+          reason: 'Runner must deactivate after 2 passing executions');
+
+      // 5. Subsequent mutations never execute even if even
+      counter.data = 6;
+      await tester.pump();
+      expect(recorded, equals([2, 4]));
+    });
+
+    testWidgets(
+        '17. Parent rebuild with updated take rebinds EffectRunner, while identical take preserves runner',
+        (WidgetTester tester) async {
+      final counter = WhatController<int>(0);
+      final recorded = <int>[];
+
+      Widget buildTree(int? takeLimit) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>(
+              counter.what,
+              (context, state) => recorded.add(state),
+              take: takeLimit,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildTree(1));
+      final element = tester.element(find.byType(WhatListener<int>));
+      final runner1 = (element as dynamic).terminal as EffectRunner;
+
+      // Rebuild with identical take preserves runner
+      await tester.pumpWidget(buildTree(1));
+      final runner2 = (element as dynamic).terminal as EffectRunner;
+      expect(identical(runner1, runner2), isTrue);
+
+      // Rebuild with different take rebinds runner
+      await tester.pumpWidget(buildTree(2));
+      final runner3 = (element as dynamic).terminal as EffectRunner;
+      expect(identical(runner1, runner3), isFalse,
+          reason: 'Changing take must rebind runner');
+    });
+
+    testWidgets(
+        '18. WhatListener.debounce and WhatListener.throttle with take limit',
+        (WidgetTester tester) async {
+      final debTarget = WhatController<int>(0);
+      final thrTarget = WhatController<int>(0);
+      final debLogs = <int>[];
+      final thrLogs = <int>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                WhatListener<int>.debounce(
+                  debTarget.what,
+                  (context, val) => debLogs.add(val),
+                  duration: const Duration(milliseconds: 50),
+                  take: 1,
+                  child: const Text('Debounce Child'),
+                ),
+                WhatListener<int>.throttle(
+                  thrTarget.what,
+                  (context, val) => thrLogs.add(val),
+                  duration: const Duration(milliseconds: 50),
+                  take: 1,
+                  child: const Text('Throttle Child'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Throttle leading edge fires immediately with take: 1
+      thrTarget.data = 1;
+      await tester.pump();
+      expect(thrLogs, equals([1]));
+
+      // Further throttle mutations ignored because take is exhausted
+      await tester.pump(const Duration(milliseconds: 60));
+      thrTarget.data = 2;
+      await tester.pump();
+      expect(thrLogs, equals([1]),
+          reason: 'Throttle take: 1 must exhaust after 1 run');
+
+      // Debounce settles and fires once
+      debTarget.data = 10;
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(debLogs, equals([10]));
+
+      // Further debounce mutations ignored because take is exhausted
+      debTarget.data = 20;
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(debLogs, equals([10]),
+          reason: 'Debounce take: 1 must exhaust after 1 run');
+    });
+
+    testWidgets(
+        '19. Exhausted take listener does not resurrect upon duration update on parent rebuild',
+        (WidgetTester tester) async {
+      final target = WhatController<int>(0);
+      final logs = <int>[];
+
+      Widget buildTree(Duration duration) {
+        return MaterialApp(
+          home: Scaffold(
+            body: WhatListener<int>.debounce(
+              target.what,
+              (context, val) => logs.add(val),
+              duration: duration,
+              take: 1,
+              child: const Text('Child'),
+            ),
+          ),
+        );
+      }
+
+      // Mount with 50ms duration
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 50)));
+
+      // Trigger 1 execution (take: 1 exhausted -> deactivated)
+      target.data = 1;
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(logs, equals([1]));
+
+      final element = tester.element(find.bySubtype<WhatListener<int>>());
+      final runner = (element as dynamic).terminal as EffectRunner;
+      expect(runner.isActive, isFalse,
+          reason: 'Runner must be deactivated after take: 1');
+
+      // Parent rebuilds updating duration from 50ms to 200ms with identical take: 1
+      await tester.pumpWidget(buildTree(const Duration(milliseconds: 200)));
+
+      // New mutation must NOT resurrect the dead listener!
+      target.data = 2;
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(logs, equals([1]),
+          reason:
+              'Exhausted take listener must NOT resurrect upon duration change');
     });
   });
 }

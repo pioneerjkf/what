@@ -77,42 +77,65 @@ final class _StagedMotion {
     this.simulation,
     this.elapsedDuration,
   });
+  static const Object _motionSentinel = Object();
 
   _StagedMotion copyWith({
     _StagedMotionMode? mode,
-    double? targetFromValue,
-    double? targetValue,
-    Duration? targetDuration,
+    Object? targetFromValue = _motionSentinel,
+    Object? targetValue = _motionSentinel,
+    Object? targetDuration = _motionSentinel,
     Curve? targetCurve,
-    double? repeatMin,
-    double? repeatMax,
+    Object? repeatMin = _motionSentinel,
+    Object? repeatMax = _motionSentinel,
     bool? repeatReverse,
-    Duration? repeatPeriod,
-    int? repeatCount,
+    Object? repeatPeriod = _motionSentinel,
+    Object? repeatCount = _motionSentinel,
     bool? wasReversePhase,
     double? flingVelocity,
-    SpringDescription? springDescription,
-    AnimationBehavior? animationBehavior,
-    Simulation? simulation,
-    Duration? elapsedDuration,
+    Object? springDescription = _motionSentinel,
+    Object? animationBehavior = _motionSentinel,
+    Object? simulation = _motionSentinel,
+    Object? elapsedDuration = _motionSentinel,
   }) {
     return _StagedMotion(
       mode: mode ?? this.mode,
-      targetFromValue: targetFromValue ?? this.targetFromValue,
-      targetValue: targetValue ?? this.targetValue,
-      targetDuration: targetDuration ?? this.targetDuration,
+      targetFromValue: identical(targetFromValue, _motionSentinel)
+          ? this.targetFromValue
+          : targetFromValue as double?,
+      targetValue: identical(targetValue, _motionSentinel)
+          ? this.targetValue
+          : targetValue as double?,
+      targetDuration: identical(targetDuration, _motionSentinel)
+          ? this.targetDuration
+          : targetDuration as Duration?,
       targetCurve: targetCurve ?? this.targetCurve,
-      repeatMin: repeatMin ?? this.repeatMin,
-      repeatMax: repeatMax ?? this.repeatMax,
+      repeatMin: identical(repeatMin, _motionSentinel)
+          ? this.repeatMin
+          : repeatMin as double?,
+      repeatMax: identical(repeatMax, _motionSentinel)
+          ? this.repeatMax
+          : repeatMax as double?,
       repeatReverse: repeatReverse ?? this.repeatReverse,
-      repeatPeriod: repeatPeriod ?? this.repeatPeriod,
-      repeatCount: repeatCount ?? this.repeatCount,
+      repeatPeriod: identical(repeatPeriod, _motionSentinel)
+          ? this.repeatPeriod
+          : repeatPeriod as Duration?,
+      repeatCount: identical(repeatCount, _motionSentinel)
+          ? this.repeatCount
+          : repeatCount as int?,
       wasReversePhase: wasReversePhase ?? this.wasReversePhase,
       flingVelocity: flingVelocity ?? this.flingVelocity,
-      springDescription: springDescription ?? this.springDescription,
-      animationBehavior: animationBehavior ?? this.animationBehavior,
-      simulation: simulation ?? this.simulation,
-      elapsedDuration: elapsedDuration ?? this.elapsedDuration,
+      springDescription: identical(springDescription, _motionSentinel)
+          ? this.springDescription
+          : springDescription as SpringDescription?,
+      animationBehavior: identical(animationBehavior, _motionSentinel)
+          ? this.animationBehavior
+          : animationBehavior as AnimationBehavior?,
+      simulation: identical(simulation, _motionSentinel)
+          ? this.simulation
+          : simulation as Simulation?,
+      elapsedDuration: identical(elapsedDuration, _motionSentinel)
+          ? this.elapsedDuration
+          : elapsedDuration as Duration?,
     );
   }
 }

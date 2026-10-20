@@ -19,7 +19,7 @@ part of '../../../what_lints.dart';
 /// Widget build(BuildContext context) {
 ///   final counter = WhatController(0); // [Anti-Pattern] Recreated on every frame!
 ///   final doubled = computed((via) => via(counter.what) * 2); // [Anti-Pattern] Orphan pipeline node!
-///   return Text('${doubled.peek}');
+///   return Text('${untracked(doubled)}');
 /// }
 /// ```
 ///
@@ -73,8 +73,6 @@ class AvoidWhatCreationInBuild extends DartLintRule {
     'WhatCoupler',
     'WhatSignal',
     'WhatSignalController',
-    'WhatTextEditingController',
-    'BoundTextController',
     'Effect',
     'EffectRunner',
   };

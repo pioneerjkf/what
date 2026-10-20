@@ -17,7 +17,7 @@ part of '../../../what_lints.dart';
 /// ```dart
 /// Widget build(BuildContext context) {
 ///   final countWhat = valueNotifier.toWhat(); // [Anti-Pattern] New bridge allocation on every frame!
-///   return Text('${countWhat.peek}');
+///   return Text('${untracked(countWhat)}');
 /// }
 /// ```
 ///

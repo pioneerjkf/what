@@ -62,7 +62,7 @@
 /// // [Anti-Pattern] Uncontrolled state mutation inside side-effect creates reentrancy loop
 /// final counter = WhatController(0);
 /// final effect = counter.what.effect(() {
-///   counter.set(counter.what.peek + 1); // Mutates source node without guard!
+///   counter.set(untracked(counter.what) + 1); // Mutates source node without guard!
 /// });
 /// ```
 ///
@@ -71,7 +71,7 @@
 /// // [Recommended] One-way terminal sink for external interactions
 /// final counter = WhatController(0);
 /// final effect = counter.what.effect(() {
-///   analyticsService.logCount(counter.what.peek); // Pure side-effect sink
+///   analyticsService.logCount(untracked(counter.what)); // Pure side-effect sink
 /// });
 /// ```
 ///
@@ -85,7 +85,7 @@
 /// final searchRunner = searchQuery.what.effect
 ///     .debounce(
 ///       const Duration(milliseconds: 300),
-///       () => fetchSearchResults(searchQuery.what.peek),
+///       () => fetchSearchResults(untracked(searchQuery.what)),
 ///     )
 ///     .run();
 /// ```
@@ -99,7 +99,7 @@
 /// final term = RawViaTerminal(
 ///   (via) {
 ///     via.tether((user.what, settings.what).effect(() {
-///       analytics.track('User updated: ${user.what.peek.id}');
+///       analytics.track('User updated: ${untracked(user.what).id}');
 ///     }));
 ///   },
 ///   onInvalidated: () {},

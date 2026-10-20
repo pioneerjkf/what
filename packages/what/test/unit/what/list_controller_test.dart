@@ -16,7 +16,7 @@ void main() {
 
         expect(controller.hasData, isTrue);
         expect(controller.data, equals([1, 2, 3]));
-        expect(controller.what.peek, equals([1, 2, 3]));
+        expect(untracked(controller.what), equals([1, 2, 3]));
 
         // Immutability check: data must be unmodifiable
         expect(() => controller.data.add(4), throwsUnsupportedError);
@@ -265,20 +265,20 @@ void main() {
         terminalCount.activate();
         terminalJoined.activate();
 
-        expect(count.peek, equals(1));
-        expect(joined.peek, equals('task1'));
+        expect(untracked(count), equals(1));
+        expect(untracked(joined), equals('task1'));
 
         todos.edit((draft) {
           draft.add('task2');
           draft.add('task3');
         });
 
-        expect(count.peek, equals(3));
-        expect(joined.peek, equals('task1, task2, task3'));
+        expect(untracked(count), equals(3));
+        expect(untracked(joined), equals('task1, task2, task3'));
 
         todos.set(['only_one']);
-        expect(count.peek, equals(1));
-        expect(joined.peek, equals('only_one'));
+        expect(untracked(count), equals(1));
+        expect(untracked(joined), equals('only_one'));
 
         terminalCount.deactivate();
         terminalJoined.deactivate();

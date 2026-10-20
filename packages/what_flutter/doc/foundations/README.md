@@ -8,7 +8,7 @@ This directory provides the definitive engineering specifications for the juncti
 ## Foundations Whitepapers (01 ~ 15)
 
 01. [**2-Phase LPDAG Engine Integration & Surgical Micro-Rebuilds**](01_two_phase_lpdag_and_surgical_micro_rebuilds.md)
-    - Phase 1: Push-Dirty ($O(1)$ zero-computation invalidation) and isolated `markNeedsBuild()` dispatch.
+    - Phase 1: Push-Dirty (0-computation topological flag propagation) and isolated `markNeedsBuild()` dispatch.
     - Phase 2: Lazy-Pull (on-demand evaluation synchronized with Flutter's render pass).
     - 100% suppression of parent/sibling rebuilds and glitch-free UI rendering.
 
@@ -25,7 +25,7 @@ This directory provides the definitive engineering specifications for the juncti
 04. [**Declarative Side-Effect Isolation & Zero-Rebuild Terminals**](04_declarative_side_effects_and_zero_rebuild.md)
     - Rebuild Count: 0 invariant (firewalls widget element tree from side-effect invalidations).
     - Zero-Run on Mount invariant and microtask-deferred dispatch (`scheduleMicrotask`).
-    - Conditional filtering (`guard`) and early teardown tickets (`take: 1`).
+    - Conditional filtering (`guard`) and time-domain rate limiting (`debounce`, `throttle`).
 
 05. [**Scoped State Provision & Rebuild Suppression**](05_scoped_state_and_rebuild_suppression.md)
     - Scoped dependency injection container: `WhatProvider`.
@@ -68,7 +68,7 @@ This directory provides the definitive engineering specifications for the juncti
 
 13. [**Declarative Routing & Navigation Sync**](13_declarative_routing_and_navigation_sync.md)
     - Synchronizing reactive graph state with declarative routers (`GoRouter`, Navigator 2.0) via `.toListenable()`.
-    - Clean lifecycle binding without memory leaks, distinct filtering preventing route rebuild thrashing, and transient route triggers via `WhatSignal`.
+    - Clean lifecycle binding without memory leaks, distinct filtering preventing route rebuild thrashing, and transient route triggers via [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) (from `package:what`).
 
 14. [**Scroll Kinematics & Reactive Pagination**](14_scroll_kinematics_and_pagination.md)
     - Zero-allocation bridging of high-frequency 60/120fps `ScrollController` offsets via `.observe()`.
@@ -84,7 +84,7 @@ This directory provides the definitive engineering specifications for the juncti
 
 | Pillar | Core Engineering Value | Implementation Mechanism | Related Whitepaper |
 | :--- | :--- | :--- | :--- |
-| **Surgical Render** | Rebuild scope $O(N) \to O(1)$ | 2-Phase LPDAG + Leaf Element direct wiring + 1-Pass Epoch Sweeping | 01, 02 |
+| **Surgical Render** | Rebuild scope: whole subtree $\to$ one leaf element | 2-Phase LPDAG + Leaf Element direct wiring + 1-Pass Epoch Sweeping | 01, 02 |
 | **Zero-Alloc Functor** | Syntactic elegance & execution speed | `composed` Functors + `what.build` `extension type const` | 03 |
 | **Zero-Rebuild Effect** | Clean separation of render & effects | `WhatListener` + EffectRunner + `scheduleMicrotask` | 04 |
 | **Suppressed Scope** | Blocks indiscriminate global rebuilds | `WhatProvider` + `!identical` identity suppression + `switched` | 05 |
@@ -94,6 +94,6 @@ This directory provides the definitive engineering specifications for the juncti
 | **Context Virtualization** | Granular environment token projection | `WhatViaContextExtension` (`via.of<T>(context)`) | 10 |
 | **Demand-Driven Bridge**| Full Flutter ecosystem interop | `toWhat` / `toWhatBy` + Demand-driven listener lifecycle management | 11 |
 | **Native Diagnostics** | Transparent live debugging | `debugFillProperties` + DevTools Inspector + Hot reload resilience | 12 |
-| **Declarative Router** | 100% route-state synchronization | `.toListenable()` + `WhatSignal` + distinct filter | 13 |
+| **Declarative Router** | 100% route-state synchronization | `.toListenable()` + [`WhatSignal`](https://github.com/pioneerjkf/what/blob/main/packages/what/doc/foundations/17_imperative_signals_and_transient_events.md) (`what`) + distinct filter | 13 |
 | **Kinematic Scroll** | 120fps jank-free scroll binding | `.observe()` + `composed.child` isolation | 14 |
 | **Deterministic Test** | Zero-flakiness reactive testing | Frame pump control + `WhatAsyncBuilder` pump mechanics | 15 |

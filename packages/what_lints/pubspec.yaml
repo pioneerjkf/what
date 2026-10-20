@@ -1,6 +1,6 @@
 name: what_lints
 description: "High-performance static analysis and self-healing lint rules for What and What Flutter."
-version: 0.1.0
+version: 0.2.0
 homepage: https://pioneerjkf.dev
 repository: https://github.com/pioneerjkf/what
 issue_tracker: https://github.com/pioneerjkf/what/issues

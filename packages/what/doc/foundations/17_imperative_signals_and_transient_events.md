@@ -80,7 +80,7 @@ This design achieves three fundamental guarantees:
 2. **Producer-Consumer Decoupling Invariant**:
    Emitters hold `WhatSignalController` which exposes `void emit()`. Consumers receive only the read-only `WhatSignal` (`signal.what`) which implements `What<int>`, preventing consumers from imperatively firing events.
 3. **Zero-Run on Mount Invariant for Manifest Listeners**:
-   When observing via manifest `Effect([signal.what], action)` or Flutter's `WhatListener([signal.what], action)`, initial subscription establishes topological dependency edges with exactly 0 callback executions; `action` executes strictly upon subsequent `signal.emit()` pulses.
+   When observing via manifest `Effect([signal.what], action)` or Flutter's `WhatListener(signal.what, action)`, initial subscription establishes topological dependency edges with exactly 0 callback executions; `action` executes strictly upon subsequent `signal.emit()` pulses.
 4. **Late-Bound Ignorance (Dormancy Safe Invariant)**:
    When `signal.emit()` is invoked while `signal.isActive == false` (no active downstream terminals or listeners attached), the pulse increments the internal sequence and is safely discarded without queuing or accumulating unhandled event backlogs in memory.
 5. **Dynamic Epoch Diffing & Branch Rewiring Invariant**:
@@ -114,7 +114,7 @@ class AuthStore {
 void setupAnalytics(AuthStore authStore) {
   // Manifest Effect skips initial execution (0 runs on mount)
   Effect([authStore.loginSuccessSignal], () {
-    final user = authStore.userProfile.what.peek;
+    final user = untracked(authStore.userProfile.what);
     analytics.logEvent('user_logged_in', {'userId': user?.id});
   });
 }
@@ -132,8 +132,8 @@ class CheckoutView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WhatListener(
-      [store.paymentFailureSignal.what],
-      (context) {
+      store.paymentFailureSignal.what,
+      (context, _) {
         // Runs STRICTLY when paymentFailureSignal.emit() is called.
         // Remounting this view or popping back to this screen NEVER re-triggers the dialog!
         showDialog(

@@ -101,7 +101,7 @@ final class WhatAsyncBuilder<T> extends WhatWidget {
   ///
   /// **Ensures:**
   /// * Returns a reactive [WhatWidget] handling all 4 asynchronous states cleanly with optional SWR retention.
-  WhatAsyncBuilder({
+  const WhatAsyncBuilder({
     super.key,
     required this.what,
     required this.data,
@@ -255,7 +255,7 @@ final class WhatPendingIndicator extends WhatWidget
   ///
   /// **Ensures:**
   /// * Returns a [PreferredSizeWidget] rendering an animated progress bar when [target] is `true`.
-  WhatPendingIndicator({
+  const WhatPendingIndicator({
     super.key,
     required this.target,
     this.height = 2.0,

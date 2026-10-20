@@ -19,7 +19,7 @@ part of '../../../what_lints.dart';
 ///   @override
 ///   void initState() {
 ///     super.initState();
-///     _runner = counterWhat.effect(() => print(counterWhat.peek)).run();
+///     _runner = counterWhat.effect(() => print(untracked(counterWhat))).run();
 ///   }
 /// }
 /// ```
@@ -32,7 +32,7 @@ part of '../../../what_lints.dart';
 ///   @override
 ///   void initState() {
 ///     super.initState();
-///     _runner = counterWhat.effect(() => print(counterWhat.peek)).run();
+///     _runner = counterWhat.effect(() => print(untracked(counterWhat))).run();
 ///   }
 ///
 ///   @override

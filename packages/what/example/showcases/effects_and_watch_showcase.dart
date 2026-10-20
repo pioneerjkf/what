@@ -23,7 +23,7 @@ void main() async {
   final score = WhatController<int>(0);
 
   final scoreRunner = score.what.effect(() {
-    print('  [Runner] Score updated to: ${score.what.peek}');
+    print('  [Runner] Score updated to: ${untracked(score.what)}');
   }).run();
 
   score.data = 10;

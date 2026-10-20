@@ -8,7 +8,7 @@ import 'package:what_flutter/framework.dart';
 
 // 1. Basic Multi-source WhatWidget
 base class UserProfileWhatWidget extends WhatWidget {
-  UserProfileWhatWidget({
+  const UserProfileWhatWidget({
     super.key,
     required this.nameWhat,
     required this.ageWhat,
@@ -30,7 +30,7 @@ base class UserProfileWhatWidget extends WhatWidget {
 
 // 2. Dynamic Branch Switching WhatWidget
 base class DynamicBranchWhatWidget extends WhatWidget {
-  DynamicBranchWhatWidget({
+  const DynamicBranchWhatWidget({
     super.key,
     required this.usePrimaryWhat,
     required this.primaryWhat,

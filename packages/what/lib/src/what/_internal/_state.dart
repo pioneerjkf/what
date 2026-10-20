@@ -16,7 +16,7 @@ part of '../../framework.dart';
 ///      `_ConstantWhat`, `_ComputedWhatBase`, `_DeltaWhat`, `_CoupledWhat`, `_ManagedWhat`,
 ///      `_ElementsWhat`, plus `WhatController`, `RawWhatTerminal`, `WhatCoupler`, etc.).
 ///    * Note: [What] itself does NOT mix in `_WhatStateMixin` on its static public surface,
-///      keeping the untracked raw read surface strictly confined to `.peek` and `.peekState`.
+///      keeping [What] instances opaque and forcing untracked reads through [untracked].
 ///    * It requires direct access to the private sealed container [_WhatState<T>]. Exposing
 ///      this mixin publicly would leak engine memory layout details across the library boundary.
 ///
@@ -28,9 +28,9 @@ part of '../../framework.dart';
 ///      Keeping `_read()` returning the closed sealed hierarchy allows Dart AOT Type Flow Analysis (TFA)
 ///      to specialize inspection paths with minimal class-ID checks and inline getters.
 ///    * **Scope of Application**: `_read()` and the `via(x)` hot path require zero extra indirection.
-///      On the other hand, `via.state(x)` and `x.peekState` return the live node itself (`WhatState<T>`),
+///      On the other hand, `via.state(x)` and `untracked.state(x)` return the live node itself (`WhatState<T>`),
 ///      incurring a single node-level interface dispatch (+~0.8 ns) which eliminates aliasing inconsistency
-///      while maintaining 0 heap allocations (see roadmap/ai_readiness/A5_peek_raw_read_rename.md §2.4).
+///      while maintaining 0 heap allocations.
 base mixin _WhatStateMixin<T> implements WhatState<T> {
   _WhatState<T> _read();
 
@@ -79,21 +79,6 @@ base mixin _WhatStateMixin<T> implements WhatState<T> {
   @pragma('vm:prefer-inline')
   bool equals(covariant WhatState<T> other, [bool Function(T previous, T next)? equals]) =>
       _read().equals(other, equals);
-}
-
-/// Internal plumbing mixin that implements untracked raw read members ([peek], [peekState])
-/// on [What] nodes without exposing them on [WhatController], [RawWhatTerminal], etc.
-base mixin _WhatPeekMixin<T> on _Node, WhatState<T> implements What<T> {
-  @override
-  _WhatState<T> _read();
-
-  @override
-  @pragma('vm:prefer-inline')
-  T get peek => _read().data;
-
-  @override
-  @pragma('vm:prefer-inline')
-  WhatState<T> get peekState => this;
 }
 
 // =============================================================================

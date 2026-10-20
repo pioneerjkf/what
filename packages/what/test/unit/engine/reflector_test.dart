@@ -28,7 +28,7 @@ void main() {
       final sum = computed((via) => via(a.what) + via(b.what))..withDebugLabel('Sum');
       final terminal = RawWhatTerminal(sum, onInvalidated: () {})..activate();
 
-      expect(sum.peek, 30);
+      expect(untracked(sum), 30);
 
       final sumReflector = sum.debugReflector;
       expect(sumReflector, isNotNull);
@@ -57,7 +57,7 @@ void main() {
       )..withDebugLabel('BranchSwitch');
 
       final terminal = RawWhatTerminal(current, onInvalidated: () {})..activate();
-      expect(current.peek, 'Hello');
+      expect(untracked(current), 'Hello');
 
       final switchReflector = current.debugReflector!;
       expect(switchReflector.sources.map((s) => s.debugLabel), contains('BranchA'));
@@ -65,7 +65,7 @@ void main() {
 
       // Transition branch
       toggle.data = false;
-      expect(current.peek, 'World');
+      expect(untracked(current), 'World');
 
       expect(switchReflector.sources.map((s) => s.debugLabel), contains('BranchB'));
       expect(switchReflector.sources.map((s) => s.debugLabel), isNot(contains('BranchA')));
@@ -96,12 +96,12 @@ void main() {
 
       final reflector = counter.what.debugReflector as WhatReflector;
       expect(reflector.data, 1);
-      expect(doubled.peek, 2);
+      expect(untracked(doubled), 2);
 
       counter.data = 50;
 
       expect(reflector.data, 50);
-      expect(doubled.peek, 100);
+      expect(untracked(doubled), 100);
 
       terminal.deactivate();
     });

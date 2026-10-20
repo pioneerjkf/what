@@ -93,7 +93,7 @@ The lifecycle management engine is implemented in [`_ManagedWhat<T>`](../../lib/
 ```dart
 // packages/what/lib/src/what/_internal/_managed.dart
 abstract base class _ManagedWhat<T> extends _NaryRelay<_Node>
-    with _WhatViaEpochMixin, _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>
+    with _WhatViaEpochMixin, _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>
     implements What<T> { ... }
 ```
 
@@ -118,7 +118,7 @@ void _resolve() {
 }
 ```
 
-* Reading `.peek` or `_read()` on an inactive `managed` node returns `_EmptyWhatState<T>()`.
+* Reading `untracked(node)` or `_read()` on an inactive `managed` node returns `_EmptyWhatState<T>()`.
 * **The `create` callback is never invoked while dormant**, guaranteeing 0 CPU, 0 allocations, and 0 open handles until an active downstream consumer mounts.
 
 ---
@@ -276,7 +276,7 @@ What<T> call<T>({
 
 ### 7.3 Graceful Mooring (`graceful: Graceful`)
 * Backed by [`_GracefulNodeMixin`](../../lib/src/engine/_internal/_graceful.dart).
-* When downstream subscribers drop to zero (e.g., during screen pop/push transitions or page swiping), deallocation is buffered for a microtask or a duration (`graceful.period(Duration(milliseconds: 300))`).
+* When downstream subscribers drop to zero (e.g., during screen pop/push transitions or page swiping), deallocation is buffered for a microtask or a duration (`Graceful.period(Duration(milliseconds: 300))`).
 * **0ms Instant Reuse**: If a subscriber reconnects within the mooring window, the existing instance is reused immediately with zero teardown and zero re-allocation.
 
 ---

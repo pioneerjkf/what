@@ -32,8 +32,8 @@ Add `what` and `what_extensions` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  what: ^0.1.0
-  what_extensions: ^0.1.0
+  what: ^0.2.0
+  what_extensions: ^0.2.0
 ```
 
 ### Example Usage
@@ -52,7 +52,7 @@ void main() async {
 
   // Reactively observe aggregations
   final runner = sumWhat.effect(() {
-    print('Sum updated: ${sumWhat.peek}');
+    print('Sum updated: ${untracked(sumWhat)}');
   }).run();
 
   // Mutating the upstream collection triggers lightweight on-demand evaluation

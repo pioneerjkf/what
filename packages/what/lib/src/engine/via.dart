@@ -35,7 +35,7 @@ part of '../framework.dart';
 ///    from missing reactive edges or generating rogue, untracked property reads.
 ///
 /// **Warning (Anti-Pattern Prevention):**
-/// - Do NOT access `.peek` or `.peekState` on reactive nodes inside a derivation closure without
+/// - Do NOT read reactive nodes untracked inside a derivation closure without
 ///   wrapping them in `via(...)`.
 /// - Do NOT store or reuse the [WhatVia] instance outside the synchronous evaluation closure.
 ///
@@ -44,9 +44,9 @@ part of '../framework.dart';
 /// final price = WhatController(100);
 /// final quantity = WhatController(2);
 ///
-/// // [Anti-Pattern] Reading .peek directly without via() leaves node untracked
+/// // [Anti-Pattern] Reading untracked directly without via() leaves node untracked
 /// final badTotal = computed((via) {
-///   return price.what.peek * quantity.what.peek; // Untracked! Misses graph invalidations!
+///   return untracked(price.what) * untracked(quantity.what); // Untracked! Misses graph invalidations!
 /// });
 /// ```
 ///
@@ -150,7 +150,7 @@ abstract interface class WhatVia {
   /// final eventCount = WhatController(0);
   ///
   /// final analyticsLoggerEffect = Effect([eventCount.what], () {
-  ///   print('Logged event: ${eventCount.what.peek}');
+  ///   print('Logged event: ${untracked(eventCount.what)}');
   /// });
   ///
   /// final state = computed((via) {

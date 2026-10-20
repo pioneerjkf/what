@@ -31,7 +31,7 @@ The integration between What and Flutter's render pipeline separates into **Phas
 │             2-Phase LPDAG Flutter Pipeline Synchronization             │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│   [ Phase 1: Push-Dirty Invalidation ($O(1)$) ]                        │
+│   [ Phase 1: Push-Dirty Invalidation (0-Compute) ]                     │
 │   WhatController.set() / .mutate()                                     │
 │          │                                                             │
 │          ▼                                                             │
@@ -71,7 +71,7 @@ The integration between What and Flutter's render pipeline separates into **Phas
 ### Invariant 1: Pure Dirty Invalidation in Phase 1
 - When an upstream `What<T>` mutates, a dirty pulse propagates downstream to the leaf element's `_ReactiveTerminalElementMixin`.
 - The sole operation executed is **`Element.markNeedsBuild()`**.
-- **Invariant**: *Phase 1 never instantiates widgets, never evaluates derived state, and never invokes computation closures.* Operational cost is strictly an $O(1)$ topological flag propagation.
+- **Invariant**: *Phase 1 never instantiates widgets, never evaluates derived state, and never invokes computation closures.* Operational cost is strictly $O(E_{\text{subgraph}})$ topological flag propagation without evaluating node values.
 
 ### Invariant 2: On-Demand Lazy-Pull Evaluation in Phase 2
 - When Flutter's `BuildOwner` flushes dirty elements during the frame pipeline, `performRebuild()` executes.
@@ -187,6 +187,6 @@ class CounterPage extends StatelessWidget {
 
 ## 6. Architectural Conclusions
 
-1. **Rebuild Scope Reduction ($O(N) \to O(1)$)**: Replaces coarse subtree updates with leaf-level micro-rebuilds.
+1. **Rebuild Scope Reduction (Whole Subtree $\to$ One Leaf Element)**: Replaces coarse subtree updates with leaf-level micro-rebuilds.
 2. **Glitch-Free UI Rendering**: Phase 1 topological ordering and Phase 2 single-pass evaluation eliminate intermediate inconsistent frames.
 3. **120 FPS Fidelity**: High-frequency updates (gestures, scroll offsets, sensors) incur zero redundant layout passes and zero GC pauses.

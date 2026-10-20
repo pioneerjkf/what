@@ -15,12 +15,12 @@ part of '../framework.dart';
 ///
 /// ## System Architectural Flow
 /// ```text
-/// [Upstream What States] ──(Mutates)──> [Push-Dirty Notification (O(1))]
+/// [Upstream What States] ──(Mutates)──> [Push-Dirty Notification (Single-Pass)]
 ///                                                    │
 ///                                                    ▼ (Marks Stale)
 ///                                               [computed]
 ///                                                    │
-///                                                    ▼ (Lazy Pull-Data on .peek read)
+///                                                    ▼ (Lazy Pull-Data on untracked / via read)
 ///                           [1-Pass Epoch Diffing & O(S) Direct Source Scanning]
 /// ```
 ///
@@ -80,13 +80,13 @@ final class ComputedFunctor {
   /// * Dynamically registers and prunes dependency graph edges on every execution.
   ///
   /// **Warning (Anti-Pattern Prevention):**
-  /// - Do NOT read `.peek` directly without wrapping in `via(...)`, as reading `.peek` directly bypasses dependency tracking.
+  /// - Do NOT read untracked values directly without wrapping in `via(...)`, as calling `untracked(...)` directly bypasses dependency tracking.
   /// - Do NOT perform asynchronous operations (`async`/`await`) or mutations inside [compute]. For async operations, use [ComputedFunctor.future] or [ComputedFunctor.stream].
   ///
   /// **BAD:**
   /// ```dart
-  /// // [Anti-Pattern] Reading .peek without via() misses dependency registration
-  /// final badComputed = computed((via) => count.what.peek * 2);
+  /// // [Anti-Pattern] Reading untracked without via() misses dependency registration
+  /// final badComputed = computed((via) => untracked(count.what) * 2);
   /// ```
   ///
   /// **GOOD:**
@@ -144,7 +144,7 @@ final class ComputedFunctor {
   /// Functor for Stream-based continuous asynchronous computations (`computed.stream`).
   ///
   /// Supports `async*` generator synthesis, auto-switching on parameter change,
-  /// route transition protection (`graceful.period`), and distinct equality filtering.
+  /// route transition protection ([Graceful.period]), and distinct equality filtering.
   ///
   /// See [ComputedStreamFunctor.call] for comprehensive real-world patterns.
   ComputedStreamFunctor get stream => const ComputedStreamFunctor._();
@@ -202,9 +202,9 @@ final class ComputedFutureFunctor {
   /// final accountDetails = computed.future(
   ///   (via) => accountApi.fetchAccountDetails(via(accountId.what)),
   ///   // Provides instant cached data while the asynchronous network call is pending
-  ///   initialFactory: () => localDb.peekAccount(accountId.what.peek) ?? AccountDetails.empty,
+  ///   initialFactory: () => localDb.getAccount(untracked(accountId.what)) ?? AccountDetails.empty,
   ///   // Gracefully recovers from network errors by returning cached or offline data
-  ///   onError: (error, st) => localDb.peekAccount(accountId.what.peek) ?? AccountDetails.empty,
+  ///   onError: (error, st) => localDb.getAccount(untracked(accountId.what)) ?? AccountDetails.empty,
   /// );
   /// ```
   ///
@@ -315,11 +315,11 @@ final class ComputedStreamFunctor {
   ///   guard: (via) => (via(selectedSymbol.what).isNotEmpty && via(isNetworkOnline.what))
   ///       .guarded('AwaitingNetworkOrValidSymbol'),
   ///   // Retains stream subscription for 30s across route pop/push to prevent socket tear-down
-  ///   graceful: graceful.period(const Duration(seconds: 30)),
+  ///   graceful: const Graceful.period(Duration(seconds: 30)),
   ///   // Keep listening through transient socket disconnects/reconnects
   ///   cancelOnError: false,
   ///   // Gracefully recover from transient network errors with cached fallback
-  ///   onError: (error, st) => stockCache.getLastKnownPrice(selectedSymbol.what.peek),
+  ///   onError: (error, st) => stockCache.getLastKnownPrice(untracked(selectedSymbol.what)),
   ///   distinct: true,
   ///   // Filters out heartbeat/timestamp-only updates to eliminate redundant downstream rebuilds
   ///   equals: (prev, next) => prev.price == next.price && prev.volume == next.volume,

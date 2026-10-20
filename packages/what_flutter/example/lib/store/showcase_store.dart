@@ -58,7 +58,7 @@ class ShowcaseStore {
     ThemeMode initialThemeMode = ThemeMode.system,
     bool initialSidebarOpen = true,
     DateTime Function()? clock,
-    Graceful? textEditingGraceful = const Graceful.period(Duration(minutes: 5)),
+    Graceful? textEditingGraceful = Graceful.microtask,
   })  : _activeIndex = WhatController<int>(initialIndex),
         _themeMode = WhatController<ThemeMode>(initialThemeMode),
         _isSidebarOpen = WhatController<bool>(initialSidebarOpen),
@@ -137,7 +137,7 @@ class ShowcaseStore {
 class SectionsStore {
   SectionsStore({
     DateTime Function()? clock,
-    Graceful? textEditingGraceful = const Graceful.period(Duration(minutes: 5)),
+    Graceful? textEditingGraceful = Graceful.microtask,
   })  : whatWidget = WhatWidgetStore(),
         composedFunctors = ComposedFunctorsStore(),
         whatBuildTuple = WhatBuildTupleStore(),
@@ -157,7 +157,7 @@ class SectionsStore {
         temporalOrchestration = TemporalOrchestrationStore(),
         asyncSwrBuilder = AsyncSwrBuilderStore(),
         textEditingController =
-            TextEditingControllerStore(gracefulPolicy: textEditingGraceful),
+            TextEditingControllerStore(graceful: textEditingGraceful),
         imperativeSignals = ImperativeSignalsStore(),
         scrollKinematics = ScrollKinematicsStore();
 

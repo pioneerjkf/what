@@ -13,19 +13,19 @@ topics:
 
 resolution: workspace
 
-version: 0.1.0
+version: 0.2.0
 
 environment:
   sdk: ^3.6.0
-  flutter: ">=3.10.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  what: ^0.1.0
+  what: ^0.2.0
 
-  what_extensions: ^0.1.0
+  what_extensions: ^0.2.0
   
   meta: ^1.18.0
 
@@ -36,7 +36,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   benchmark_harness: ^2.2.0
   test: ^1.25.0
-  what_test: ^0.1.0
+  what_test: ^0.2.0
 
 screenshots:
   - description: "The What Flutter reactive UI engine logo."

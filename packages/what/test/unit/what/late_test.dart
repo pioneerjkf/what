@@ -87,13 +87,13 @@ void main() {
       final lateSignal = WhatController<int>.late();
       final multiplied = computed((via) => (via.state(lateSignal.what).dataOrNull ?? 0) * 10);
 
-      expect(multiplied.peek, 0);
+      expect(untracked(multiplied), 0);
 
       lateSignal.data = 5;
-      expect(multiplied.peek, 50);
+      expect(untracked(multiplied), 50);
 
       lateSignal.data = 8;
-      expect(multiplied.peek, 80);
+      expect(untracked(multiplied), 80);
     });
   });
 }

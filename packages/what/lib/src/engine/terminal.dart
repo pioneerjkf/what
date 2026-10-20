@@ -268,7 +268,7 @@ base class RawComputedTerminal<T> extends _RawTerminal
 /// ```dart
 /// // [Anti-Pattern] Performing synchronous payload processing inside onInvalidated
 /// final term = RawWhatTerminal(counter.what, onInvalidated: () {
-///   final data = counter.what.peek; // Forces premature pull during push-dirty wave!
+///   final data = untracked(counter.what); // Forces premature pull during push-dirty wave!
 ///   heavyRender(data);
 /// });
 /// ```

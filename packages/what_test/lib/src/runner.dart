@@ -70,20 +70,38 @@ void whatTest<T>(
           try {
             if (target != null) {
               final node = target(instance);
-              snapshots.add(node.peekState.snapshot);
+              snapshots.add(untracked.state(node).snapshot);
               terminal = RawWhatTerminal(
                 node,
                 onInvalidated: () {
-                  snapshots.add(node.peekState.snapshot);
+                  snapshots.add(untracked.state(node).snapshot);
                 },
               );
               terminal.activate();
             }
 
+            Object? asyncActError;
+            StackTrace? asyncActStackTrace;
             try {
-              act?.call(instance);
+              final actResult = act?.call(instance);
+              if (actResult is Future) {
+                actResult.catchError((Object error, StackTrace stackTrace) {
+                  asyncActError = error;
+                  asyncActStackTrace = stackTrace;
+                });
+              }
               async.elapse(wait);
               async.flushMicrotasks();
+
+              if (asyncActError != null) {
+                if (errors == null) {
+                  Error.throwWithStackTrace(
+                    asyncActError!,
+                    asyncActStackTrace ?? StackTrace.current,
+                  );
+                }
+                caughtErrors.add(asyncActError!);
+              }
             } catch (error) {
               if (errors == null) rethrow;
               caughtErrors.add(error);
@@ -113,11 +131,11 @@ void whatTest<T>(
         try {
           if (target != null) {
             final node = target(instance);
-            snapshots.add(node.peekState.snapshot);
+            snapshots.add(untracked.state(node).snapshot);
             terminal = RawWhatTerminal(
               node,
               onInvalidated: () {
-                snapshots.add(node.peekState.snapshot);
+                snapshots.add(untracked.state(node).snapshot);
               },
             );
             terminal.activate();

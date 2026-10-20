@@ -29,11 +29,20 @@ class DualEngineBattleStore {
           duration: const Duration(seconds: 6),
           clock: clock ?? DateTime.now,
         ),
+        repeatCatchUpCtrl = DurableAnimationController(
+          policy: DurabilityPolicy.catchUp,
+          duration: const Duration(seconds: 2),
+          clock: clock ?? DateTime.now,
+        ),
         _isMounted = WhatController<bool>(true),
         _isSleeping = WhatController<bool>(false),
         _isPingPong = WhatController<bool>(false),
         _isUnboundedMode = WhatController<bool>(false),
-        _unboundedTarget = WhatController<double>(0.0) {
+        _unboundedTarget = WhatController<double>(0.0),
+        _isRepeatMounted = WhatController<bool>(true),
+        _repeatPhase = WhatController<String>('Idle'),
+        _repeatCount = WhatController<int>(4),
+        _isAutoScenarioRunning = WhatController<bool>(false) {
     frozenCtrl.repeat();
     catchUpCtrl.repeat();
   }
@@ -42,18 +51,34 @@ class DualEngineBattleStore {
   final DurableAnimationController catchUpCtrl;
   final DurableAnimationController unboundedFrozenCtrl;
   final DurableAnimationController unboundedCatchUpCtrl;
+  final DurableAnimationController repeatCatchUpCtrl;
 
   final WhatController<bool> _isMounted;
   final WhatController<bool> _isSleeping;
   final WhatController<bool> _isPingPong;
   final WhatController<bool> _isUnboundedMode;
   final WhatController<double> _unboundedTarget;
+  final WhatController<bool> _isRepeatMounted;
+  final WhatController<String> _repeatPhase;
+  final WhatController<int> _repeatCount;
+  final WhatController<bool> _isAutoScenarioRunning;
 
   What<bool> get isMounted => _isMounted.what;
   What<bool> get isSleeping => _isSleeping.what;
   What<bool> get isPingPong => _isPingPong.what;
   What<bool> get isUnboundedMode => _isUnboundedMode.what;
   What<double> get unboundedTarget => _unboundedTarget.what;
+  What<bool> get isRepeatMounted => _isRepeatMounted.what;
+  What<String> get repeatPhase => _repeatPhase.what;
+  What<int> get repeatCount => _repeatCount.what;
+  What<bool> get isAutoScenarioRunning => _isAutoScenarioRunning.what;
+
+  void setRepeatCount(int value) {
+    if (_repeatCount.data != value) {
+      _repeatCount.set(value);
+      resetRepeat();
+    }
+  }
 
   /// Cached reactive bridge nodes observing controller progress (zero allocation in build).
   late final What<double> frozenProgress = frozenCtrl.observe();
@@ -115,6 +140,119 @@ class DualEngineBattleStore {
 
   void cancelSleep() {
     _isSleeping.set(false); // Automatically remounts via sleepMountSyncEffect
+  }
+
+  void startRepeat({int? count, bool reverse = true}) {
+    final effectiveCount = count ?? _repeatCount.data;
+    _isAutoScenarioRunning.set(false);
+    _isRepeatMounted.set(true);
+    final totalSec = effectiveCount * 2.0;
+    final rounds = effectiveCount / 2;
+    final roundStr = rounds % 1 == 0 ? '${rounds.toInt()}' : '$rounds';
+    _repeatPhase.set(
+      'Active: $effectiveCount legs ($roundStr round trips / ${totalSec.toStringAsFixed(1)}s budget)',
+    );
+    repeatCatchUpCtrl.reset();
+    repeatCatchUpCtrl
+        .repeat(
+          count: effectiveCount,
+          reverse: reverse,
+          period: const Duration(seconds: 2),
+        )
+        .orCancel
+        .then((_) {
+      if (!_isAutoScenarioRunning.data) {
+        _repeatPhase.set(
+          'Completed: $effectiveCount legs ($roundStr round trips) terminated on schedule',
+        );
+      }
+    }).catchError((_) {});
+  }
+
+  void hibernateRepeat() {
+    if (!_isRepeatMounted.data) return;
+    _isRepeatMounted.set(false);
+    _repeatPhase.set(
+        'Dormant: Unmounted (Compensating wall-clock time in background...)');
+  }
+
+  void wakeRepeat() {
+    if (_isRepeatMounted.data) return;
+    _isRepeatMounted.set(true);
+    _repeatPhase
+        .set('Awakened: Remounted (Executing remaining deducted budget live)');
+  }
+
+  void resetRepeat() {
+    _isAutoScenarioRunning.set(false);
+    repeatCatchUpCtrl.reset();
+    _isRepeatMounted.set(true);
+    _repeatPhase.set('Idle');
+  }
+
+  Future<void> runAutoScenario() async {
+    if (_isAutoScenarioRunning.data) return;
+    _isAutoScenarioRunning.set(true);
+    final count = _repeatCount.data;
+    try {
+      startRepeat(count: count, reverse: true);
+
+      if (count == 2) {
+        // Count 2: 1 round trip (4.0s budget)
+        // 1. Run for 1.0s active (0.5 legs forward, value reaches ~0.5)
+        _repeatPhase.set(
+            'Step 1 (0-1s): Active run for 1.0s (Leg 1 forward 50% consumed)');
+        await Future<void>.delayed(const Duration(milliseconds: 1000));
+        if (!_isAutoScenarioRunning.data) return;
+
+        // 2. Unmount into dormancy for 1.0s (+0.5 legs in dormancy, finishes leg 1 at 1.0)
+        hibernateRepeat();
+        _repeatPhase.set(
+            'Step 2 (1-2s): Dormant for 1.0s -> Background finishes Leg 1 (forward)!');
+        await Future<void>.delayed(const Duration(milliseconds: 1000));
+        if (!_isAutoScenarioRunning.data) return;
+
+        // 3. Remount & Wake to resume remaining budget (leg 2: 1.0 -> 0.0 in reverse, 2.0s duration)
+        wakeRepeat();
+        _repeatPhase.set(
+            'Step 3 (2-4s): Awakened -> Remaining Leg 2 (reverse) runs live to 4.0s cleanly!');
+
+        // 4. Wait for completion at 4.0s total lifecycle
+        await Future<void>.delayed(const Duration(milliseconds: 2200));
+        if (!_isAutoScenarioRunning.data) return;
+        _repeatPhase.set(
+            'Finished! 2 legs = 1 round trip / 4.0s budget terminated accurately.');
+      } else {
+        // Count >= 4 (Default: 4 legs = 2 round trips = 8.0s budget)
+        // 1. Run for 1.5s active (0.75 legs forward, value reaches ~0.75)
+        _repeatPhase
+            .set('Step 1 (0-1.5s): Active run (Leg 1 forward 75% consumed)');
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (!_isAutoScenarioRunning.data) return;
+
+        // 2. Unmount into dormancy for 2.0s
+        hibernateRepeat();
+        _repeatPhase.set(
+            'Step 2 (1.5-3.5s): Dormant for 2.0s -> Completes Round 1 in background and turns around!');
+        await Future<void>.delayed(const Duration(milliseconds: 2000));
+        if (!_isAutoScenarioRunning.data) return;
+
+        // 3. Remount & Wake to resume remaining budget
+        wakeRepeat();
+        _repeatPhase.set(
+            'Step 3 (3.5-8s): Awakened -> Remaining legs run live, cleanly terminating at 8.0s!');
+
+        final remainingMs = (count * 2000) - 3500 + 200;
+        await Future<void>.delayed(Duration(milliseconds: remainingMs));
+        if (!_isAutoScenarioRunning.data) return;
+        final rounds = count / 2;
+        final roundStr = rounds % 1 == 0 ? '${rounds.toInt()}' : '$rounds';
+        _repeatPhase.set(
+            'Finished! $count legs = $roundStr round trips / ${(count * 2).toStringAsFixed(1)}s budget terminated accurately.');
+      }
+    } finally {
+      _isAutoScenarioRunning.set(false);
+    }
   }
 
   ShowcaseSection get section => ShowcaseSection(

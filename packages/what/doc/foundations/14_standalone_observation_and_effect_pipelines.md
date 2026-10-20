@@ -150,7 +150,7 @@ The central [`_Scheduler`](../../lib/src/engine/_internal/_scheduler.dart) coord
 ```dart
 final sensorStream = Stream<double>.periodic(const Duration(seconds: 1), (i) => 25.0 + i);
 final sensorData = computed.stream((via) => sensorStream);
-final runner = sensorData.what.effect(() => print(sensorData.what.peek)).run();
+final runner = sensorData.what.effect(() => print(untracked(sensorData.what))).run();
 
 // 1. While runner is active:
 //    sensorData maintains an active terminal, keeping the physical stream subscription open.
@@ -249,9 +249,9 @@ final syncStatus = WhatController('idle');
 
 // Multi-target handled effect on 3-tuple:
 final sessionRunner = (userId.what, authToken.what, syncStatus.what).effect.handled((handle) {
-  final user = userId.what.peek;
-  final token = authToken.what.peek;
-  final status = syncStatus.what.peek;
+  final user = untracked(userId.what);
+  final token = untracked(authToken.what);
+  final status = untracked(syncStatus.what);
   
   final client = ApiClient.authenticate(user, token);
   handle.onCleanup(client.dispose);
@@ -320,7 +320,7 @@ final pageIndex = WhatController<int>(0);
 // Throttled multi-target effect running standalone
 final analyticsRunner = (scrollOffset.what, pageIndex.what).effect.throttle(
   const Duration(milliseconds: 200),
-  () => sendAnalytics(scrollOffset.what.peek, pageIndex.what.peek),
+  () => sendAnalytics(untracked(scrollOffset.what), untracked(pageIndex.what)),
   leading: true,
   trailing: true,
 ).run();

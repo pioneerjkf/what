@@ -27,9 +27,9 @@ void main() async {
     return '${via(firstName.what)} ${via(lastName.what)}';
   });
 
-  print('Full Name: ${fullName.peek}');
+  print('Full Name: ${untracked(fullName)}');
   firstName.data = 'Jane';
-  print('Updated Full Name: ${fullName.peek}\n');
+  print('Updated Full Name: ${untracked(fullName)}\n');
 
   // ---------------------------------------------------------------------------
   // 2. computed.future: Async Parameter-Tracking Queries
@@ -49,12 +49,12 @@ void main() async {
 
   // Inactive Dormancy: Future is lazily initiated only when an active consumer connects
   final profileRunner = userProfile.effect(() {
-    print('  [Profile Runner] Fresh Profile received: ${userProfile.peek}');
+    print('  [Profile Runner] Fresh Profile received: ${untracked(userProfile)}');
   }).run();
 
-  print('Initial Synchronous Cache: ${userProfile.peek}');
+  print('Initial Synchronous Cache: ${untracked(userProfile)}');
   await Future<void>.delayed(const Duration(milliseconds: 40));
-  print('Fetched Profile on demand: ${userProfile.peek}\n');
+  print('Fetched Profile on demand: ${untracked(userProfile)}\n');
 
   profileRunner.deactivate();
 
@@ -72,16 +72,16 @@ void main() async {
   });
 
   final feedRunner = activeFeed.effect(() {
-    print('  [Feed Runner] Received: "${activeFeed.peek}"');
+    print('  [Feed Runner] Received: "${untracked(activeFeed)}"');
   }).run();
 
-  print('Active Feed: ${activeFeed.peek}'); // Free Feed: Standard Content
+  print('Active Feed: ${untracked(activeFeed)}'); // Free Feed: Standard Content
 
   print('Upgrading user to Premium...');
   isPremium.data = true; // Automatically swaps reactive upstream edge!
 
   await Future<void>.delayed(Duration.zero);
-  print('Active Feed: ${activeFeed.peek}\n'); // Premium Feed: Exclusive 4K Content
+  print('Active Feed: ${untracked(activeFeed)}\n'); // Premium Feed: Exclusive 4K Content
 
   feedRunner.deactivate();
 
@@ -109,7 +109,7 @@ void main() async {
 
   // Downstream subscriber connects -> Triggers on-demand allocation
   final socketRunner = socketResource.effect(() {
-    print('  [Socket Runner] Using ${socketResource.peek}');
+    print('  [Socket Runner] Using ${untracked(socketResource)}');
   }).run();
 
   await Future<void>.delayed(Duration.zero);

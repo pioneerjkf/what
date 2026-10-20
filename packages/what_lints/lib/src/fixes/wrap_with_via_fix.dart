@@ -25,6 +25,47 @@ class WrapWithViaFix extends DartFix {
       if (!node.sourceRange.intersects(analysisError.sourceRange)) return;
       _handleProperty(reporter, node.prefix, node.identifier.name, node);
     });
+
+    context.registry.addFunctionExpressionInvocation((node) {
+      if (!node.sourceRange.intersects(analysisError.sourceRange)) return;
+      if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+        final args = node.argumentList.arguments;
+        if (args.isNotEmpty) {
+          final targetSource = args.first.toSource();
+          final changeBuilder = reporter.createChangeBuilder(
+            message: 'Replace untracked(...) with via(...)',
+            priority: 50,
+          );
+          changeBuilder.addDartFileEdit((builder) {
+            builder.addSimpleReplacement(
+                node.sourceRange, 'via($targetSource)');
+          });
+        }
+      }
+    });
+
+    context.registry.addMethodInvocation((node) {
+      if (!node.sourceRange.intersects(analysisError.sourceRange)) return;
+      if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+        final args = node.argumentList.arguments;
+        if (args.isNotEmpty) {
+          final targetSource = args.first.toSource();
+          final isState = node.methodName.name == 'state';
+          final replacement = isState
+              ? 'via.state($targetSource)'
+              : 'via($targetSource)';
+          final changeBuilder = reporter.createChangeBuilder(
+            message: isState
+                ? 'Replace untracked.state(...) with via.state(...)'
+                : 'Replace untracked(...) with via(...)',
+            priority: 50,
+          );
+          changeBuilder.addDartFileEdit((builder) {
+            builder.addSimpleReplacement(node.sourceRange, replacement);
+          });
+        }
+      }
+    });
   }
 
   void _handleProperty(
@@ -39,7 +80,7 @@ class WrapWithViaFix extends DartFix {
     final isController =
         WhatTypeChecker.isControllerOrCouplerType(targetType?.element?.name);
 
-    if (propName == 'peek' || propName == 'data') {
+    if (propName == 'data') {
       final changeBuilder = reporter.createChangeBuilder(
         message: 'Wrap with via(...)',
         priority: 50,
@@ -48,18 +89,6 @@ class WrapWithViaFix extends DartFix {
         final targetSource = target.toSource();
         final replacement =
             isController ? 'via($targetSource.what)' : 'via($targetSource)';
-        builder.addSimpleReplacement(fullNode.sourceRange, replacement);
-      });
-    } else if (propName == 'peekState') {
-      final changeBuilder = reporter.createChangeBuilder(
-        message: 'Wrap with via.state(...)',
-        priority: 50,
-      );
-      changeBuilder.addDartFileEdit((builder) {
-        final targetSource = target.toSource();
-        final replacement = isController
-            ? 'via.state($targetSource.what)'
-            : 'via.state($targetSource)';
         builder.addSimpleReplacement(fullNode.sourceRange, replacement);
       });
     } else if (WhatTypeChecker.isPipelineReadProperty(propName)) {

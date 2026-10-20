@@ -32,7 +32,7 @@ void main() {
       );
 
       expect(
-        errorWhat.peekState.match(
+        untracked.state(errorWhat).match(
           data: (val) => 'Data: $val',
           empty: () => 'Empty',
           error: (e, s) => 'Error: $e',
@@ -69,7 +69,7 @@ void main() {
 
       expect(validWhat.matchOrNull(data: (val) => val.length), 5);
       expect(lateWhat.matchOrNull(data: (val) => val.length), isNull);
-      expect(errorWhat.peekState.matchOrNull(error: (e, s) => e), 'error payload');
+      expect(untracked.state(errorWhat).matchOrNull(error: (e, s) => e), 'error payload');
     });
 
     test('4. Auto-tracking inside computed() when calling .match()', () {
@@ -83,10 +83,10 @@ void main() {
             );
       });
 
-      expect(statusMessage.peek, 'Count is 10');
+      expect(untracked(statusMessage), 'Count is 10');
 
       count.data = 20;
-      expect(statusMessage.peek, 'Count is 20');
+      expect(untracked(statusMessage), 'Count is 20');
     });
 
     test('5. Auto-tracking inside effect() when calling .matchOrElse()', () async {
@@ -118,15 +118,15 @@ void main() {
       final r2 = WhatController(20);
       final group = What.constant([r1.what, r2.what]);
 
-      final result = group.peekState.match(
+      final result = untracked.state(group).match(
         data: (whats) => whats.length,
         empty: () => 0,
         error: (e, s) => -1,
       );
       expect(result, 2);
 
-      expect(group.peekState.matchOrElse(data: (g) => g.length, orElse: () => 0), 2);
-      expect(group.peekState.matchOrNull(data: (g) => g.length), 2);
+      expect(untracked.state(group).matchOrElse(data: (g) => g.length, orElse: () => 0), 2);
+      expect(untracked.state(group).matchOrNull(data: (g) => g.length), 2);
     });
   });
 }

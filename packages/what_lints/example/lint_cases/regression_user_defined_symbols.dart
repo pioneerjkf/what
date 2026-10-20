@@ -13,9 +13,9 @@ class Effect {
   final void Function() action;
 }
 
-final userEffect = Effect(() => print(count.peek));
+final userEffect = Effect(() => print(untracked(count)));
 
 // #case regression/good/P11-user-defined-computed-function
 int computedLocally(int Function(Object via) body) => body(Object());
 
-final userComputed = computedLocally((via) => count.peek);
+final userComputed = computedLocally((via) => untracked(count));

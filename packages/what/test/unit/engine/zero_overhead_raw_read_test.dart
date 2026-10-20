@@ -22,17 +22,17 @@ void main() {
       });
 
       expect(computeCount, 0, reason: 'Lazy pull: not evaluated until accessed');
-      expect(derived.peek, 30);
+      expect(untracked(derived), 30);
       expect(computeCount, 1);
 
       // Mutating 'b' (raw read, untracked) MUST NOT dirty 'derived'
       b.data = 99;
-      expect(derived.peek, 30, reason: 'Untracked upstream mutation does not invalidate cache');
+      expect(untracked(derived), 30, reason: 'Untracked upstream mutation does not invalidate cache');
       expect(computeCount, 1, reason: 'Zero re-evaluation triggered by untracked raw read');
 
       // Mutating 'a' (tracked via via(a)) marks dirty and triggers recomputation on pull
       a.data = 15;
-      expect(derived.peek, 114, reason: '15 + 99 = 114');
+      expect(untracked(derived), 114, reason: '15 + 99 = 114');
       expect(computeCount, 2);
     });
 
@@ -50,8 +50,8 @@ void main() {
       expect(node.isEmpty, isFalse);
       expect(emptyNode.emptyReason, isNull);
       expect(node.hasError, isFalse);
-      expect(errorNode.peekState.error, 'Fault');
-      expect(errorNode.peekState.stackTrace, isNotNull);
+      expect(untracked.state(errorNode).error, 'Fault');
+      expect(untracked.state(errorNode).stackTrace, isNotNull);
 
       // Inside computed with explicit tracking of another node
       final dummy = WhatController(1);
@@ -66,17 +66,17 @@ void main() {
         node.isEmpty;
         emptyNode.emptyReason;
         node.hasError;
-        errorNode.peekState.error;
-        errorNode.peekState.stackTrace;
+        untracked.state(errorNode).error;
+        untracked.state(errorNode).stackTrace;
         return 'Done';
       });
 
-      expect(comp.peek, 'Done');
+      expect(untracked(comp), 'Done');
 
       // Mutating 'node' MUST NOT invalidate 'comp' because it was never passed to via()
       node.data = 'Beta';
       // comp is not dirty, re-read does not re-evaluate
-      expect(comp.peek, 'Done');
+      expect(untracked(comp), 'Done');
     });
 
     test('3. Dynamic branching and 1-pass epoch sweeping with explicit via()', () async {
@@ -90,22 +90,22 @@ void main() {
         return via(condition.what) ? via(branchA.what) : via(branchB.what);
       });
 
-      expect(dynamicNode.peek, 'A');
+      expect(untracked(dynamicNode), 'A');
       expect(computeRuns, 1);
 
       // Mutating branchB (unobserved in this epoch) does NOT dirty dynamicNode
       branchB.data = 'B_updated';
-      expect(dynamicNode.peek, 'A');
+      expect(untracked(dynamicNode), 'A');
       expect(computeRuns, 1);
 
       // Switch condition -> branchB becomes observed, branchA becomes unobserved
       condition.data = false;
-      expect(dynamicNode.peek, 'B_updated');
+      expect(untracked(dynamicNode), 'B_updated');
       expect(computeRuns, 2);
 
       // Now mutating branchA MUST NOT dirty dynamicNode (pruned via epoch sweep)
       branchA.data = 'A_updated';
-      expect(dynamicNode.peek, 'B_updated');
+      expect(untracked(dynamicNode), 'B_updated');
       expect(computeRuns, 2);
     });
 

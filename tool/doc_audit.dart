@@ -917,9 +917,6 @@ class ApiClient {
   void close() {}
 }
 List<String> performSearch(String query) => [];
-class TextEditingControllerStore {
-  TextEditingControllerStore({dynamic gracefulPolicy});
-}
 void cloudSync(dynamic a) {}
 void ping([dynamic a]) {}
 class WebSocket {

@@ -229,7 +229,7 @@ void main() {
 
       final values = <int>[];
       final terminal = RawWhatTerminal(derived, onInvalidated: () {
-        values.add(derived.peek);
+        values.add(untracked(derived));
       });
       terminal.activate();
 

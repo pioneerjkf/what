@@ -90,7 +90,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(capturedError, isTrue);
-      expect(streamWhat.peekState.hasError, isTrue);
+      expect(untracked.state(streamWhat).hasError, isTrue);
 
       dispose();
       await streamController.close();

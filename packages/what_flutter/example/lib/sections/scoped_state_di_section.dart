@@ -18,7 +18,7 @@ base class ScopedStateDiSectionDemo extends WhatWidget {
     // [Lifecycle] Declarative Scoped Effect: Automatically anchored to this widget's lifecycle via tether!
     // Triggers an external one-shot UI side-effect (Milestone SnackBar) strictly upon milestone mutation.
     via.tether(store.isVipUnlocked.effect(() {
-      if (store.isVipUnlocked.peek) {
+      if (untracked(store.isVipUnlocked)) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

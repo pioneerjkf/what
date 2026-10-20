@@ -40,7 +40,7 @@ void main() {
     final actions = <String, Future<void> Function()>{
       'play_pause': () async {
         final btn = find.widgetWithText(
-            FilledButton, store.isPlaying.peek ? 'Pause' : 'Play');
+            FilledButton, untracked(store.isPlaying) ? 'Pause' : 'Play');
         if (btn.evaluate().isNotEmpty) {
           await tester.tap(btn);
           await tester.pump(const Duration(milliseconds: 50));
@@ -48,7 +48,7 @@ void main() {
       },
       'ping_pong': () async {
         final btn = find.widgetWithText(OutlinedButton,
-            store.isPingPong.peek ? 'Ping-Pong: ON' : 'Ping-Pong: OFF');
+            untracked(store.isPingPong) ? 'Ping-Pong: ON' : 'Ping-Pong: OFF');
         if (btn.evaluate().isNotEmpty) {
           await tester.tap(btn);
           await tester.pump(const Duration(milliseconds: 50));
@@ -77,7 +77,7 @@ void main() {
       },
       'unmount_mount': () async {
         final btn = find.widgetWithText(FilledButton,
-            store.isMounted.peek ? 'Unmount (Hibernate)' : 'Mount (Wake)');
+            untracked(store.isMounted) ? 'Unmount (Hibernate)' : 'Mount (Wake)');
         if (btn.evaluate().isNotEmpty) {
           await tester.tap(btn);
           await tester.pump(const Duration(milliseconds: 50));
@@ -203,7 +203,7 @@ void main() {
           reason: 'Exception thrown after action $key at step $i');
 
       // Progress value must be valid
-      final progress = store.masterProgress.peek;
+      final progress = untracked(store.masterProgress);
       expect(progress.isNaN, isFalse, reason: 'Progress is NaN at step $i');
       expect(progress >= -0.01 && progress <= 1.01, isTrue,
           reason: 'Progress $progress out of range at step $i');
@@ -244,26 +244,26 @@ void main() {
     final forwardBtn = find.widgetWithText(OutlinedButton, 'Forward');
     await tester.tap(forwardBtn);
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.isPlaying.peek, isTrue);
+    expect(untracked(store.isPlaying), isTrue);
 
     // Pump past the 2400ms duration so forward completes
     await tester.pump(const Duration(milliseconds: 3000));
 
     // The animation has completed (stopped at 1.0)
-    expect(store.masterCtrl.peek.isAnimating, isFalse,
+    expect(untracked(store.masterCtrl).isAnimating, isFalse,
         reason: 'Animation should have stopped at 1.0');
-    expect(store.isPlaying.peek, isFalse,
+    expect(untracked(store.isPlaying), isFalse,
         reason: 'isPlaying should be false when forward completes');
 
     // Case 2: Changing duration while paused
     store.reset();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.isPlaying.peek, isFalse);
+    expect(untracked(store.isPlaying), isFalse);
 
     // While paused at 0.0, set duration
     store.setDuration(1200);
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.isPlaying.peek, isFalse,
+    expect(untracked(store.isPlaying), isFalse,
         reason: 'Changing duration while paused should NOT start playing!');
 
     // Case 3: Switch policy while at t = 0.5
@@ -271,12 +271,12 @@ void main() {
     await tester.pump();
     await tester
         .pump(const Duration(milliseconds: 600)); // Halfway through 1200ms
-    final halfwayT = store.masterCtrl.peek.value;
+    final halfwayT = untracked(store.masterCtrl).value;
 
     // Switch policy to catchUp - value must be preserved!
     store.setPolicy(DurabilityPolicy.catchUp);
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.masterCtrl.peek.value, closeTo(halfwayT, 0.1),
+    expect(untracked(store.masterCtrl).value, closeTo(halfwayT, 0.1),
         reason: 'Policy switch should preserve animation value');
   });
 
@@ -341,15 +341,15 @@ void main() {
 
     // 5. Click the button second time
     final secondBtn = find.widgetWithText(
-        FilledButton, store.isPlaying.peek ? 'Pause' : 'Play');
+        FilledButton, untracked(store.isPlaying) ? 'Pause' : 'Play');
     await tester.tap(secondBtn);
     await tester.pump(); // Flush tap and schedule first animation tick
     await tester
         .pump(const Duration(milliseconds: 100)); // Advance animation time
 
     // Assertions for reproduction test
-    expect(store.masterCtrl.peek.value, greaterThan(0.0));
-    expect(store.isPlaying.peek, isTrue);
+    expect(untracked(store.masterCtrl).value, greaterThan(0.0));
+    expect(untracked(store.isPlaying), isTrue);
   });
 
   testWidgets(
@@ -382,7 +382,7 @@ void main() {
     final resetPolicyChip = find.text('Reset');
     await tester.tap(resetPolicyChip.first);
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.policy.peek, equals(DurabilityPolicy.reset));
+    expect(untracked(store.policy), equals(DurabilityPolicy.reset));
 
     // Duration is 2400ms.
     // 0ms ~ 2400ms: Forward (0.0 -> 1.0)
@@ -390,63 +390,63 @@ void main() {
     // To get to t ~ 0.49 in reverse:
     // 2400ms + (1.0 - 0.49) * 2400ms = 2400ms + 1224ms = 3624ms
     await tester.pump(const Duration(milliseconds: 3624));
-    final tBeforeUnmount = store.masterCtrl.peek.value;
+    final tBeforeUnmount = untracked(store.masterCtrl).value;
     expect(tBeforeUnmount, closeTo(0.49, 0.05));
-    expect(store.masterCtrl.peek.status, equals(AnimationStatus.reverse));
+    expect(untracked(store.masterCtrl).status, equals(AnimationStatus.reverse));
 
     // 2. Unmount (Hibernate)
     final unmountBtn = find.widgetWithText(FilledButton, 'Unmount (Hibernate)');
     await tester.tap(unmountBtn);
     await tester.pump(const Duration(milliseconds: 100));
-    expect(store.isMounted.peek, isFalse);
+    expect(untracked(store.isMounted), isFalse);
 
     // 3. Remount (Wake)
     final mountBtn = find.widgetWithText(FilledButton, 'Mount (Wake)');
     await tester.tap(mountBtn);
     await tester.pump(const Duration(milliseconds: 100));
-    expect(store.isMounted.peek, isTrue);
+    expect(untracked(store.isMounted), isTrue);
 
     // Under Reset policy, value should have reset cleanly to 0.0 (NOT 0.49 and NOT 0.85!)
-    expect(store.masterCtrl.peek.value, closeTo(0.0, 0.05));
+    expect(untracked(store.masterCtrl).value, closeTo(0.0, 0.05));
     // Since it was playing before unmount, it should restart playing forward from 0.0
-    expect(store.isPlaying.peek, isTrue);
-    expect(store.masterCtrl.peek.isAnimating, isTrue);
+    expect(untracked(store.isPlaying), isTrue);
+    expect(untracked(store.masterCtrl).isAnimating, isTrue);
     expect(find.widgetWithText(FilledButton, 'Pause'), findsOneWidget);
 
     // Let it play forward 200ms
     await tester.pump(const Duration(milliseconds: 200));
-    expect(store.masterCtrl.peek.value, greaterThan(0.0));
-    expect(store.masterCtrl.peek.status, equals(AnimationStatus.forward));
+    expect(untracked(store.masterCtrl).value, greaterThan(0.0));
+    expect(untracked(store.masterCtrl).status, equals(AnimationStatus.forward));
 
     // 4. Now pause it
     final pauseBtn = find.widgetWithText(FilledButton, 'Pause');
     await tester.tap(pauseBtn);
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.isPlaying.peek, isFalse);
-    expect(store.masterCtrl.peek.isAnimating, isFalse);
+    expect(untracked(store.isPlaying), isFalse);
+    expect(untracked(store.masterCtrl).isAnimating, isFalse);
     expect(find.widgetWithText(FilledButton, 'Play'), findsOneWidget);
 
     // 5. Unmount while paused
     await tester.tap(find.widgetWithText(FilledButton, 'Unmount (Hibernate)'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(store.isMounted.peek, isFalse);
+    expect(untracked(store.isMounted), isFalse);
 
     // 6. Remount while paused
     await tester.tap(find.widgetWithText(FilledButton, 'Mount (Wake)'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(store.isMounted.peek, isTrue);
+    expect(untracked(store.isMounted), isTrue);
 
     // Must still be paused at 0.0!
-    expect(store.isPlaying.peek, isFalse);
-    expect(store.masterCtrl.peek.isAnimating, isFalse);
-    expect(store.masterCtrl.peek.value, closeTo(0.0, 0.01));
+    expect(untracked(store.isPlaying), isFalse);
+    expect(untracked(store.masterCtrl).isAnimating, isFalse);
+    expect(untracked(store.masterCtrl).value, closeTo(0.0, 0.01));
     expect(find.widgetWithText(FilledButton, 'Play'), findsOneWidget);
 
     // 7. Single tap on Play resumes playback from 0.0!
     await tester.tap(find.widgetWithText(FilledButton, 'Play'));
     await tester.pump(const Duration(milliseconds: 50));
-    expect(store.isPlaying.peek, isTrue);
-    expect(store.masterCtrl.peek.isAnimating, isTrue);
+    expect(untracked(store.isPlaying), isTrue);
+    expect(untracked(store.masterCtrl).isAnimating, isTrue);
     expect(find.widgetWithText(FilledButton, 'Pause'), findsOneWidget);
   });
 }

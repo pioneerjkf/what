@@ -609,8 +609,8 @@ extension DurableAnimationControllerObserveExtension
 /// Lifecycle control extension for [DurableAnimationController], exposed strictly
 /// for testing harnesses and internal framework bindings.
 ///
-/// This extension is marked with [@visibleForTesting] and is hidden from `package:what_flutter/what_flutter.dart`.
-/// Import `package:what_flutter/src/animation/durable/testing.dart` to access these utilities in unit tests.
+/// This extension is marked with `@visibleForTesting` and is hidden from `package:what_flutter/what_flutter.dart`.
+/// Import `package:what_flutter/testing.dart` to access these utilities in unit tests.
 @visibleForTesting
 extension DurableAnimationTestingExtension on DurableAnimationController {
   /// Attaches a [TickerProvider] as an active vsync holder.
@@ -639,6 +639,9 @@ extension DurableAnimationTestingExtension on DurableAnimationController {
 }
 
 /// A test-only [TickerProvider] implementation for unit tests and harnesses.
+///
+/// Marked with `@visibleForTesting` and hidden from `package:what_flutter/what_flutter.dart`.
+/// Import `package:what_flutter/testing.dart` to access this in unit tests.
 @visibleForTesting
 base class TestDurableVSync implements _DurableTickerProvider {
   /// Creates a test-only durable vsync provider.

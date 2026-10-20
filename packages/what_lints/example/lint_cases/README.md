@@ -22,7 +22,7 @@ dart test test/harness/
 final doubled = computed((via) {
   final factor = via(other);
   // expect_lint: avoid_untracked_what_read
-  return counter.peek * factor;   // the diagnostic must start on this line
+  return untracked(counter) * factor;   // the diagnostic must start on this line
 });
 ```
 

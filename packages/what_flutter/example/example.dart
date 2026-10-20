@@ -9,7 +9,7 @@
 /// 2. Declarative Inline Composition (composed)
 /// 3. Direct Value Functors (what.build & Tuple Whats)
 /// 4. Scoped State DI (`what.provide` & `whatOf<T>()`)
-/// 5. Zero-Jump Form Binding (WhatTextEditingController)
+/// 5. Standard Form Input & Listenable Bridge (toWhatBy)
 /// 6. Async UI, SWR & WhatPendingIndicator
 /// 7. Imperative Signals vs State Anti-Pattern (WhatListener)
 /// 8. Scroll Kinematics & 120fps Surgical Micro-Rebuilds

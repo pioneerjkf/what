@@ -241,9 +241,9 @@ void main() {
         final b = WhatController(15);
         final sum = What.computed((via) => via(a.what) + via(b.what));
 
-        expect(sum.peek, 20);
+        expect(untracked(sum), 20);
         a.data = 10;
-        expect(sum.peek, 25);
+        expect(untracked(sum), 25);
       });
 
       test('4.2 What.computed.future & What.computed.stream work seamlessly', () async {
@@ -279,9 +279,9 @@ void main() {
 
         final active = What.switched((via) => via(flag.what) ? branchA.what : branchB.what);
 
-        expect(active.peek, 'A');
+        expect(untracked(active), 'A');
         flag.data = false;
-        expect(active.peek, 'B');
+        expect(untracked(active), 'B');
       });
 
       test('4.4 What.managed works identically to top-level managed', () {

@@ -28,7 +28,7 @@ void main() {
       )..debugLabel = 'sumComputed';
 
       expect(sum.debugLabel, equals('sumComputed'));
-      expect(sum.peek, equals(3));
+      expect(untracked(sum), equals(3));
 
       final terminal = RawViaTerminal<int>(
         (via) => via(sum) * 2,

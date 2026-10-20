@@ -72,7 +72,7 @@ part of '../framework.dart';
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - Do NOT expose [WhatSignalController] directly to public UI layers; expose the read-only [WhatSignalController.what] view to prevent arbitrary signal emissions.
-/// - Do NOT read `.peek` directly without wrapping in `via(...)`, as untracked reads will miss discrete pulses.
+/// - Do NOT read signals via `untracked(...)` directly without wrapping in `via(...)`, as untracked reads will miss discrete pulses.
 ///
 /// **BAD:**
 /// ```dart

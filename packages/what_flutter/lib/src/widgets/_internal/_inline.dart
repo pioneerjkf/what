@@ -39,7 +39,7 @@ final class _InlineSingleWhatElement<T> extends ComponentElement
   What<T> get _sourceWhat => widget.what;
 
   @override
-  Widget build() => widget.builder(this, widget.what.peek);
+  Widget build() => widget.builder(this, untracked(widget.what));
 }
 
 /// Internal reactive widget backing single [What] `(context, data, child)` extensions.
@@ -77,10 +77,10 @@ final class _InlineSingleWhatWithChildElement<T> extends ComponentElement
 
   @override
   Widget build() {
-    if (!widget.what.peekState.hasData) {
+    if (!untracked.state(widget.what).hasData) {
       return widget.child;
     }
-    return widget.builder(this, widget.what.peek, widget.child);
+    return widget.builder(this, untracked(widget.what), widget.child);
   }
 }
 
@@ -120,9 +120,9 @@ final class _InlineSingleWhatWithChildrenElement<T> extends ComponentElement
 
   @override
   Widget build() {
-    if (!widget.what.peekState.hasData) {
+    if (!untracked.state(widget.what).hasData) {
       return const SizedBox.shrink();
     }
-    return widget.builder(this, widget.what.peek, widget.children);
+    return widget.builder(this, untracked(widget.what), widget.children);
   }
 }

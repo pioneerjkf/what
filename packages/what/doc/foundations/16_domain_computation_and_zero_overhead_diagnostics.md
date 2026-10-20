@@ -56,7 +56,7 @@ While inline `computed` lambdas are optimal for concise derivations, [Computatio
 | **Private Helper Functions** | Nested closures or global utilities | **Encapsulated instance methods and state** |
 | **Precondition Guarding** | Optional `guard:` constructor callback | **Constructor `super(guard: ...)` or overridable `guard(WhatVia via)`** |
 | **Lifecycle Hooks** | Requires composition with `managed` | **Direct mixin integration via [WhatLifecycleAware]** |
-| **State Inspection Ergonomics** | Returns [What<T>]; requires `.peek` or `.peekState` outside tracking | **Direct dereference on component (`.data`, `.snapshot`, `.hasData`, `.emptyReason`)** |
+| **State Inspection Ergonomics** | Returns [What<T>]; requires `untracked(what)` or `untracked.state(what)` outside tracking | **Direct dereference on component (`.data`, `.snapshot`, `.hasData`, `.emptyReason`)** |
 | **DAG Integration** | Pass node directly to `via(node)` | **Pass underlying topological handle via [what] (`via(comp.what)`)** |
 | **Diagnostics & Labeling** | [withDebugLabel], [debugTrace], `node.debug` | **[withDebugLabel], [debugTrace], and direct [debug] inspection** |
 
@@ -112,7 +112,7 @@ base class OrderPricingComputation extends Computation<OrderPricing> {
   ```dart
   final pricing = OrderPricingComputation(cartWhat, userWhat, promoWhat);
   
-  // Direct state dereferencing without .what or .peekState
+  // Direct state dereferencing without .what or untracked.state
   if (pricing.hasData) {
     print('Total: ${pricing.data.total}');
   } else if (pricing.isEmpty) {

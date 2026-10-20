@@ -110,11 +110,22 @@ final class _ListenableSelectorWhatPipe<N extends Listenable, R> {
   What<R> get what => _controller.what;
 }
 
+final class _ListenerEdge {
+  _ListenerEdge(this.listener);
+
+  final VoidCallback listener;
+  _ListenerEdge? next;
+  _ListenerEdge? prev;
+}
+
 /// An internal [ValueListenable] adapter exposing a reactive [What] node to Flutter consumers.
 ///
 /// Manages a demand-driven [RawWhatTerminal] that is moored to the reactive DAG if and only if
 /// one or more Flutter listeners are registered. Dispatches listener callbacks with individual
 /// exception containment via [FlutterError.reportError].
+///
+/// Uses an intrusive doubly-linked list for zero-allocation traversal and O(1) safe mutation
+/// during notification dispatching via [_notifyingTarget] caching.
 final class _WhatValueListenable<T> implements ValueListenable<T> {
   /// Creates a [ValueListenable] adapter backed by [_what].
   _WhatValueListenable(this._what, {this.sync = true});
@@ -124,16 +135,28 @@ final class _WhatValueListenable<T> implements ValueListenable<T> {
   /// Whether mutations dispatch notifications synchronously (`true`) or coalesce into microtasks (`false`).
   final bool sync;
 
-  final List<VoidCallback> _listeners = [];
+  _ListenerEdge? _head;
+  _ListenerEdge? _tail;
+  _ListenerEdge? _notifyingTarget;
   RawWhatTerminal<T>? _terminal;
 
   @override
-  T get value => _what.peek;
+  T get value => untracked(_what);
 
   @override
   void addListener(VoidCallback listener) {
-    _listeners.add(listener);
-    if (_listeners.length == 1) {
+    final edge = _ListenerEdge(listener);
+    final wasEmpty = _head == null;
+
+    if (wasEmpty) {
+      _head = _tail = edge;
+    } else {
+      _tail!.next = edge;
+      edge.prev = _tail;
+      _tail = edge;
+    }
+
+    if (wasEmpty) {
       if (_terminal case final terminal?) {
         terminal.activate();
       } else {
@@ -148,29 +171,65 @@ final class _WhatValueListenable<T> implements ValueListenable<T> {
 
   @override
   void removeListener(VoidCallback listener) {
-    _listeners.remove(listener);
-    if (_listeners.isEmpty) {
-      _terminal?.deactivate();
+    var curr = _head;
+    while (curr != null) {
+      if (curr.listener == listener) {
+        if (identical(_notifyingTarget, curr)) {
+          _notifyingTarget = curr.next;
+        }
+
+        final prev = curr.prev;
+        final next = curr.next;
+
+        if (prev != null) {
+          prev.next = next;
+        } else {
+          _head = next;
+        }
+        if (next != null) {
+          next.prev = prev;
+        } else {
+          _tail = prev;
+        }
+
+        curr.prev = null;
+        curr.next = null;
+
+        if (_head == null) {
+          _terminal?.deactivate();
+        }
+        break;
+      }
+      curr = curr.next;
     }
   }
 
   /// Notifies all registered listeners safely, catching and reporting any callback errors.
+  /// Listeners removed during traversal advance [_notifyingTarget] to prevent post-dispose callbacks.
   void _notify() {
-    for (final listener in List.of(_listeners)) {
-      try {
-        listener();
-      } catch (error, stackTrace) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'what_flutter',
-            context: ErrorDescription(
-              'while notifying listener in _WhatValueListenable',
+    final prevNotifying = _notifyingTarget;
+    _notifyingTarget = _head;
+    try {
+      while (_notifyingTarget != null) {
+        final curr = _notifyingTarget!;
+        _notifyingTarget = curr.next;
+        try {
+          curr.listener();
+        } catch (error, stackTrace) {
+          FlutterError.reportError(
+            FlutterErrorDetails(
+              exception: error,
+              stack: stackTrace,
+              library: 'what_flutter',
+              context: ErrorDescription(
+                'while notifying listener in _WhatValueListenable',
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
+    } finally {
+      _notifyingTarget = prevNotifying;
     }
   }
 }

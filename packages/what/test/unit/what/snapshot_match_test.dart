@@ -272,7 +272,7 @@ void main() {
       expect(listWithEmpty.hasAnyError(), isFalse);
 
       final error = What<int>.error('err');
-      final listWithError = [a, b, error.peekState];
+      final listWithError = [a, b, untracked.state(error)];
       expect(listWithError.allHaveData(), isFalse);
       expect(listWithError.hasAnyEmpty(), isFalse);
       expect(listWithError.hasAnyError(), isTrue);
@@ -284,11 +284,11 @@ void main() {
       final e1 = WhatController<String>.late();
       final err1 = What<String>.error('error1');
 
-      final mixed = [v1, e1, v2, err1.peekState];
+      final mixed = [v1, e1, v2, untracked.state(err1)];
 
       expect(mixed.whereHasData().toList(), [v1, v2]);
       expect(mixed.whereEmpty().toList(), [e1]);
-      expect(mixed.whereError().toList(), [err1.peekState]);
+      expect(mixed.whereError().toList(), [untracked.state(err1)]);
     });
 
     test('Works seamlessly with computed(guard)', () {
@@ -301,18 +301,18 @@ void main() {
         guard: (via) => (via.state(a.what), via.state(b.what), via.state(c.what)).guarded('Waiting'),
       );
 
-      expect(comp.peekState.isEmpty, isTrue);
-      expect(comp.peekState.snapshot.emptyReason, 'Waiting');
+      expect(untracked.state(comp).isEmpty, isTrue);
+      expect(untracked.state(comp).snapshot.emptyReason, 'Waiting');
 
       a.set(10);
-      expect(comp.peekState.isEmpty, isTrue);
+      expect(untracked.state(comp).isEmpty, isTrue);
 
       b.set(20);
-      expect(comp.peekState.isEmpty, isTrue);
+      expect(untracked.state(comp).isEmpty, isTrue);
 
       c.set(30);
-      expect(comp.peekState.hasData, isTrue);
-      expect(comp.peek, 60);
+      expect(untracked.state(comp).hasData, isTrue);
+      expect(untracked(comp), 60);
     });
   });
 
@@ -344,17 +344,17 @@ void main() {
         guard: (via) => (via.state(a.what), via.state(b.what), via.state(c.what)).guarded('Waiting'),
       );
 
-      expect(comp.peekState.isEmpty, isTrue);
+      expect(untracked.state(comp).isEmpty, isTrue);
 
       a.set(10);
-      expect(comp.peekState.isEmpty, isTrue);
+      expect(untracked.state(comp).isEmpty, isTrue);
 
       b.set(20);
-      expect(comp.peekState.isEmpty, isTrue);
+      expect(untracked.state(comp).isEmpty, isTrue);
 
       c.set(30);
-      expect(comp.peekState.hasData, isTrue);
-      expect(comp.peek, 60);
+      expect(untracked.state(comp).hasData, isTrue);
+      expect(untracked(comp), 60);
       expect((a, b, c).allHaveData(), isTrue);
     });
 

@@ -82,7 +82,7 @@ void main() {
         expect(coupler, isA<WhatCoupler<String>>());
         expect(coupler.what, isA<What<String>>());
         expect(coupler.data, 'A');
-        expect(coupler.what.peek, 'A');
+        expect(untracked(coupler.what), 'A');
 
         coupler.couple(sourceB);
         expect(coupler.data, 'B');
@@ -122,7 +122,7 @@ void main() {
         expect(coupler.isActive, isTrue);
         expect(group.isActive, isTrue);
 
-        final whatData = coupler.snapshot.data.map((c) => c.peek).toList();
+        final whatData = coupler.snapshot.data.map((c) => untracked(c)).toList();
         expect(whatData, [1, 2]);
 
         terminal.deactivate();
@@ -137,7 +137,7 @@ void main() {
         final group1 = What.constant([What.constant('a'), What.constant('b')]);
         coupler.couple(group1);
         expect(coupler.hasData, isTrue);
-        expect(coupler.data.map((c) => c.peek).toList(), ['a', 'b']);
+        expect(coupler.data.map((c) => untracked(c)).toList(), ['a', 'b']);
 
         coupler.coupleGuarded(() => throw Exception('Guard Failed'));
         expect(coupler.hasError, isTrue);
@@ -146,7 +146,7 @@ void main() {
         final group2 = What.constant([What.constant('x')]);
         coupler.coupleGuarded(() => group2);
         expect(coupler.hasData, isTrue);
-        expect(coupler.data.map((c) => c.peek).toList(), ['x']);
+        expect(coupler.data.map((c) => untracked(c)).toList(), ['x']);
 
         coupler.setError('Manual Group Error');
         expect(coupler.hasError, isTrue);
@@ -161,7 +161,7 @@ void main() {
         final coupler = WhatCoupler(group); // Inferred as WhatCoupler<List<What<int>>>
 
         expect(coupler, isA<WhatCoupler<List<What<int>>>>());
-        expect(coupler.what.peek.length, 2);
+        expect(untracked(coupler.what).length, 2);
         expect(coupler.data.length, 2);
 
         final lateCoupler = WhatCoupler<List<What<int>>>.late();

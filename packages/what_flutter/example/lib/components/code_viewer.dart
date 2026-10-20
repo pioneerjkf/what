@@ -65,8 +65,6 @@ class _CodeViewerCardState extends State<CodeViewerCard> {
     'WhatAsyncBuilder',
     'WhatPendingIndicator',
     'WhatAsyncSnapshot',
-    'WhatTextEditingController',
-    'BoundTextController',
 
     // Reactive Functor Extensions & Bridges
     'composed',

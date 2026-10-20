@@ -14,14 +14,14 @@ void main() {
         final query = WhatController('a');
         final debouncedQuery = query.what.debounced(const Duration(milliseconds: 50));
 
-        final observed = <String>[debouncedQuery.peek];
+        final observed = <String>[untracked(debouncedQuery)];
         final terminal = RawWhatTerminal(debouncedQuery, onInvalidated: () {
-          observed.add(debouncedQuery.peek);
+          observed.add(untracked(debouncedQuery));
         });
         terminal.activate();
 
         expect(observed, ['a']);
-        expect(debouncedQuery.peek, 'a');
+        expect(untracked(debouncedQuery), 'a');
 
         // Type rapidly
         query.data = 'ap';
@@ -39,7 +39,7 @@ void main() {
         // Wait past 50ms of silence
         await Future<void>.delayed(const Duration(milliseconds: 35));
         expect(observed, ['a', 'apple']);
-        expect(debouncedQuery.peek, 'apple');
+        expect(untracked(debouncedQuery), 'apple');
 
         terminal.deactivate();
       });
@@ -48,9 +48,9 @@ void main() {
         final text = WhatController('start');
         final debouncedText = text.what.debounced(const Duration(milliseconds: 40));
 
-        final notifications = <String>[debouncedText.peek];
+        final notifications = <String>[untracked(debouncedText)];
         final terminal = RawWhatTerminal(debouncedText, onInvalidated: () {
-          notifications.add(debouncedText.peek);
+          notifications.add(untracked(debouncedText));
         });
         terminal.activate();
 
@@ -75,9 +75,9 @@ void main() {
           trailing: false,
         );
 
-        final observed = <int>[debounced.peek];
+        final observed = <int>[untracked(debounced)];
         final terminal = RawWhatTerminal(debounced, onInvalidated: () {
-          observed.add(debounced.peek);
+          observed.add(untracked(debounced));
         });
         terminal.activate();
 
@@ -113,9 +113,9 @@ void main() {
           trailing: true,
         );
 
-        final observed = <String>[debounced.peek];
+        final observed = <String>[untracked(debounced)];
         final terminal = RawWhatTerminal(debounced, onInvalidated: () {
-          observed.add(debounced.peek);
+          observed.add(untracked(debounced));
         });
         terminal.activate();
 
@@ -148,9 +148,9 @@ void main() {
           trailing: true,
         );
 
-        final observed = <double>[throttledScroll.peek];
+        final observed = <double>[untracked(throttledScroll)];
         final terminal = RawWhatTerminal(throttledScroll, onInvalidated: () {
-          observed.add(throttledScroll.peek);
+          observed.add(untracked(throttledScroll));
         });
         terminal.activate();
 
@@ -184,9 +184,9 @@ void main() {
           trailing: true,
         );
 
-        final observed = <int>[throttled.peek];
+        final observed = <int>[untracked(throttled)];
         final terminal = RawWhatTerminal(throttled, onInvalidated: () {
-          observed.add(throttled.peek);
+          observed.add(untracked(throttled));
         });
         terminal.activate();
 
@@ -220,7 +220,7 @@ void main() {
 
         // Node should safely reactivate and pull latest state on demand
         terminal.activate();
-        expect(debounced.peek, 'updated');
+        expect(untracked(debounced), 'updated');
 
         terminal.deactivate();
       });
@@ -267,7 +267,7 @@ void main() {
 
         // Initial fetch starts
         await Future<void>.delayed(const Duration(milliseconds: 30));
-        expect(searchResults.peek, 'Result for: init');
+        expect(untracked(searchResults), 'Result for: init');
         expect(apiCallCount, 1);
 
         // Rapid query changes
@@ -280,7 +280,7 @@ void main() {
         // Wait for debounce silence (40ms) + future computation (20ms)
         await Future<void>.delayed(const Duration(milliseconds: 75));
 
-        expect(searchResults.peek, 'Result for: flutter');
+        expect(untracked(searchResults), 'Result for: flutter');
         // Only 1 initial call + 1 debounced call = 2 total API calls!
         expect(apiCallCount, 2);
 

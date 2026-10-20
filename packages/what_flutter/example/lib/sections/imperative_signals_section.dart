@@ -14,8 +14,8 @@ base class ImperativeSignalsSection extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     return WhatListener(
-      [store.cleanDialogSignal.what],
-      (ctx) {
+      store.cleanDialogSignal.what,
+      (ctx, _) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           const SnackBar(
             content: Text('Clean Signal Fired! (Zero Zombie State)'),
@@ -23,7 +23,7 @@ base class ImperativeSignalsSection extends WhatWidget {
           ),
         );
       },
-      child: UnaryWhatListener<bool>(
+      child: WhatListener<bool>(
         store.zombieDialogState.what,
         (ctx, isZombie) {
           if (isZombie) {

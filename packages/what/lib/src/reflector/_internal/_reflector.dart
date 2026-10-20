@@ -224,7 +224,7 @@ class _WhatReflectorImpl extends _LpdagReflectorImpl implements WhatReflector {
   final What _what;
 
   @override
-  WhatState<dynamic> get state => _what.peekState;
+  WhatState<dynamic> get state => untracked.state(_what);
 
   @override
   bool get hasData => state.hasData;

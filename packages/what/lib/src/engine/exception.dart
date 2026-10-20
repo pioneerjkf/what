@@ -117,7 +117,7 @@ class LpdagReentrancyError extends StateError {
 /// b = computed((via) => via(a) + 1);
 ///
 /// // Pulling a triggers b, which attempts to pull a while already resolving:
-/// a.peek; // Throws LpdagCycleError
+/// untracked(a); // Throws LpdagCycleError
 /// ```
 ///
 /// **GOOD:**
@@ -127,8 +127,8 @@ class LpdagReentrancyError extends StateError {
 /// final a = computed((via) => via(base.what) + 1);
 /// final b = computed((via) => via(base.what) * 2);
 ///
-/// print(a.peek); // 2
-/// print(b.peek); // 2
+/// print(untracked(a)); // 2
+/// print(untracked(b)); // 2
 /// ```
 class LpdagCycleError extends StateError {
   /// Creates an [LpdagCycleError] with an optional descriptive [message].

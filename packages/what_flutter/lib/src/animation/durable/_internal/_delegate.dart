@@ -434,6 +434,9 @@ abstract base class _DormantAnimationControlDelegate
                   activeDelegate.lastDispatchedMotion != expectedMotion) {
                 return;
               }
+              if (tripDuration != null) {
+                activeDelegate._accumulateBaseElapsed(tripDuration);
+              }
             }
             if (_stagedMotion.mode == _StagedMotionMode.repeat) {
               engine.repeat(
@@ -441,7 +444,6 @@ abstract base class _DormantAnimationControlDelegate
                 max: _stagedMotion.repeatMax,
                 reverse: _stagedMotion.repeatReverse,
                 period: _stagedMotion.repeatPeriod,
-                count: _stagedMotion.repeatCount,
               );
             }
           });
@@ -451,7 +453,6 @@ abstract base class _DormantAnimationControlDelegate
             max: _stagedMotion.repeatMax,
             reverse: _stagedMotion.repeatReverse,
             period: _stagedMotion.repeatPeriod,
-            count: _stagedMotion.repeatCount,
           );
         }
         break;
@@ -720,8 +721,19 @@ base class _CatchUpDormantControlDelegate
   });
 
   @override
+  bool get isAnimating {
+    if (super.isAnimating && deactivatedAt != null) {
+      final elapsed = clock().difference(deactivatedAt!);
+      if (elapsed > Duration.zero) {
+        return !_projectMotion(elapsed).isDone;
+      }
+    }
+    return super.isAnimating;
+  }
+
+  @override
   double get value {
-    if (isAnimating && deactivatedAt != null) {
+    if (super.isAnimating && deactivatedAt != null) {
       final elapsed = clock().difference(deactivatedAt!);
       if (elapsed > Duration.zero) {
         return _projectMotion(elapsed).value;
@@ -732,7 +744,7 @@ base class _CatchUpDormantControlDelegate
 
   @override
   AnimationStatus get status {
-    if (isAnimating && deactivatedAt != null) {
+    if (super.isAnimating && deactivatedAt != null) {
       final elapsed = clock().difference(deactivatedAt!);
       if (elapsed > Duration.zero) {
         return _projectMotion(elapsed).status;
@@ -950,12 +962,16 @@ base class _CatchUpDormantControlDelegate
         final max =
             _stagedMotion.repeatMax ?? (upperBound.isFinite ? upperBound : 1.0);
         final loopRange = max - min;
-        final periodMicros =
-            (_stagedMotion.repeatPeriod ?? _duration)?.inMicroseconds ?? 0;
+        final period = _stagedMotion.repeatPeriod ?? _duration;
+        final periodMicros = period?.inMicroseconds ?? 0;
         if (loopRange > 0.0 && periodMicros > 0) {
-          final loops = elapsedMicros / periodMicros;
+          final prevElapsed = _stagedMotion.elapsedDuration ?? Duration.zero;
+          final totalElapsed = prevElapsed + elapsed;
+          final totalElapsedMicros = totalElapsed.inMicroseconds;
+          final totalLoops = totalElapsedMicros / periodMicros;
+
           if (_stagedMotion.repeatCount != null &&
-              loops >= _stagedMotion.repeatCount!) {
+              totalLoops >= _stagedMotion.repeatCount!) {
             final repeatReverse = _stagedMotion.repeatReverse;
             final repeatCount = _stagedMotion.repeatCount!;
             final finalVal =
@@ -973,6 +989,7 @@ base class _CatchUpDormantControlDelegate
             );
           }
 
+          final loops = elapsedMicros / periodMicros;
           if (!_stagedMotion.repeatReverse) {
             final offset = (loops - loops.floor()) * loopRange;
             final currentOffset = (_value - min).clamp(0.0, loopRange);
@@ -981,20 +998,22 @@ base class _CatchUpDormantControlDelegate
               value: newVal,
               status: AnimationStatus.forward,
               isDone: false,
-              stagedMotion: _stagedMotion,
+              stagedMotion: _stagedMotion.copyWith(
+                elapsedDuration: totalElapsed,
+              ),
             );
           } else {
             // Ping-pong repeat (cycle = 2 * period)
             final cycleMicros = 2 * periodMicros;
-            final totalElapsedMicros = elapsedMicros % cycleMicros;
+            final totalElapsedCycleMicros = elapsedMicros % cycleMicros;
             final currentOffset = (_value - min).clamp(0.0, loopRange);
             final currentPhase = _stagedMotion.wasReversePhase
                 ? (2.0 * loopRange - currentOffset)
                 : currentOffset;
             final newPhase = (currentPhase +
-                    (totalElapsedMicros / periodMicros) * loopRange) %
+                    (totalElapsedCycleMicros / periodMicros) * loopRange) %
                 (2.0 * loopRange);
-            final isRevPhase = newPhase > loopRange;
+            final isRevPhase = newPhase >= loopRange;
             final newVal =
                 !isRevPhase ? (min + newPhase) : (max - (newPhase - loopRange));
             return (
@@ -1003,7 +1022,10 @@ base class _CatchUpDormantControlDelegate
                   ? AnimationStatus.forward
                   : AnimationStatus.reverse,
               isDone: false,
-              stagedMotion: _stagedMotion.copyWith(wasReversePhase: isRevPhase),
+              stagedMotion: _stagedMotion.copyWith(
+                wasReversePhase: isRevPhase,
+                elapsedDuration: totalElapsed,
+              ),
             );
           }
         }
@@ -1126,7 +1148,7 @@ base class _CatchUpDormantControlDelegate
     required String? debugLabel,
     required AnimationBehavior animationBehavior,
   }) {
-    if (isAnimating && deactivatedAt != null) {
+    if (_stagedMotion.mode != _StagedMotionMode.idle && deactivatedAt != null) {
       final elapsed = clock().difference(deactivatedAt!);
       applyElapsedCompensation(elapsed);
       deactivatedAt = null;
@@ -1173,6 +1195,8 @@ base class _ActiveAnimationControlDelegate
 
   final _StagedMotion? _initialMotion;
   _StagedMotion _lastMotion = const _StagedMotion.idle();
+  Duration _baseElapsedDuration = Duration.zero;
+  AnimationStatus? _overrideStatus;
 
   _ActiveAnimationControlDelegate(
     this._engine, {
@@ -1184,9 +1208,67 @@ base class _ActiveAnimationControlDelegate
         _notifyListeners = onNotifyListeners,
         _notifyStatusListeners = onNotifyStatusListeners,
         _initialMotion = initialMotion,
-        _lastMotion = initialMotion ?? const _StagedMotion.idle() {
-    _engine.addListener(_notifyListeners);
-    _engine.addStatusListener(_notifyStatusListeners);
+        _lastMotion = initialMotion ?? const _StagedMotion.idle(),
+        _baseElapsedDuration = initialMotion?.elapsedDuration ?? Duration.zero {
+    _engine.addListener(_handleEngineTick);
+    _engine.addStatusListener(_handleStatusChanged);
+  }
+
+  Duration _lastKnownEngineElapsed = Duration.zero;
+
+  void _handleEngineTick() {
+    if (_engine.lastElapsedDuration != null) {
+      _lastKnownEngineElapsed = _engine.lastElapsedDuration!;
+    }
+    _checkRepeatCompletion();
+    _notifyListeners();
+  }
+
+  void _handleStatusChanged(AnimationStatus status) {
+    if (_overrideStatus != null) return;
+    _notifyStatusListeners(status);
+  }
+
+  void _accumulateBaseElapsed(Duration elapsed) {
+    _baseElapsedDuration += elapsed;
+  }
+
+  void _checkRepeatCompletion() {
+    if (_lastMotion.mode == _StagedMotionMode.repeat &&
+        _lastMotion.repeatCount != null) {
+      final period = _lastMotion.repeatPeriod ?? _engine.duration;
+      final periodMicros = period?.inMicroseconds ?? 0;
+      if (periodMicros > 0) {
+        final totalBudgetMicros = periodMicros * _lastMotion.repeatCount!;
+        final engineElapsed =
+            _engine.lastElapsedDuration ?? _lastKnownEngineElapsed;
+        final totalElapsedMicros =
+            _baseElapsedDuration.inMicroseconds + engineElapsed.inMicroseconds;
+
+        if (totalElapsedMicros >= totalBudgetMicros) {
+          final min = _lastMotion.repeatMin ?? _engine.lowerBound;
+          final max = _lastMotion.repeatMax ?? _engine.upperBound;
+          final repeatReverse = _lastMotion.repeatReverse;
+          final repeatCount = _lastMotion.repeatCount!;
+          final finalVal =
+              !repeatReverse ? max : ((repeatCount % 2 == 1) ? max : min);
+          final finalStatus = !repeatReverse
+              ? AnimationStatus.completed
+              : ((repeatCount % 2 == 1)
+                  ? AnimationStatus.completed
+                  : AnimationStatus.dismissed);
+
+          _lastMotion = const _StagedMotion.idle();
+          _baseElapsedDuration = Duration.zero;
+          _overrideStatus = finalStatus;
+          if (_engine.isAnimating) {
+            _engine.stop();
+          }
+          _engine.value = finalVal;
+          _notifyStatusListeners(finalStatus);
+        }
+      }
+    }
   }
 
   _StagedMotion get stagedMotion {
@@ -1200,10 +1282,11 @@ base class _ActiveAnimationControlDelegate
     // When the active motion is the continuation of an awakened motion,
     // accumulate the base elapsed time from before reactivation:
     final Duration totalElapsed;
-    if (_initialMotion?.elapsedDuration != null &&
-        _lastMotion.mode == _initialMotion?.mode &&
-        _lastMotion.simulation == _initialMotion?.simulation) {
-      totalElapsed = _initialMotion!.elapsedDuration! + engineElapsed;
+    if (_lastMotion.mode == _StagedMotionMode.repeat ||
+        (_initialMotion?.elapsedDuration != null &&
+            _lastMotion.mode == _initialMotion?.mode &&
+            _lastMotion.simulation == _initialMotion?.simulation)) {
+      totalElapsed = _baseElapsedDuration + engineElapsed;
     } else {
       totalElapsed = engineElapsed;
     }
@@ -1233,7 +1316,7 @@ base class _ActiveAnimationControlDelegate
   Animation<double>? get view => _engine.view;
 
   @override
-  TickerProvider? get vsync => _vsync;
+  TickerProvider get vsync => _vsync;
 
   @override
   Duration? get duration => _engine.duration;
@@ -1253,6 +1336,8 @@ base class _ActiveAnimationControlDelegate
   @override
   set value(double newValue) {
     _lastMotion = const _StagedMotion.idle();
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _engine.value = newValue;
   }
 
@@ -1266,7 +1351,7 @@ base class _ActiveAnimationControlDelegate
   bool get isAnimating => _engine.isAnimating;
 
   @override
-  AnimationStatus get status => _engine.status;
+  AnimationStatus get status => _overrideStatus ?? _engine.status;
 
   // ---------------------------------------------------------------------------
   // Lifecycle Management
@@ -1281,6 +1366,8 @@ base class _ActiveAnimationControlDelegate
   @override
   void reset() {
     _lastMotion = const _StagedMotion.idle();
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _engine.reset();
   }
 
@@ -1288,8 +1375,8 @@ base class _ActiveAnimationControlDelegate
   void dispose() {
     if (_isDisposed) return;
     _isDisposed = true;
-    _engine.removeListener(_notifyListeners);
-    _engine.removeStatusListener(_notifyStatusListeners);
+    _engine.removeListener(_handleEngineTick);
+    _engine.removeStatusListener(_handleStatusChanged);
     _engine.dispose();
   }
 
@@ -1299,6 +1386,8 @@ base class _ActiveAnimationControlDelegate
 
   @override
   TickerFuture forward({double? from}) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _lastMotion = const _StagedMotion(
       mode: _StagedMotionMode.forward,
       wasReversePhase: false,
@@ -1308,6 +1397,8 @@ base class _ActiveAnimationControlDelegate
 
   @override
   TickerFuture reverse({double? from}) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _lastMotion = const _StagedMotion(
       mode: _StagedMotionMode.reverse,
       wasReversePhase: true,
@@ -1317,6 +1408,8 @@ base class _ActiveAnimationControlDelegate
 
   @override
   TickerFuture toggle({double? from}) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     final forwardAim = !_engine.status.isForwardOrCompleted;
     _lastMotion = _StagedMotion(
       mode: forwardAim ? _StagedMotionMode.forward : _StagedMotionMode.reverse,
@@ -1328,6 +1421,8 @@ base class _ActiveAnimationControlDelegate
   @override
   TickerFuture animateTo(double target,
       {Duration? duration, Curve curve = Curves.linear}) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     final range = _engine.upperBound - _engine.lowerBound;
     final effectiveDuration = duration ??
         (_engine.duration != null
@@ -1356,6 +1451,8 @@ base class _ActiveAnimationControlDelegate
   @override
   TickerFuture animateBack(double target,
       {Duration? duration, Curve curve = Curves.linear}) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     final range = _engine.upperBound - _engine.lowerBound;
     final effectiveDuration = duration ??
         ((_engine.reverseDuration ?? _engine.duration) != null
@@ -1390,6 +1487,8 @@ base class _ActiveAnimationControlDelegate
     Duration? period,
     int? count,
   }) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _lastMotion = _StagedMotion(
       mode: _StagedMotionMode.repeat,
       repeatMin: min,
@@ -1409,6 +1508,8 @@ base class _ActiveAnimationControlDelegate
     SpringDescription? springDescription,
     AnimationBehavior? animationBehavior,
   }) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     final isRev = velocity < 0.0;
     final spring = springDescription ?? _kFlingSpringDescription;
     final target = isRev
@@ -1433,6 +1534,8 @@ base class _ActiveAnimationControlDelegate
 
   @override
   TickerFuture animateWith(Simulation simulation) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _lastMotion = _StagedMotion(
       mode: _StagedMotionMode.simulation,
       simulation: simulation,
@@ -1443,6 +1546,8 @@ base class _ActiveAnimationControlDelegate
 
   @override
   TickerFuture animateBackWith(Simulation simulation) {
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _lastMotion = _StagedMotion(
       mode: _StagedMotionMode.simulationBack,
       simulation: simulation,
@@ -1454,6 +1559,8 @@ base class _ActiveAnimationControlDelegate
   @override
   void stop({bool canceled = true}) {
     _lastMotion = const _StagedMotion.idle();
+    _baseElapsedDuration = Duration.zero;
+    _overrideStatus = null;
     _engine.stop(canceled: canceled);
   }
 

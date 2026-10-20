@@ -103,7 +103,7 @@ Consumer reads terminal.data
 ### 3.2 Phase 2: On-Demand Lazy-Pull Phase (Data Plane)
 1. Downstream consumers (e.g. Flutter widgets during layout/build or [`RawWhatTerminal.data`](../../lib/src/engine/terminal.dart)) pull data via `_read()` &rarr; `_resolve()`.
 2. [`_PullResolver._resolve()`](../../lib/src/engine/_internal/_pull.dart#L47) inspects `_dirtyState`:
-   - If `_DirtyState.clean`: Returns the cached `_state` in $O(1)$ immediate field access.
+   - If `_DirtyState.clean` (on active nodes): Returns the cached `_state` in $O(1)$ immediate field access.
    - If `_DirtyState.check`: Calls `_resolveDirty()` to verify whether upstream sources actually mutated.
    - If `_DirtyState.dirty` (or if `_resolveDirty()` confirms an upstream version increment): Executes `_pull()` to compute the new value, updates `_dirtyState = _DirtyState.clean`, and synchronizes versions via `_pullVersion()`.
 3. **Glitch-Free Guarantee**: In diamond topologies, when $D$ resolves, it recursively forces $B$ and $C$ to resolve completely before $D$ executes its own computation closure. Intermediate states are mathematically inaccessible.
@@ -135,7 +135,7 @@ Every derived node ([`_PullResolver<T>`](../../lib/src/engine/_internal/_pull.da
 ### 4.1 State Definitions
 * **`_DirtyState.clean`**:
   - The node's cached state (`_state`) is fully synchronized with all upstream source versions.
-  - Accessing `.data` or `.snapshot` is an immediate $O(1)$ field dereference.
+  - On active clean nodes, accessing `.data` or `.snapshot` is an immediate $O(1)$ field dereference (dormant nodes verify upstream versions first; dirty nodes trigger a lazy pull).
 * **`_DirtyState.check`**:
   - The node received a Push-Dirty invalidation pulse, but **whether upstream outputs actually changed has not yet been determined**.
   - During lazy evaluation (Pull), upstream dependencies must be verified first via `_resolveDirty()`.
@@ -182,12 +182,22 @@ if (_dirtyState == _DirtyState.dirty || _state == null) {
 
 #### The 0-Compute Short-Circuit Scenario
 1. Source $A$ changes from $1 \to 3$.
-2. Relay $B$ is defined as `computed((via) => via(A).isOdd)`.
+2. Relay $B$ is defined as `computed((via) => via(A).isOdd).distinct()`.
 3. Push Phase: Invalidation transitions Relay $B$ and downstream Terminal $C$ to `check`.
 4. Pull Phase: When Terminal $C$ is accessed, Relay $B$ is resolved first.
-5. Relay $B$'s previous value was `true`, and its new value evaluates to `true`. Because of distinct equality checks, Relay $B$'s version does not increment (`_version` unchanged).
+5. Relay $B$'s previous value was `true`, and its new value evaluates to `true`. Because `.distinct()` filters out consecutive duplicate payloads, Relay $B$'s version does not increment (`_version` unchanged).
 6. Consequently, Terminal $C$'s `_resolveDirty()` returns `false`.
 7. **Result**: Terminal $C$ **skips its compute closure entirely, retains its cached snapshot, and returns immediately in $O(1)$ time**.
+
+> [!NOTE]
+> **Architectural Rationale: Why `computed` Intentionally Omits Implicit Equality Checking**
+>
+> In the What framework, basic `computed` nodes intentionally do **not** perform implicit `Object.==` checks or early cutoffs on every pull. This deliberate design decision stems from core performance and safety principles:
+>
+> 1. **Zero-Overhead Hot Path**: Dart's `Object.==` is a virtual method dispatch. For collections, records, and complex domain models, unconditional equality comparisons on every derivation pull introduce non-trivial CPU overhead. Keeping `computed` free of implicit checks ensures peak VM throughput.
+> 2. **Clean Separation of Concerns**: `computed` focuses solely on reactive derivation. Payload-level equality filtering and early cutoff are explicitly delegated to the [`.distinct([equals])`](../../lib/src/what/what.dart) combinator.
+> 3. **Avoidance of Stale States in Mutable References**: If a computed value mutates internal fields while retaining reference equality, an automatic `identical`/`==` check could prematurely drop notifications, causing silent UI desynchronization. Requiring explicit `.distinct()` ensures developers consciously declare when equality semantics are safe to enforce.
+
 
 ---
 

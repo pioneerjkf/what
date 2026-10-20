@@ -12,95 +12,95 @@ void main() {
   group('CompositeMotionStore Tests', () {
     test('initializes with expected defaults and repeat mode', () {
       final store = CompositeMotionStore();
-      expect(store.isMounted.peek, isTrue);
-      expect(store.isPlaying.peek, isTrue);
-      expect(store.isPingPong.peek, isTrue);
-      expect(store.activeTab.peek, 0);
-      expect(store.durationMs.peek, 2400);
+      expect(untracked(store.isMounted), isTrue);
+      expect(untracked(store.isPlaying), isTrue);
+      expect(untracked(store.isPingPong), isTrue);
+      expect(untracked(store.activeTab), 0);
+      expect(untracked(store.durationMs), 2400);
 
       // Verify sub-animation toggle defaults
-      expect(store.enableSlideElevation.peek, isTrue);
-      expect(store.enable3DRotation.peek, isTrue);
-      expect(store.enableBorderRadius.peek, isTrue);
-      expect(store.enableColorGradient.peek, isTrue);
-      expect(store.enableElasticBadge.peek, isTrue);
-      expect(store.enableStaggeredCascade.peek, isTrue);
+      expect(untracked(store.enableSlideElevation), isTrue);
+      expect(untracked(store.enable3DRotation), isTrue);
+      expect(untracked(store.enableBorderRadius), isTrue);
+      expect(untracked(store.enableColorGradient), isTrue);
+      expect(untracked(store.enableElasticBadge), isTrue);
+      expect(untracked(store.enableStaggeredCascade), isTrue);
     });
 
     test('toggles playback and ping-pong state correctly', () {
       final store = CompositeMotionStore();
 
       store.togglePlay();
-      expect(store.isPlaying.peek, isFalse);
+      expect(untracked(store.isPlaying), isFalse);
 
       store.togglePlay();
-      expect(store.isPlaying.peek, isTrue);
+      expect(untracked(store.isPlaying), isTrue);
 
       store.togglePingPong();
-      expect(store.isPingPong.peek, isFalse);
+      expect(untracked(store.isPingPong), isFalse);
 
       store.togglePingPong();
-      expect(store.isPingPong.peek, isTrue);
+      expect(untracked(store.isPingPong), isTrue);
     });
 
     test('sets duration and switches active tabs', () {
       final store = CompositeMotionStore();
 
       store.setDuration(1200);
-      expect(store.durationMs.peek, 1200);
+      expect(untracked(store.durationMs), 1200);
       expect(
-          store.masterCtrl.peek.duration, const Duration(milliseconds: 1200));
+          untracked(store.masterCtrl).duration, const Duration(milliseconds: 1200));
 
       store.setActiveTab(1);
-      expect(store.activeTab.peek, 1);
+      expect(untracked(store.activeTab), 1);
 
       store.setActiveTab(2);
-      expect(store.activeTab.peek, 2);
+      expect(untracked(store.activeTab), 2);
     });
 
     test('switches durability policy and hot-swaps master controller', () {
       final store = CompositeMotionStore();
-      final ctrl0 = store.masterCtrl.peek;
-      expect(store.policy.peek, DurabilityPolicy.resume);
+      final ctrl0 = untracked(store.masterCtrl);
+      expect(untracked(store.policy), DurabilityPolicy.resume);
       expect(ctrl0.policy, DurabilityPolicy.resume);
 
       store.setPolicy(DurabilityPolicy.catchUp);
-      final ctrl1 = store.masterCtrl.peek;
-      expect(store.policy.peek, DurabilityPolicy.catchUp);
+      final ctrl1 = untracked(store.masterCtrl);
+      expect(untracked(store.policy), DurabilityPolicy.catchUp);
       expect(ctrl1.policy, DurabilityPolicy.catchUp);
       expect(identical(ctrl1, ctrl0), isFalse);
 
       store.setPolicy(DurabilityPolicy.reset);
-      final ctrl2 = store.masterCtrl.peek;
-      expect(store.policy.peek, DurabilityPolicy.reset);
+      final ctrl2 = untracked(store.masterCtrl);
+      expect(untracked(store.policy), DurabilityPolicy.reset);
       expect(ctrl2.policy, DurabilityPolicy.reset);
       expect(identical(ctrl2, ctrl1), isFalse);
 
       // Setting same policy is a no-op
       store.setPolicy(DurabilityPolicy.reset);
-      expect(identical(store.masterCtrl.peek, ctrl2), isTrue);
+      expect(identical(untracked(store.masterCtrl), ctrl2), isTrue);
     });
 
     test('toggles individual sub-animation isolation flags', () {
       final store = CompositeMotionStore();
 
       store.toggleSlideElevation();
-      expect(store.enableSlideElevation.peek, isFalse);
+      expect(untracked(store.enableSlideElevation), isFalse);
 
       store.toggle3DRotation();
-      expect(store.enable3DRotation.peek, isFalse);
+      expect(untracked(store.enable3DRotation), isFalse);
 
       store.toggleBorderRadius();
-      expect(store.enableBorderRadius.peek, isFalse);
+      expect(untracked(store.enableBorderRadius), isFalse);
 
       store.toggleColorGradient();
-      expect(store.enableColorGradient.peek, isFalse);
+      expect(untracked(store.enableColorGradient), isFalse);
 
       store.toggleElasticBadge();
-      expect(store.enableElasticBadge.peek, isFalse);
+      expect(untracked(store.enableElasticBadge), isFalse);
 
       store.toggleStaggeredCascade();
-      expect(store.enableStaggeredCascade.peek, isFalse);
+      expect(untracked(store.enableStaggeredCascade), isFalse);
     });
   });
 
@@ -156,7 +156,7 @@ void main() {
       await tester.ensureVisible(catchUpChip);
       await tester.tap(catchUpChip);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(store.policy.peek, DurabilityPolicy.catchUp);
+      expect(untracked(store.policy), DurabilityPolicy.catchUp);
 
       final resetChip = find.byTooltip(
           'Discards progress and restarts from beginning upon remount');
@@ -164,7 +164,7 @@ void main() {
       await tester.ensureVisible(resetChip);
       await tester.tap(resetChip);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(store.policy.peek, DurabilityPolicy.reset);
+      expect(untracked(store.policy), DurabilityPolicy.reset);
 
       // 4. Test Dormancy Unmount Toggle and verify Reset policy text in placeholder
       store.toggleMount();

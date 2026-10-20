@@ -64,7 +64,7 @@ class ReactiveEffectsStore {
       // [Invariant] Untracked Execution Boundary:
       // Reading untrackedNode.data directly does NOT subscribe!
       // ignore: avoid_untracked_what_read
-      final untrackedVal = untrackedNode.peek;
+      final untrackedVal = untracked(untrackedNode);
 
       String details;
       if (tracking) {
@@ -83,8 +83,8 @@ class ReactiveEffectsStore {
     // 2. Explicit Tuple Effect on 2-tuple (counter, alertThreshold)
     // Skips initial evaluation (0 runs upon activation).
     tupleEffect = (counter, alertThreshold).effect(() {
-      final current = counter.peek;
-      final threshold = alertThreshold.peek;
+      final current = untracked(counter);
+      final threshold = untracked(alertThreshold);
 
       if (current >= threshold) {
         final alertMsg =
@@ -96,7 +96,7 @@ class ReactiveEffectsStore {
 
     // 3. Explicit Single What Effect
     singleEffect = counter.effect(() {
-      final current = counter.peek;
+      final current = untracked(counter);
       _recordEffectTrigger(
         'SingleEffect: Direct counter.effect() fired = $current',
       );
@@ -196,7 +196,7 @@ class ReactiveEffectsStore {
   void mutateUntracked() {
     _untrackedNode.set(_untrackedNode.data + 1);
     _recordLog(
-      'Mutated untrackedNode to ${untrackedNode.peek} (Should NOT trigger Effect.via)',
+      'Mutated untrackedNode to ${untracked(untrackedNode)} (Should NOT trigger Effect.via)',
     );
   }
 

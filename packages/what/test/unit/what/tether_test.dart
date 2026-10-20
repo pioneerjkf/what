@@ -126,13 +126,13 @@ void main() {
 
       // 1. Activate terminal and evaluate comp once to bind tether to source edge
       final terminal = RawWhatTerminal<int>(comp, onInvalidated: () {})..activate();
-      expect(comp.peek, equals(42));
+      expect(untracked(comp), equals(42));
 
       // 2. Deactivate terminal to make comp inactive
       terminal.deactivate();
 
       // 3. Dormant raw read on inactive node triggers _resolve() -> _isSourceDirty -> Tether._isNewerThan
-      expect(comp.peek, equals(42));
+      expect(untracked(comp), equals(42));
     });
   });
 }

@@ -15,8 +15,8 @@ void main() {
       final completer = Completer<String>();
       final greeting = computed.future((_) => completer.future);
 
-      expect(greeting.peekState.isEmpty, isTrue);
-      expect(greeting.peekState.hasData, isFalse);
+      expect(untracked.state(greeting).isEmpty, isTrue);
+      expect(untracked.state(greeting).hasData, isFalse);
 
       String? observed;
       final dispose = effect((via) {
@@ -30,8 +30,8 @@ void main() {
       completer.complete('Hello, World!');
       await Future<void>.delayed(Duration.zero);
 
-      expect(greeting.peekState.hasData, isTrue);
-      expect(greeting.peek, 'Hello, World!');
+      expect(untracked.state(greeting).hasData, isTrue);
+      expect(untracked(greeting), 'Hello, World!');
       expect(observed, 'Hello, World!');
 
       dispose();
@@ -41,7 +41,7 @@ void main() {
       final completer = Completer<int>();
       final count = computed.async((_) => completer.future);
 
-      expect(count.peekState.isEmpty, isTrue);
+      expect(untracked.state(count).isEmpty, isTrue);
 
       int? observed;
       final dispose = effect((via) {
@@ -53,8 +53,8 @@ void main() {
       completer.complete(999);
       await Future<void>.delayed(Duration.zero);
 
-      expect(count.peekState.hasData, isTrue);
-      expect(count.peek, 999);
+      expect(untracked.state(count).hasData, isTrue);
+      expect(untracked(count), 999);
       expect(observed, 999);
 
       dispose();
@@ -67,8 +67,8 @@ void main() {
         initialFactory: () => 'FactoryValue',
       );
 
-      expect(withInitialFactory.peekState.hasData, isTrue);
-      expect(withInitialFactory.peek, 'FactoryValue');
+      expect(untracked.state(withInitialFactory).hasData, isTrue);
+      expect(untracked(withInitialFactory), 'FactoryValue');
 
       String? observedFactory;
       final dispose = effect((via) {
@@ -81,7 +81,7 @@ void main() {
       completer.complete('UpdatedValue');
       await Future<void>.delayed(Duration.zero);
 
-      expect(withInitialFactory.peek, 'UpdatedValue');
+      expect(untracked(withInitialFactory), 'UpdatedValue');
       expect(observedFactory, 'UpdatedValue');
 
       dispose();
@@ -156,14 +156,14 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(observedResult, 'FastResult');
-      expect(searchResult.peek, 'FastResult');
+      expect(untracked(searchResult), 'FastResult');
 
       // Slow request resolves later - MUST be ignored due to LPDAG topology swap
       slowCompleter.complete('StaleSlowResult');
       await Future<void>.delayed(Duration.zero);
 
       expect(observedResult, 'FastResult');
-      expect(searchResult.peek, 'FastResult');
+      expect(untracked(searchResult), 'FastResult');
 
       dispose();
     });
@@ -190,13 +190,13 @@ void main() {
 
       await Future<void>.delayed(Duration.zero);
       expect(lastData, 'Success');
-      expect(result.peekState.hasError, isFalse);
+      expect(untracked.state(result).hasError, isFalse);
 
       // Trigger failure
       shouldFail.data = true;
       await Future<void>.delayed(Duration.zero);
 
-      expect(result.peekState.hasError, isTrue);
+      expect(untracked.state(result).hasError, isTrue);
       expect(lastError, isA<FormatException>());
 
       dispose();
@@ -215,8 +215,8 @@ void main() {
       });
 
       await Future<void>.delayed(Duration.zero);
-      expect(fallbackResult.peekState.hasData, isTrue);
-      expect(fallbackResult.peek, 'Recovered');
+      expect(untracked.state(fallbackResult).hasData, isTrue);
+      expect(untracked(fallbackResult), 'Recovered');
       expect(fallbackObserved, 'Recovered');
 
       disposeFallback();
@@ -241,8 +241,8 @@ void main() {
         }
       });
 
-      expect(guarded.peekState.isEmpty, isTrue);
-      expect(guarded.peekState.snapshot.emptyReason, 'AwaitingReadyState');
+      expect(untracked.state(guarded).isEmpty, isTrue);
+      expect(untracked.state(guarded).snapshot.emptyReason, 'AwaitingReadyState');
       expect(computeCalled, isFalse);
       expect(observed, isNull);
 
@@ -251,8 +251,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(computeCalled, isTrue);
-      expect(guarded.peekState.hasData, isTrue);
-      expect(guarded.peek, 42);
+      expect(untracked.state(guarded).hasData, isTrue);
+      expect(untracked(guarded), 42);
       expect(observed, 42);
 
       dispose();
@@ -337,17 +337,17 @@ void main() {
 
       // Standard top-level computed
       final sum = computed((via) => via(a.what) + via(b.what));
-      expect(sum.peek, 30);
+      expect(untracked(sum), 30);
 
       a.data = 15;
-      expect(sum.peek, 35);
+      expect(untracked(sum), 35);
 
       // what.computed factory accessor
       final product = computed((via) => via(a.what) * via(b.what));
-      expect(product.peek, 300);
+      expect(untracked(product), 300);
 
       b.data = 2;
-      expect(product.peek, 30);
+      expect(untracked(product), 30);
     });
 
     // =========================================================================

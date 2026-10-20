@@ -2,7 +2,7 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
-import 'package:what_flutter/src/animation/durable/testing.dart';
+import 'package:what_flutter/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1879,6 +1879,201 @@ void main() {
       });
 
       testWidgets(
+          'repeat(count: N) terminates when accumulated (active + dormant) loops reach count',
+          (WidgetTester tester) async {
+        late DurableAnimationController controller;
+        late RawWhatTerminal<double> terminal;
+        late TickerProvider savedVsync;
+        var currentTime = DateTime(2026, 1, 1, 12, 0, 0);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: composed.vsync((context, via, vsync) {
+              savedVsync = vsync;
+              controller = DurableAnimationController(
+                policy: DurabilityPolicy.catchUp,
+                value: 0.0,
+                duration: const Duration(milliseconds: 200),
+                clock: () => currentTime,
+              );
+              terminal =
+                  RawWhatTerminal(controller.observe(), onInvalidated: () {});
+              terminal.activate();
+              controller.wake(vsync);
+              return const SizedBox.shrink();
+            }),
+          ),
+        );
+
+        await tester.pump();
+        // Repeat exactly 2 times (total duration = 400ms, period = 200ms)
+        controller.repeat(count: 2, period: const Duration(milliseconds: 200));
+
+        // Advance 300ms in active state (1.5 loops consumed, 0.5 loops remaining)
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.isAnimating, isTrue);
+
+        // Hibernate
+        controller.hibernate();
+        await tester.pump();
+
+        // Dormant gap of 200ms (1.0 loop elapsed during dormancy)
+        // Total elapsed loops across lifetime: 1.5 + 1.0 = 2.5 loops >= count (2)
+        currentTime = currentTime.add(const Duration(milliseconds: 200));
+
+        // Reactivate: total loops exceeded count(2), so it must settle and stop
+        controller.wake(savedVsync);
+        await tester.pump();
+
+        // Must be completed: not animating, settled at max (1.0)
+        expect(controller.isAnimating, isFalse);
+        expect(controller.value, equals(1.0));
+
+        terminal.deactivate();
+        controller.hibernate();
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+
+      testWidgets(
+          'repeat(count: N) does not restart full count upon wake resumption',
+          (WidgetTester tester) async {
+        late DurableAnimationController controller;
+        late RawWhatTerminal<double> terminal;
+        late TickerProvider savedVsync;
+        var currentTime = DateTime(2026, 1, 1, 12, 0, 0);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: composed.vsync((context, via, vsync) {
+              savedVsync = vsync;
+              controller = DurableAnimationController(
+                policy: DurabilityPolicy.catchUp,
+                value: 0.0,
+                duration: const Duration(milliseconds: 200),
+                clock: () => currentTime,
+              );
+              terminal =
+                  RawWhatTerminal(controller.observe(), onInvalidated: () {});
+              terminal.activate();
+              controller.wake(vsync);
+              return const SizedBox.shrink();
+            }),
+          ),
+        );
+
+        await tester.pump();
+        // Repeat exactly 2 times (total budget = 400ms, period = 200ms)
+        controller.repeat(count: 2, period: const Duration(milliseconds: 200));
+        await tester.pump();
+
+        // 1. Consume 100ms active (0.5 loops consumed, 1.5 loops remaining)
+        currentTime = currentTime.add(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        currentTime = currentTime.add(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.isAnimating, isTrue);
+
+        // 2. Hibernate for 100ms (0.5 loops consumed during dormancy, 1.0 loop remaining)
+        controller.hibernate();
+        await tester.pump();
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+
+        // 3. Reactivate (1.0 loop remaining = 200ms needed to finish)
+        controller.wake(savedVsync);
+        await tester.pump();
+        expect(controller.isAnimating, isTrue);
+
+        // 4. Advance 200ms after wake (0.5 active + 0.5 dormant + 1.0 active = 2.0 total loops)
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // At exactly 2.0 total loops, the animation MUST be finished!
+        // (If the engine restarted with full count 2, it would still be animating for another 200ms)
+        expect(controller.isAnimating, isFalse);
+        expect(controller.value, equals(1.0));
+
+        terminal.deactivate();
+        controller.hibernate();
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+
+      testWidgets(
+          'repeat(count: N, reverse: true) terminates at correct bound upon wake resumption',
+          (WidgetTester tester) async {
+        late DurableAnimationController controller;
+        late RawWhatTerminal<double> terminal;
+        late TickerProvider savedVsync;
+        var currentTime = DateTime(2026, 1, 1, 12, 0, 0);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: composed.vsync((context, via, vsync) {
+              savedVsync = vsync;
+              controller = DurableAnimationController(
+                policy: DurabilityPolicy.catchUp,
+                value: 0.0,
+                duration: const Duration(milliseconds: 200),
+                clock: () => currentTime,
+              );
+              terminal =
+                  RawWhatTerminal(controller.observe(), onInvalidated: () {});
+              terminal.activate();
+              controller.wake(vsync);
+              return const SizedBox.shrink();
+            }),
+          ),
+        );
+
+        await tester.pump();
+        // Repeat 2 times with reverse (total budget = 400ms: loop 1 forward 0->1, loop 2 reverse 1->0)
+        controller.repeat(
+          count: 2,
+          reverse: true,
+          period: const Duration(milliseconds: 200),
+        );
+        await tester.pump();
+
+        // 1. Consume 100ms active (0.5 loops forward, value ~0.5)
+        currentTime = currentTime.add(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        currentTime = currentTime.add(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.isAnimating, isTrue);
+
+        // 2. Hibernate for 100ms (completes loop 1 forward during dormancy, value reaches 1.0, 1.0 loop remaining)
+        controller.hibernate();
+        await tester.pump();
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+
+        // 3. Reactivate (1.0 loop remaining in reverse: 200ms needed to finish at 0.0)
+        controller.wake(savedVsync);
+        await tester.pump();
+        expect(controller.isAnimating, isTrue);
+
+        // 4. Advance 200ms after wake (reverses from 1.0 down to 0.0)
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        currentTime = currentTime.add(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // At exactly 2.0 total loops with reverse, it must finish at lowerBound (0.0) with dismissed status!
+        expect(controller.isAnimating, isFalse);
+        expect(controller.value, equals(0.0));
+        expect(controller.status, equals(AnimationStatus.dismissed));
+
+        terminal.deactivate();
+        controller.hibernate();
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+
+      testWidgets(
           'animateTo() with non-linear Curve accurately calculates transformed value',
           (WidgetTester tester) async {
         late DurableAnimationController controller;
@@ -2863,7 +3058,7 @@ void main() {
             RawWhatTerminal(controllerWhat, onInvalidated: () {});
         controllerTerminal.activate();
         final terminal = RawWhatTerminal(combinedWhat, onInvalidated: () {
-          log.add(combinedWhat.peek);
+          log.add(untracked(combinedWhat));
         });
         terminal.activate();
 
@@ -3522,14 +3717,14 @@ void main() {
           ),
         );
 
-        expect(ctrlWhat.peek.isActive, isFalse);
+        expect(untracked(ctrlWhat).isActive, isFalse);
 
-        ctrlWhat.peek.wake(vsyncA);
-        expect(ctrlWhat.peek.isActive, isTrue);
+        untracked(ctrlWhat).wake(vsyncA);
+        expect(untracked(ctrlWhat).isActive, isTrue);
 
-        expect(ctrlWhat.peek.detachVsync(vsyncB), isFalse);
-        expect(ctrlWhat.peek.detachVsync(vsyncA), isTrue);
-        expect(ctrlWhat.peek.isActive, isFalse);
+        expect(untracked(ctrlWhat).detachVsync(vsyncB), isFalse);
+        expect(untracked(ctrlWhat).detachVsync(vsyncA), isTrue);
+        expect(untracked(ctrlWhat).isActive, isFalse);
       });
     });
 

@@ -73,7 +73,7 @@ This directory provides the definitive engineering specifications for the What F
 
 17. [**Imperative Signals & Transient Events Specification**](17_imperative_signals_and_transient_events.md)
     - Decoupling persistent state from ephemeral event pulses (`WhatSignal`, `WhatSignalController`).
-    - Elimination of zombie payloads, remount re-triggering glitches, and unified $O(1)$ LPDAG dirty pulse emission via `What<int>` tick sequence.
+    - Elimination of zombie payloads, remount re-triggering glitches, and unified single-pass dirty pulse emission via `What<int>` tick sequence.
 
 18. [**Precondition Guarding & Algebraic State Gating: The Unified Fault-Barrier of the Dynamic Triad**](18_precondition_guarding_and_algebraic_gating.md)
     - Declarative precondition execution gating across `computed`, `managed`, and `switched`.

@@ -146,8 +146,11 @@ base mixin _ViaTerminalMixin<T> on _Terminal, _NaryEdgeMixin<_Node>, _WhatViaEpo
     var succeeded = true;
     try {
       return _evaluator(_via);
+    } on _ViaShortCircuit {
+      succeeded = true;
+      rethrow;
     } catch (e) {
-      succeeded = e is _ViaShortCircuit;
+      succeeded = false;
       rethrow;
     } finally {
       _endEpoch(currentEpoch, succeeded: succeeded, commitVersions: true);

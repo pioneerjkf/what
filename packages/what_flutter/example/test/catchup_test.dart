@@ -251,7 +251,7 @@ void main() {
     await tester.tap(animateBtn);
     await tester.pump();
 
-    expect(store.sections.dormantThrashing.lastStagedAction.peek,
+    expect(untracked(store.sections.dormantThrashing.lastStagedAction),
         contains('animateTo(0.8'));
 
     // 3. Advance wall-clock time by 2 seconds while dormant (duration is 3s)
@@ -315,7 +315,7 @@ void main() {
     await tester.tap(reverseBtn);
     await tester.pump();
 
-    expect(store.sections.simulationFlapping.activeSimulationType.peek,
+    expect(untracked(store.sections.simulationFlapping.activeSimulationType),
         contains('Upward'));
 
     // 3. Unmount & Remount during physics simulation

@@ -15,13 +15,13 @@ void main() {
       // 1.1 sync
       final syncNode = computed((via) => via(a.what) * 2);
       expect(syncNode, isA<What<int>>());
-      expect(syncNode.peek, 20);
+      expect(untracked(syncNode), 20);
 
       // 1.2 future
       final completer = Completer<String>();
       final futureNode = computed.future((via) => completer.future);
       expect(futureNode, isA<What<String>>());
-      expect(futureNode.peekState.isEmpty, isTrue);
+      expect(untracked.state(futureNode).isEmpty, isTrue);
 
       final term = RawWhatTerminal(futureNode, onInvalidated: () {});
       term.activate();
@@ -38,7 +38,7 @@ void main() {
 
       completer.complete('done');
       await Future<void>.delayed(Duration.zero);
-      expect(futureNode.peek, 'done');
+      expect(untracked(futureNode), 'done');
 
       term.deactivate();
       sc.close();
@@ -52,13 +52,13 @@ void main() {
       // 2.1 default (lazy): does NOT decouple on dirty; keeps old source until pulled!
       final lazySwitched = switched((via) => via(cond.what) ? branchA.what : branchB.what);
       expect(lazySwitched, isA<What<String>>());
-      expect(lazySwitched.peek, 'A');
+      expect(untracked(lazySwitched), 'A');
 
       cond.data = false;
       // Before reading data, old source is still safely intact, not decoupled to empty!
-      expect(lazySwitched.peekState.hasData, isTrue);
+      expect(untracked.state(lazySwitched).hasData, isTrue);
       // Reads new branch on demand
-      expect(lazySwitched.peek, 'B');
+      expect(untracked(lazySwitched), 'B');
 
       // 2.2 eager: schedules eager microtask switch upon trigger dirty!
       final eagerSwitched = switched(
@@ -66,7 +66,7 @@ void main() {
         eager: true,
       );
       expect(eagerSwitched, isA<What<String>>());
-      expect(eagerSwitched.peek, 'B');
+      expect(untracked(eagerSwitched), 'B');
 
       final terminal = RawWhatTerminal(eagerSwitched, onInvalidated: () {});
       terminal.activate();
@@ -77,7 +77,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // Branch has pre-connected via microtask before downstream read!
-      expect(eagerSwitched.peek, 'A');
+      expect(untracked(eagerSwitched), 'A');
       terminal.deactivate();
     });
 
@@ -93,7 +93,7 @@ void main() {
 
       final terminal = RawWhatTerminal(syncManaged, onInvalidated: () {});
       terminal.activate();
-      expect(syncManaged.peek, 42);
+      expect(untracked(syncManaged), 42);
       terminal.deactivate();
       expect(disposed, 1);
     });
@@ -104,13 +104,13 @@ void main() {
       final retainedNode = source.what.retained(pending: pendingCoupler);
 
       expect(retainedNode, isA<What<int>>());
-      expect(retainedNode.peek, 1);
+      expect(untracked(retainedNode), 1);
       expect(pendingCoupler.what, isA<What<bool>>());
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(pendingCoupler.what), isFalse);
 
       final fromExtension = source.what.retained();
       expect(fromExtension, isA<What<int>>());
-      expect(fromExtension.peek, 1);
+      expect(untracked(fromExtension), 1);
     });
 
     test('5. SwitchedFunctor and ManagedFunctor eager option verification', () {
@@ -120,14 +120,14 @@ void main() {
 
       final s1 = switched((via) => via(cond.what) ? branchA.what : branchB.what);
       expect(s1, isA<What<String>>());
-      expect(s1.peek, 'A');
+      expect(untracked(s1), 'A');
 
       final s2 = switched(
         (via) => via(cond.what) ? branchA.what : branchB.what,
         eager: true,
       );
       expect(s2, isA<What<String>>());
-      expect(s2.peek, 'A');
+      expect(untracked(s2), 'A');
 
       // Managed sync eager option
       final mEager = managed(

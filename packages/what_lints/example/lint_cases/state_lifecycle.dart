@@ -28,28 +28,11 @@ class LeakyRunnerState extends State<LeakyRunner> {
   @override
   void initState() {
     super.initState();
-    _runner = count.effect(() => print(count.peek)).run();
+    _runner = count.effect(() => print(untracked(count))).run();
   }
 
   @override
   Widget build(BuildContext context) => const SizedBox();
-}
-
-// #case dispose_what_flutter_controller/bad/bound-text-controller-never-disposed
-class LeakyTextField extends StatefulWidget {
-  const LeakyTextField({super.key});
-
-  @override
-  State<LeakyTextField> createState() => LeakyTextFieldState();
-}
-
-class LeakyTextFieldState extends State<LeakyTextField> {
-  // expect_lint: dispose_what_flutter_controller
-  late final WhatTextEditingController _controller =
-      WhatTextEditingController(text);
-
-  @override
-  Widget build(BuildContext context) => TextField(controller: _controller);
 }
 
 // =============================================================================
@@ -70,7 +53,7 @@ class CleanRunnerState extends State<CleanRunner> {
   @override
   void initState() {
     super.initState();
-    _runner = count.effect(() => print(count.peek)).run();
+    _runner = count.effect(() => print(untracked(count))).run();
   }
 
   @override
@@ -81,26 +64,4 @@ class CleanRunnerState extends State<CleanRunner> {
 
   @override
   Widget build(BuildContext context) => const SizedBox();
-}
-
-// #case dispose_what_flutter_controller/good/bound-text-controller-disposed
-class CleanTextField extends StatefulWidget {
-  const CleanTextField({super.key});
-
-  @override
-  State<CleanTextField> createState() => CleanTextFieldState();
-}
-
-class CleanTextFieldState extends State<CleanTextField> {
-  late final WhatTextEditingController _controller =
-      WhatTextEditingController(text);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => TextField(controller: _controller);
 }

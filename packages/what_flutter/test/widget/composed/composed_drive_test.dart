@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:what_flutter/src/animation/durable/testing.dart';
+import 'package:what_flutter/testing.dart';
 
 void main() {
   group('composed.drive Functor Widget Tests', () {

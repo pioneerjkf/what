@@ -18,7 +18,7 @@ void main() {
 
       final captured = <int>[];
       final runner = distinctSum.effect(() {
-        captured.add(distinctSum.peek);
+        captured.add(untracked(distinctSum));
       }).run();
 
       expect(runner.isActive, isTrue);
@@ -63,7 +63,7 @@ void main() {
 
       final captured = <int>[];
       final runner = distinctJoin.effect(() {
-        captured.add(distinctJoin.peek);
+        captured.add(untracked(distinctJoin));
       }).run();
 
       expect(runner.isActive, isTrue);
@@ -91,7 +91,7 @@ void main() {
 
       final captured = <int>[];
       final runner = join.effect(() {
-        captured.add(join.peek);
+        captured.add(untracked(join));
       }).run();
 
       expect(runner.isActive, isTrue);
@@ -113,7 +113,7 @@ void main() {
 
       final captured = <int>[];
       final runner = debouncedSum.effect(() {
-        captured.add(debouncedSum.peek);
+        captured.add(untracked(debouncedSum));
       }).run();
 
       expect(runner.isActive, isTrue);
@@ -142,7 +142,7 @@ void main() {
 
       final captured = <int>[];
       final runner = distinctSum.effect(() {
-        captured.add(distinctSum.peek);
+        captured.add(untracked(distinctSum));
       }).run();
 
       expect(captured, isEmpty, reason: 'Initial run must be skipped even after pre-activation mutation');
@@ -164,7 +164,7 @@ void main() {
 
       final captured = <int>[];
       final runner = distinctJoin.effect(() {
-        captured.add(distinctJoin.peek);
+        captured.add(untracked(distinctJoin));
       }).run();
 
       expect(captured, isEmpty);
@@ -194,7 +194,7 @@ void main() {
 
       final captured = <String>[];
       final runner = unary.effect(() {
-        captured.add(unary.peek);
+        captured.add(untracked(unary));
       }).run();
 
       expect(captured, isEmpty);
@@ -236,7 +236,7 @@ void main() {
 
       final captured = <String>[];
       final runner = distinctResource.effect(() {
-        captured.add(distinctResource.peek);
+        captured.add(untracked(distinctResource));
       }).run();
 
       expect(managedCreated, 1, reason: 'Activation must prime managed resource through unary chain');
@@ -267,7 +267,7 @@ void main() {
       final cleanups = <int>[];
 
       final runner = distinctJoin.effect.handled((handle) {
-        final val = distinctJoin.peek;
+        final val = untracked(distinctJoin);
         captured.add(val);
         handle.onCleanup(() {
           cleanups.add(val);

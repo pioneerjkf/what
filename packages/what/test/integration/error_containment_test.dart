@@ -65,7 +65,7 @@ void main() {
         final errorWhat = What<int>.error(error, StackTrace.current);
 
         try {
-          errorWhat.peek;
+          untracked(errorWhat);
           fail('Should throw WhatSnapshotExtractionException');
         } on WhatSnapshotExtractionException catch (e) {
           expect(e.error, error);
@@ -75,7 +75,7 @@ void main() {
 
         final errorGroup = What<List<What<int>>>.error(error, StackTrace.current);
         try {
-          errorGroup.peek;
+          untracked(errorGroup);
           fail('Should throw WhatSnapshotExtractionException');
         } on WhatSnapshotExtractionException catch (e) {
           expect(e.error, error);
@@ -245,8 +245,8 @@ void main() {
         var uncaughtErrors = 0;
         runZonedGuarded(() {
           final terminal = RawViaTerminal((via) {
-            branchA.peek;
-            branchB.peek;
+            untracked(branchA);
+            untracked(branchB);
           }, onInvalidated: () {});
           terminal.activate();
           terminal.evaluate();

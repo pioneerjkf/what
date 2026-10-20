@@ -13,7 +13,7 @@
 /// ## Core Architectural Pillars
 ///
 /// 1. **2-Phase LPDAG Execution Engine**:
-///    - **Phase 1: Push-Dirty ($O(1)$ Invalidation)**: When a state mutation occurs in
+///    - **Phase 1: Push-Dirty (Lightweight Invalidation)**: When a state mutation occurs in
 ///      a producer node ([WhatController]), a lightweight dirty bit propagates downstream along
 ///      directed graph edges. Intermediate nodes are marked stale immediately, but no values
 ///      are recomputed prematurely.
@@ -61,14 +61,14 @@
 /// └───────────────────────┘
 ///         │
 ///         ▼ (Phase 2: Lazy-Pull Request)
-///      doubled.peek  ──> Evaluates fresh computation in O(1)
+///      untracked(doubled) ──> Evaluates fresh computation in O(1)
 /// ```
 ///
 /// ## Key Invariants & Separation of Concerns
 ///
 /// 1. **Producer/Consumer Separation**: [What] is observation-only; state mutation is strictly
 ///    encapsulated within [WhatController].
-/// 2. **Zero-Overhead Raw Reads**: Reading `.peek` or `.peekState` on a node outside a derivation
+/// 2. **Zero-Overhead Raw Reads**: Reading via [untracked] or [WhatUntracked.state] outside a derivation
 ///    closure is a direct field dereference with zero tracking penalty and no dynamic tracking stack.
 /// 3. **Explicit Dependency Manifest**: All dynamic reactive dependencies in [computed] and derivations
 ///    must be explicitly declared via the injected `via` handle (`via(node)`).
@@ -76,14 +76,14 @@
 ///    Import `package:what/what.dart` for state DAGs, and `package:what/effect.dart` for terminal side-effects.
 ///
 /// **Warning (Anti-Pattern Prevention):**
-/// - Do NOT read `.peek` or `.peekState` directly inside [computed] without `via(...)`; doing so bypasses
+/// - Do NOT read reactive nodes untracked directly inside [computed] without `via(...)`; doing so bypasses
 ///   reactive tracking and leads to stale derivations.
 /// - Do NOT mutate a [WhatController] inside [computed] or during render passes, as this causes infinite cycles.
 ///
 /// **BAD:**
 /// ```dart
 /// // [Anti-Pattern] Untracked read inside computed scope
-/// final doubled = computed((via) => counter.what.peek * 2); // Misses graph invalidations!
+/// final doubled = computed((via) => untracked(counter.what) * 2); // Misses graph invalidations!
 /// ```
 ///
 /// **GOOD:**
@@ -104,11 +104,11 @@
 ///   // 2. Declare a derived computation
 ///   final doubled = computed((via) => via(counter.what) * 2);
 ///
-///   print(doubled.peek); // 0
+///   print(untracked(doubled)); // 0
 ///
 ///   // 3. Mutate state
 ///   counter.data = 5;
-///   print(doubled.peek); // 10
+///   print(untracked(doubled)); // 10
 ///
 ///   // 4. Safe pattern matching via snapshot
 ///   final message = counter.snapshot.match(

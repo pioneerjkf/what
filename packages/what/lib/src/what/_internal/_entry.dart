@@ -12,7 +12,7 @@ part of '../../framework.dart';
 /// `[Entry (_Entry)] -> [Relay] -> [Terminal]`
 ///
 /// Completely private to the framework library to prevent rogue downcasting.
-abstract base class _Entry<T> extends What<T> with _PushOriginMixin, _WhatStateMixin<T>, _WhatPeekMixin<T> {
+abstract base class _Entry<T> extends What<T> with _PushOriginMixin, _WhatStateMixin<T> {
   _Entry._(T data) : super._() {
     _state = _ValidWhatState<T>(data);
   }

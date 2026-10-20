@@ -124,17 +124,17 @@ class SimulationFlappingStore {
         .set('SpringSimulation (${reverse ? "Upward" : "Downward"})');
     final start = reverse ? 1.0 : 0.0;
     final end = reverse ? 0.0 : 1.0;
-    final scale = speedScale.peek;
+    final scale = untracked(speedScale);
     final velocity = (reverse ? -1.8 : 1.8) * scale;
-    final effectiveStiffness = springStiffness.peek * scale * scale;
-    final effectiveDamping = springDamping.peek * scale;
+    final effectiveStiffness = untracked(springStiffness) * scale * scale;
+    final effectiveDamping = untracked(springDamping) * scale;
 
     frozenPhysicsCtrl.value = start;
     catchUpPhysicsCtrl.value = start;
 
     final sim1 = SpringSimulation(
       SpringDescription(
-        mass: springMass.peek,
+        mass: untracked(springMass),
         stiffness: effectiveStiffness,
         damping: effectiveDamping,
       ),
@@ -145,7 +145,7 @@ class SimulationFlappingStore {
     );
     final sim2 = SpringSimulation(
       SpringDescription(
-        mass: springMass.peek,
+        mass: untracked(springMass),
         stiffness: effectiveStiffness,
         damping: effectiveDamping,
       ),
@@ -159,7 +159,7 @@ class SimulationFlappingStore {
     catchUpPhysicsCtrl.animateWith(sim2);
     _attachAutoBounce(future);
     _log(
-        'Spring: Mass=${springMass.peek}kg, Stiff=${springStiffness.peek}, Damp=${springDamping.peek}, Speed=${scale}x');
+        'Spring: Mass=${untracked(springMass)}kg, Stiff=${untracked(springStiffness)}, Damp=${untracked(springDamping)}, Speed=${scale}x');
   }
 
   void runGravitySimulation({bool reverse = false}) {
@@ -167,9 +167,9 @@ class SimulationFlappingStore {
         .set('GravitySimulation (${reverse ? "Upward Launch" : "Free Fall"})');
     final start = reverse ? 1.0 : 0.0;
     final end = reverse ? 0.0 : 1.0;
-    final scale = speedScale.peek;
+    final scale = untracked(speedScale);
     final velocity = (reverse ? -2.2 : 0.0) * scale;
-    final effectiveGravity = gravityForce.peek * scale * scale;
+    final effectiveGravity = untracked(gravityForce) * scale * scale;
 
     frozenPhysicsCtrl.value = start;
     catchUpPhysicsCtrl.value = start;
@@ -180,16 +180,16 @@ class SimulationFlappingStore {
     final future = frozenPhysicsCtrl.animateWith(sim1);
     catchUpPhysicsCtrl.animateWith(sim2);
     _attachAutoBounce(future);
-    _log('Gravity: g=${gravityForce.peek}m/s², v0=$velocity, Speed=${scale}x');
+    _log('Gravity: g=${untracked(gravityForce)}m/s², v0=$velocity, Speed=${scale}x');
   }
 
   void runFrictionSimulation({bool reverse = false}) {
     _activeSimulationType
         .set('FrictionSimulation (${reverse ? "Left Glide" : "Right Glide"})');
     final start = reverse ? 1.0 : 0.0;
-    final scale = speedScale.peek;
+    final scale = untracked(speedScale);
     final velocity = (reverse ? -1.2 : 1.2) * scale;
-    final effectiveDrag = frictionDrag.peek / scale;
+    final effectiveDrag = untracked(frictionDrag) / scale;
 
     frozenPhysicsCtrl.value = start;
     catchUpPhysicsCtrl.value = start;
@@ -200,7 +200,7 @@ class SimulationFlappingStore {
     final future = frozenPhysicsCtrl.animateWith(sim1);
     catchUpPhysicsCtrl.animateWith(sim2);
     _attachAutoBounce(future);
-    _log('Friction: Drag=${frictionDrag.peek}, v0=$velocity, Speed=${scale}x');
+    _log('Friction: Drag=${untracked(frictionDrag)}, v0=$velocity, Speed=${scale}x');
   }
 
   void _attachAutoBounce(TickerFuture future) {
@@ -212,7 +212,7 @@ class SimulationFlappingStore {
   }
 
   void reverseDirection() {
-    final curType = activeSimulationType.peek;
+    final curType = untracked(activeSimulationType);
     final isCurrentlyReverse =
         curType.contains('Upward') || curType.contains('Left');
     if (curType.contains('Spring')) {
@@ -229,9 +229,9 @@ class SimulationFlappingStore {
     _isFlappingRunning.set(true);
     _flappingCyclesCompleted.set(0);
     _isAutoBounce.set(true);
-    final interval = Duration(milliseconds: flappingIntervalMs.peek);
+    final interval = Duration(milliseconds: untracked(flappingIntervalMs));
     _log(
-        'Started $targetCycles Physics Simulation Flapping Stress Test (Interval: ${flappingIntervalMs.peek}ms)...');
+        'Started $targetCycles Physics Simulation Flapping Stress Test (Interval: ${untracked(flappingIntervalMs)}ms)...');
 
     // Automatically trigger continuous physics motion if settled
     if (!frozenPhysicsCtrl.isAnimating) {

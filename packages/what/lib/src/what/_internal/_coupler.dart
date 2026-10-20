@@ -13,7 +13,7 @@ part of '../../framework.dart';
 /// Implements [What<T>] as a 1-tier relay node in the DAG, delegating its state
 /// and edge connections dynamically to the currently coupled upstream source.
 base class _CoupledWhat<T> extends _CoupledUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>
+    with _WhatStateMixin<T>
     implements What<T>, LpdagStatus {
   _CoupledWhat(super.inbound);
 

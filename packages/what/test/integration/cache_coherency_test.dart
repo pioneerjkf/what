@@ -151,18 +151,18 @@ void main() {
         }, eager: false);
 
         // Inactive pull
-        expect(lazyCascade.peekState.snapshot.data, 'A1');
+        expect(untracked.state(lazyCascade).snapshot.data, 'A1');
         expect(cascadeCallCount, 1);
 
         // Mutate trigger while inactive
         trigger.set(2);
 
-        expect(lazyCascade.peekState.snapshot.data, 'B1');
+        expect(untracked.state(lazyCascade).snapshot.data, 'B1');
         expect(cascadeCallCount, 2);
 
         // Mutate inner node B
         whatB.set('B2');
-        expect(lazyCascade.peekState.snapshot.data, 'B2');
+        expect(untracked.state(lazyCascade).snapshot.data, 'B2');
         expect(cascadeCallCount, 2);
       });
     });

@@ -35,7 +35,7 @@ void main() async {
 
   // 3. Reactive Terminal: Side-Effect Runner (Push-dirty scheduled dispatch)
   final resultsRunner = searchResults.effect(() {
-    print('[UI Terminal] Fresh Results: ${searchResults.peek}');
+    print('[UI Terminal] Fresh Results: ${untracked(searchResults)}');
   }).run();
 
   // 4. Execution & Side-Effects (Zero-cycle terminal sink from package:what/effect.dart)
@@ -61,7 +61,7 @@ void main() async {
   await Future<void>.delayed(Duration.zero);
 
   // 6. Safe 3-State FSM Snapshot Pattern Matching
-  searchResults.peekState.snapshot.match(
+  untracked.state(searchResults).snapshot.match(
     data: (items) => print('[FSM Snapshot] Confirmed valid results: ${items.length} items'),
     empty: () => print('[FSM Snapshot] Pending or Empty'),
     error: (err, _) => print('[FSM Snapshot] Error occurred: $err'),

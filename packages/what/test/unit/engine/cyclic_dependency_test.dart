@@ -38,12 +38,12 @@ void main() {
         });
 
         // Reading hasError and error directly from What
-        expect(circular.peekState.hasError, isTrue);
-        expect(circular.peekState.error, isCycleErrorOrWrapped);
+        expect(untracked.state(circular).hasError, isTrue);
+        expect(untracked.state(circular).error, isCycleErrorOrWrapped);
 
         // Reading .data should throw extraction exception with LpdagCycleError as cause
         expect(
-          () => circular.peek,
+          () => untracked(circular),
           throwsA(
             isA<WhatSnapshotExtractionException>().having(
               (e) => e.error,
@@ -61,11 +61,11 @@ void main() {
         a = computed((via) => via(b) + 1);
         b = computed((via) => via(a) + 1);
 
-        expect(a.peekState.hasError, isTrue);
-        expect(a.peekState.error, isCycleErrorOrWrapped);
+        expect(untracked.state(a).hasError, isTrue);
+        expect(untracked.state(a).error, isCycleErrorOrWrapped);
 
         expect(
-          () => a.peek,
+          () => untracked(a),
           throwsA(
             isA<WhatSnapshotExtractionException>().having(
               (e) => e.error,
@@ -109,11 +109,11 @@ void main() {
         final terminal = RawWhatTerminal(managedNode, onInvalidated: () {});
         terminal.activate();
 
-        expect(managedNode.peekState.hasError, isTrue);
-        expect(managedNode.peekState.error, isCycleErrorOrWrapped);
+        expect(untracked.state(managedNode).hasError, isTrue);
+        expect(untracked.state(managedNode).error, isCycleErrorOrWrapped);
 
         expect(
-          () => managedNode.peek,
+          () => untracked(managedNode),
           throwsA(
             isA<WhatSnapshotExtractionException>().having(
               (e) => e.error,
@@ -139,8 +139,8 @@ void main() {
         final terminal = RawWhatTerminal(managedNode, onInvalidated: () {});
         terminal.activate();
 
-        expect(managedNode.peekState.hasError, isTrue);
-        expect(managedNode.peekState.error, isCycleErrorOrWrapped);
+        expect(untracked.state(managedNode).hasError, isTrue);
+        expect(untracked.state(managedNode).error, isCycleErrorOrWrapped);
 
         terminal.deactivate();
       });
@@ -175,7 +175,7 @@ void main() {
         });
 
         expect(
-          () => circular.peek,
+          () => untracked(circular),
           throwsCycleError,
         );
       });
@@ -188,7 +188,7 @@ void main() {
         b = switched((via) => a);
 
         expect(
-          () => a.peek,
+          () => untracked(a),
           throwsCycleError,
         );
       });

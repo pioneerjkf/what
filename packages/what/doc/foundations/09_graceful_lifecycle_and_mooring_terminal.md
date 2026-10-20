@@ -70,7 +70,6 @@ final class _MooringTerminal extends _Terminal {
   _MooringTerminal._();
   static final _MooringTerminal instance = _MooringTerminal._();
 
-  final List<_MooringEdge> _edgePool = <_MooringEdge>[];
   _MooringEdge? _mooringHead;
 
   @override
@@ -89,12 +88,11 @@ final class _MooringTerminal extends _Terminal {
 
 ---
 
-### 2.2 Intrusive Edge Pooling (`_MooringEdge`)
-`_MooringTerminal` maintains a recycling pool `_edgePool` of intrusive [`_MooringEdge`](../../lib/src/engine/_internal/_mooring.dart#L12) instances:
-* When a node enters period grace, `moor(node, duration)` pulls a cached edge from `_edgePool` in $O(1)$.
-* The edge is prepended to `_mooringHead` via intrusive pointers (`_prevMooring`, `_nextMooring`).
-* When unmoored or expired, the edge is unlinked in $O(1)$ and returned to `_edgePool`.
-* **Zero Steady-State Allocations**: Mooring and unmooring incur zero heap allocations and zero GC pressure during continuous route navigation.
+### 2.2 Intrusive Edge Management (`_MooringEdge`)
+`_MooringTerminal` manages lightweight intrusive [`_MooringEdge`](../../lib/src/engine/_internal/_mooring.dart#L12) instances:
+* When a node enters period grace, `moor(node, duration)` instantiates a lightweight `_MooringEdge` and prepends it to `_mooringHead` via intrusive pointers (`_prevMooring`, `_nextMooring`) in $O(1)$.
+* When unmoored or expired, the edge is unlinked in $O(1)$ and released for instant minor GC collection.
+* **Ephemeral Short-Lived Scavenging**: Without object pooling overhead, short-lived edges evaporate cleanly in Dart's generational new space without promotion to old generation.
 
 ---
 
@@ -109,47 +107,47 @@ The What Framework provides two distinct grace policy implementations matching d
                                           │
                   ┌───────────────────────┴───────────────────────┐
                   ▼                                               ▼
-     [Graceful.microtask / graceful]                [Graceful.period(Duration)]
+     [Graceful.microtask / Graceful()]              [Graceful.period(Duration)]
      • Single microtask tick buffer                 • Bounded time-window retention
      • Zero edge allocations (No Timer)             • Anchors via _MooringTerminal
      • Coalesces Flutter frame reparenting          • Retains cache across route navigation
 ```
 
-### 3.1 Microtask Deferral (`Graceful.microtask` / `graceful` / `Graceful()`)
+### 3.1 Microtask Deferral (`Graceful.microtask` / `Graceful()`)
 * **Underlying Engine**: Backed by [`_MicrotaskGraceHandle`](../../lib/src/engine/_internal/_graceful.dart#L19) and [`_Scheduler`](../../lib/src/engine/_internal/_scheduler.dart).
 * **Zero-Allocation Optimization**: It does **not** allocate `_MooringEdge` objects or Dart `Timer` handles. It registers directly in `_Scheduler.instance._scheduleGraceHandle(this)`.
 * **Application**: Perfect for Flutter widget tree rebuilding, `Hero` transitions, and list element reparenting occurring within the same event loop tick.
 
-### 3.2 Time-Based Mooring (`Graceful.period(Duration)` / `graceful.period(...)`)
+### 3.2 Time-Based Mooring (`Graceful.period(Duration)`)
 * **Underlying Engine**: Backed by [`_PeriodGraceHandle`](../../lib/src/engine/_internal/_mooring.dart#L114) and `_MooringTerminal`.
 * **Application**: Multi-second retention for screen navigation (bottom navigation bars, master-detail transitions, tab pages).
 * **Stream In-Flight Continuity**: WebSockets and broadcast streams remain connected; events arriving while unobserved are buffered and available instantly upon remount.
 
-### 3.3 Unified Ergonomic DSL
+### 3.3 Factory Constructors and Named Constants
 
 ```dart
-// 1. Direct Default Microtask Deferral (Constant or Callable):
+// 1. Direct Default Microtask Deferral (Constant or Constructor):
 final formState = managed(
   create: (via) => FormValidator(),
   dispose: (v) => v.dispose(),
-  graceful: graceful, // or graceful()
+  graceful: Graceful.microtask, // or const Graceful()
 );
 
-// 2. Time-Based Mooring Window (DSL Call or Explicit .period):
+// 2. Time-Based Mooring Window (Explicit .period):
 final userProfile = computed.future(
   (via) => fetchProfile(via(userId.what)),
-).graceful(graceful.period(const Duration(seconds: 30)));
+).graceful(const Graceful.period(Duration(seconds: 30)));
 
 // 3. WhatController Direct Attachment:
 final counter = WhatController(
   0,
-  graceful: graceful.period(const Duration(minutes: 5)),
+  graceful: const Graceful.period(Duration(minutes: 5)),
 );
 
 // 4. Stream Extension Mooring:
 final feedWhat = socketStream.toWhat(
   initialFactory: () => const <Message>[],
-  graceful: graceful(const Duration(seconds: 15)),
+  graceful: const Graceful.period(Duration(seconds: 15)),
 );
 ```
 
@@ -210,7 +208,7 @@ When the last active subscriber detaches:
 If a new subscriber attaches before the grace period expires:
 1. `_attachTargetEdgeOptimistically(newTarget)` runs.
 2. `handle.cancel()` executes:
-   - For period grace: cancels the running `Timer`, detaches `_MooringEdge`, and returns it to `_edgePool`.
+   - For period grace: cancels the running `Timer`, detaches and releases `_MooringEdge`.
    - For microtask grace: removes the handle from `_Scheduler`.
 3. **Zero Latency**: State is rendered in **0 nanoseconds** without re-fetching, re-connecting, or rebuilding controllers.
 
@@ -255,7 +253,7 @@ If deactivation ran before effect execution:
    Early reconnects restore active UI rendering with zero network delay, zero re-fetching, and zero loading spinners.
 3. **Tranquil Harbor (`_MooringTerminal`)**:  
    The nominal mooring terminal holds topological edges without pulling data or triggering recomputations, maintaining pure passive anchoring.
-4. **Intrusive Zero-Allocation Edge Pooling**:  
-   `_MooringEdge` instances are recycled via `_edgePool`, achieving $O(1)$ linked-list insertion and removal with zero GC pressure in steady state.
+4. **Intrusive $O(1)$ Edge Management**:  
+   `_MooringEdge` instances utilize intrusive linked-list pointers, achieving $O(1)$ insertion and detachment without long-term heap retention or old-gen promotion.
 5. **Scheduler Order Invariant**:  
    Within `_Scheduler`, graceful deactivations execute strictly after all active effects and terminals settle, guaranteeing exception-free lifecycle transitions.

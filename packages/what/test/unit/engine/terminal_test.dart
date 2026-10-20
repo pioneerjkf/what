@@ -53,9 +53,9 @@ void main() {
         expect(terminal.hasData, isTrue);
         expect(terminal.isEmpty, isFalse);
         expect(terminal.hasError, isFalse);
-        expect(terminal.data.map((c) => c.peek).toList(), [10, 20]);
-        expect(terminal.dataOrNull?.map((c) => c.peek).toList(), [10, 20]);
-        expect(terminal.dataOrElse(() => const []).map((c) => c.peek).toList(), [10, 20]);
+        expect(terminal.data.map((c) => untracked(c)).toList(), [10, 20]);
+        expect(terminal.dataOrNull?.map((c) => untracked(c)).toList(), [10, 20]);
+        expect(terminal.dataOrElse(() => const []).map((c) => untracked(c)).toList(), [10, 20]);
 
         terminal.deactivate();
       });
@@ -395,17 +395,17 @@ void main() {
         parentTerminal.activate();
         parentTerminal.evaluate();
 
-        expect(mapped.peek, 20);
+        expect(untracked(mapped), 20);
 
         // Simulate hot reload logic change
         factor = 3;
-        expect(mapped.peek, 20); // Still cached before debugForceInvalidate
+        expect(untracked(mapped), 20); // Still cached before debugForceInvalidate
 
         // Force invalidate from parent terminal
         parentTerminal.debugForceInvalidate();
 
         // Cached state in mapped is invalidated through effect lifecycle anchor!
-        expect(mapped.peek, 30);
+        expect(untracked(mapped), 30);
 
         parentTerminal.deactivate();
       });

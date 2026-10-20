@@ -97,8 +97,8 @@ final isNearBottom = computed((via) {
 
 // Using effect to trigger the side-effect (API Call)
 final paginationEffect = isNearBottom.effect(() {
-  final nearBottom = isNearBottom.peek;
-  if (nearBottom && !store.isLoading.peek) {
+  final nearBottom = untracked(isNearBottom);
+  if (nearBottom && !untracked(store.isLoading)) {
     store.fetchNextPage();
   }
 }).run();

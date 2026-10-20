@@ -39,21 +39,25 @@ void main() {
         },
       );
 
+      final zoneErrors = <Object>[];
       runZonedGuarded(() {
         final t = RawWhatTerminal<int>(comp, onInvalidated: () {});
         t.activate();
-        expect(comp.peek, 42);
+        expect(untracked(comp), 42);
         // Deactivate removes all terminals; comp becomes an orphan node on dispose.
         t.deactivate();
-      }, (e, s) {});
+      }, (e, s) {
+        zoneErrors.add(e);
+      });
 
       expect(handler.captured, hasLength(1));
       final (error, _, context) = handler.captured.first;
       expect(error.toString(), contains('Dispose Exception in Orphan Node'));
       expect(context, isNotNull);
+      expect(zoneErrors, isEmpty, reason: 'Early return prevents double reporting to Zone');
     });
 
-    test('2. Captures terminal unhandled error when onUncaughtError is null', () {
+    test('2. Captures terminal unhandled error without double reporting to Zone', () {
       final handler = _TestErrorHandler();
       LpdagUncaughtErrorHandler.instance = handler;
 
@@ -66,14 +70,18 @@ void main() {
       );
       terminal.activate();
 
+      final zoneErrors = <Object>[];
       runZonedGuarded(() {
         ctrl.set(1);
-      }, (e, s) {});
+      }, (e, s) {
+        zoneErrors.add(e);
+      });
 
       expect(handler.captured, hasLength(1));
       final (error, _, context) = handler.captured.first;
       expect(error, isA<StateError>());
       expect(context, same(terminal));
+      expect(zoneErrors, isEmpty, reason: 'Early return prevents double reporting to Zone');
 
       terminal.deactivate();
     });
@@ -94,14 +102,18 @@ void main() {
       );
       terminal.activate();
 
+      final zoneErrors = <Object>[];
       runZonedGuarded(() {
         ctrl.set(1);
-      }, (e, s) {});
+      }, (e, s) {
+        zoneErrors.add(e);
+      });
 
       // Both primary and secondary fatal errors must be dispatched
       expect(handler.captured, hasLength(2));
       expect((handler.captured[0].$1 as StateError).message, 'Primary Error');
       expect((handler.captured[1].$1 as StateError).message, 'Secondary Fatal Error');
+      expect(zoneErrors, isEmpty, reason: 'Handled errors are not forwarded to Zone');
 
       terminal.deactivate();
     });
@@ -128,6 +140,31 @@ void main() {
       // Both handler error and original error reach the Zone safely
       expect(zoneErrors.any((e) => e.toString().contains('Handler internal failure')), isTrue);
       expect(zoneErrors.any((e) => e.toString().contains('Original Error')), isTrue);
+
+      terminal.deactivate();
+    });
+
+    test('5. Dispatches directly to Zone when handler is not registered', () {
+      LpdagUncaughtErrorHandler.instance = null;
+
+      final ctrl = WhatController(0);
+      final terminal = RawWhatTerminal<int>(
+        ctrl.what,
+        onInvalidated: () {
+          throw StateError('Direct Zone Error');
+        },
+      );
+      terminal.activate();
+
+      final zoneErrors = <Object>[];
+      runZonedGuarded(() {
+        ctrl.set(1);
+      }, (e, s) {
+        zoneErrors.add(e);
+      });
+
+      expect(zoneErrors, hasLength(1));
+      expect((zoneErrors.first as StateError).message, 'Direct Zone Error');
 
       terminal.deactivate();
     });

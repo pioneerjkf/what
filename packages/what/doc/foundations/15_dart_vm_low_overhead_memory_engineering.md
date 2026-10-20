@@ -337,26 +337,36 @@ In steady-state derivation executions where branch conditions remain stable acro
 // packages/what/lib/src/engine/_internal/_via.dart
 @pragma('vm:prefer-inline')
 void _trackDependency(_Node source) {
-  final currentEpoch = _epoch;
-
   // 1. Fast-path: Check expected cursor position (O(1) sequential match)
   final cursor = _cursor;
-  _Edge? matchedEdge;
   if (cursor != null && identical(cursor._source, source)) {
-    matchedEdge = cursor;
+    cursor._seenEpoch = _epoch;
     _cursor = cursor._nextSource;
-  } else {
-    // 2. Slow-path: Dynamic branch changed or order shifted; fallback to linear search
-    matchedEdge = _findSourceEdge(source);
-    if (matchedEdge != null && matchedEdge._seenEpoch != currentEpoch) {
-      _cursor = matchedEdge._nextSource;
-    }
+    return;
   }
 
+  _trackDependencySlow(source, _epoch, cursor);
+}
+
+// 2. Slow-path: Out-of-line fallback preserving inlining budget & I-Cache locality
+@pragma('vm:never-inline')
+void _trackDependencySlow(_Node source, int currentEpoch, _Edge? cursor) {
+  final matchedEdge = _findSourceEdge(source);
   if (matchedEdge != null) {
-    matchedEdge._seenEpoch = currentEpoch;
+    if (matchedEdge._seenEpoch != currentEpoch) {
+      if (cursor != null) {
+        _moveSourceEdgeBefore(matchedEdge, cursor);
+      }
+      matchedEdge._seenEpoch = currentEpoch;
+    }
   } else {
-    final newEdge = _lifecycle.isActive ? _addAndAttachSourceEdge(source) : _addSourceEdge(source);
+    final newEdge = _lifecycle.isActive
+        ? (cursor != null
+            ? _addAndAttachSourceEdgeBefore(source, cursor)
+            : _addAndAttachSourceEdge(source))
+        : (cursor != null
+            ? _addSourceEdgeBefore(source, cursor)
+            : _addSourceEdge(source));
     newEdge._seenEpoch = currentEpoch;
   }
 }
@@ -405,7 +415,8 @@ Hot-path methods in the reactive engine carry `@pragma('vm:prefer-inline')`:
 * `_propagateDirty`
 * `_isNewerThan` / `_resolveDirty` / `_pullVersion`
 * `_trackDependency` / `_sweepObsoleteEdges`
-* State extraction getters (`.data`, `.hasData`, `.isEmpty`, `.hasError`, `.peek`, `.peekState`)
+* Symmetrical gateway functors (`via`, `via.state`, `untracked`, `untracked.state`)
+* State extraction getters (`.data`, `.hasData`, `.isEmpty`, `.hasError`)
 
 This directive instructs the Dart AOT compiler to inline the function body directly into caller call-sites, eliminating stack frame setup, register spill/restore sequences, and branch call latency.
 
@@ -425,29 +436,28 @@ final class _ErrorWhatState<T> extends _WhatState<T> { final Object error; final
 * **TFA Devirtualization**: In the 99.999% hot path (`_ValidWhatState`), `data` is a concrete memory field. Keeping `_read()` returning `_WhatState<T>` allows Dart AOT Type Flow Analysis to specialize inspection paths into direct field offset dereferences with minimal class-ID checks.
 * **Zero Boxing on Empty/Error**: Sentinels are stored directly in physical fields without wrapper envelopes.
 
-### 5.3 Zero-Overhead Raw Reads & Node Identity (`peek` & `peekState`)
+### 5.3 Symmetrical Zero-Overhead Gateways (`via` & `untracked`)
 
 A core architectural guarantee of What is that reading values outside derivation scopes incurs zero dynamic scope inspection:
 
 ```dart
-// packages/what/lib/src/what/_internal/_state.dart
-base mixin _WhatPeekMixin<T> on _Node, WhatState<T> implements What<T> {
-  @override
-  _WhatState<T> _read();
+// packages/what/lib/src/what/_internal/_untracked.dart
+final class _WhatUntrackedImpl implements WhatUntracked {
+  const _WhatUntrackedImpl();
 
   @override
   @pragma('vm:prefer-inline')
-  T get peek => _read().data;
+  T call<T>(What<T> what) => what._read().data;
 
   @override
   @pragma('vm:prefer-inline')
-  WhatState<T> get peekState => this;
+  WhatState<T> state<T>(What<T> what) => what as WhatState<T>;
 }
 ```
 
 * **No Global Scope Lookup**: What avoids global `activeObserver` thread-local queries or stack inspection.
-* **Node-as-State Identity**: Calling `.peekState` returns `this` directly with **zero snapshot object allocations**. The node acts as its own state facet.
-* **Direct Field Speed**: Calling `.peek` on a clean node resolves to a single direct memory dereference at raw instance variable speed (~0.8 ns).
+* **Node-as-State Identity**: Calling `untracked.state(what)` returns `what as WhatState<T>` directly with **zero snapshot object allocations**. The node acts as its own state facet.
+* **Direct Inlined Speed**: Calling `untracked(what)` on a clean node resolves to a single direct memory dereference at raw instance variable speed (~0.8 ns) via inlining.
 
 ### 5.4 Compile-Time Erased `extension type` Wrappers
 
@@ -527,14 +537,14 @@ final class _ViaShortCircuit implements Error {
 }
 ```
 
-In the Dart VM, synthesizing a full `StackTrace` captures native stack frames and performs heap allocation. Overriding `stackTrace => null` guarantees that short-circuiting derivations generate **zero stack frame allocation overhead**.
+In the Dart VM, synthesizing a full `StackTrace` captures native stack frames and performs heap allocation. Overriding `stackTrace => null` and catching explicitly via dedicated `on _ViaShortCircuit catch (e)` clauses (omitting the second `StackTrace` parameter) prevents the Dart VM from synthesizing and allocating unnecessary stack trace objects during normal reactive short-circuit propagation.
 
 ---
 
 ## 6. Core Engineering Invariants
 
 1. **Hot-Path Zero-Allocation Invariant**:  
-   Attaching, detaching, propagating dirty pulses, checking versions, and reading `.peek`/`.peekState` allocates exactly 0 bytes of heap memory.
+   Attaching, detaching, propagating dirty pulses, checking versions, and reading via `untracked`/`untracked.state` allocates exactly 0 bytes of heap memory.
 2. **Collection-Free Topology Invariant**:  
    Internal reactive DAG structures never instantiate `List`, `Set`, or `Map` collections for graph connectivity; nodes link exclusively via intrusive doubly-linked pointer fields.
 3. **Unary Node-as-Edge Invariant**:  
@@ -544,7 +554,7 @@ In the Dart VM, synthesizing a full `StackTrace` captures native stack frames an
 5. **1-Pass Dynamic Epoch Sweeping Invariant**:  
    Dynamic branch discovery tracks iterations via monotonic epochs (`_epoch`) and sequential pointer caching (`_cursor`), completing edge unlinking and version committing in a single linear pass with zero intermediate sets.
 6. **Pure Dereference Read Invariant**:  
-   Accessing `.peek` on a clean node resolves to a single direct object field memory dereference, executing at raw CPU instance variable speed without ambient scope inspection.
+   Calling `untracked(what)` on a clean node resolves to a single direct object field memory dereference, executing at raw CPU instance variable speed without ambient scope inspection.
 
 ---
 

@@ -67,10 +67,10 @@ void main() {
 
       final emittedValues = <String>[];
       final terminal = RawWhatTerminal(node, onInvalidated: () {
-        emittedValues.add(node.peek);
+        emittedValues.add(untracked(node));
       });
       terminal.activate();
-      emittedValues.add(node.peek);
+      emittedValues.add(untracked(node));
 
       expect(emittedValues, ['A']);
 
@@ -89,10 +89,10 @@ void main() {
 
       final emittedValues = <int>[];
       final terminal = RawWhatTerminal(node, onInvalidated: () {
-        emittedValues.add(node.peek);
+        emittedValues.add(untracked(node));
       });
       terminal.activate();
-      emittedValues.add(node.peek);
+      emittedValues.add(untracked(node));
 
       expect(emittedValues, [1]);
 
@@ -111,10 +111,10 @@ void main() {
 
       final emittedValues = <int>[];
       final terminal = RawWhatTerminal(node, onInvalidated: () {
-        emittedValues.add(node.peek);
+        emittedValues.add(untracked(node));
       });
       terminal.activate();
-      emittedValues.add(node.peek);
+      emittedValues.add(untracked(node));
 
       expect(emittedValues, [1]);
 
@@ -135,10 +135,10 @@ void main() {
 
       final emittedValues = <int>[];
       final terminal = RawWhatTerminal(node, onInvalidated: () {
-        emittedValues.add(node.peek);
+        emittedValues.add(untracked(node));
       });
       terminal.activate();
-      emittedValues.add(node.peek);
+      emittedValues.add(untracked(node));
 
       expect(emittedValues, [1]);
 
@@ -160,10 +160,10 @@ void main() {
 
       final emittedValues = <int?>[];
       final terminal = RawWhatTerminal(node, onInvalidated: () {
-        emittedValues.add(node.peek);
+        emittedValues.add(untracked(node));
       });
       terminal.activate();
-      emittedValues.add(node.peek);
+      emittedValues.add(untracked(node));
 
       expect(emittedValues, [null]);
 
@@ -183,20 +183,20 @@ void main() {
       final terminal = RawWhatTerminal(node, onInvalidated: () {});
 
       terminal.activate();
-      expect(node.peek, 'Initial');
+      expect(untracked(node), 'Initial');
       terminal.deactivate();
 
       notifier.value = 'Updated While Dormant';
 
       terminal.activate();
-      expect(node.peek, 'Updated While Dormant');
+      expect(untracked(node), 'Updated While Dormant');
       terminal.deactivate();
     });
 
     test('Graceful deactivation preserves listener during microtask transition',
         () async {
       final notifier = ValueNotifier<int>(10);
-      final node = notifier.toWhat(graceful: graceful);
+      final node = notifier.toWhat(graceful: Graceful.microtask);
 
       // ignore: invalid_use_of_protected_member
       expect(notifier.hasListeners, false);
@@ -238,10 +238,10 @@ void main() {
 
       final emittedNames = <String>[];
       final terminal = RawWhatTerminal(nameWhat, onInvalidated: () {
-        emittedNames.add(nameWhat.peek);
+        emittedNames.add(untracked(nameWhat));
       });
       terminal.activate();
-      emittedNames.add(nameWhat.peek);
+      emittedNames.add(untracked(nameWhat));
 
       expect(emittedNames, ['Alice']);
 
@@ -259,10 +259,10 @@ void main() {
 
       final emittedNames = <String>[];
       final terminal = RawWhatTerminal(nameWhat, onInvalidated: () {
-        emittedNames.add(nameWhat.peek);
+        emittedNames.add(untracked(nameWhat));
       });
       terminal.activate();
-      emittedNames.add(nameWhat.peek);
+      emittedNames.add(untracked(nameWhat));
 
       expect(emittedNames, ['Alice']);
 
@@ -288,10 +288,10 @@ void main() {
 
       final emittedNames = <String>[];
       final terminal = RawWhatTerminal(nameWhat, onInvalidated: () {
-        emittedNames.add(nameWhat.peek);
+        emittedNames.add(untracked(nameWhat));
       });
       terminal.activate();
-      emittedNames.add(nameWhat.peek);
+      emittedNames.add(untracked(nameWhat));
 
       expect(emittedNames, ['Alice']);
 
@@ -310,10 +310,10 @@ void main() {
 
       final emittedAges = <int>[];
       final terminal = RawWhatTerminal(ageWhat, onInvalidated: () {
-        emittedAges.add(ageWhat.peek);
+        emittedAges.add(untracked(ageWhat));
       });
       terminal.activate();
-      emittedAges.add(ageWhat.peek);
+      emittedAges.add(untracked(ageWhat));
 
       expect(emittedAges, [20]);
 
@@ -335,16 +335,16 @@ void main() {
       final emittedAges = <int>[];
 
       final terminalName = RawWhatTerminal(nameWhat, onInvalidated: () {
-        emittedNames.add(nameWhat.peek);
+        emittedNames.add(untracked(nameWhat));
       });
       final terminalAge = RawWhatTerminal(ageWhat, onInvalidated: () {
-        emittedAges.add(ageWhat.peek);
+        emittedAges.add(untracked(ageWhat));
       });
 
       terminalName.activate();
       terminalAge.activate();
-      emittedNames.add(nameWhat.peek);
-      emittedAges.add(ageWhat.peek);
+      emittedNames.add(untracked(nameWhat));
+      emittedAges.add(untracked(ageWhat));
 
       expect(emittedNames, ['Alice']);
       expect(emittedAges, [25]);
@@ -365,7 +365,7 @@ void main() {
       final user = TestUserModel(name: 'Alice', age: 25);
       final ageWhat = user.toWhatBy(
         (u) => u.age,
-        graceful: graceful,
+        graceful: Graceful.microtask,
       );
 
       // ignore: invalid_use_of_protected_member
@@ -393,9 +393,9 @@ void main() {
         throw StateError('Constructor selector boom!');
       });
 
-      expect(errorWhat.peekState.hasError, isTrue);
-      expect(errorWhat.peekState.error, isA<StateError>());
-      expect((errorWhat.peekState.error as StateError).message,
+      expect(untracked.state(errorWhat).hasError, isTrue);
+      expect(untracked.state(errorWhat).error, isA<StateError>());
+      expect((untracked.state(errorWhat).error as StateError).message,
           'Constructor selector boom!');
     });
   });
@@ -487,6 +487,272 @@ void main() {
       } finally {
         FlutterError.onError = originalOnError;
       }
+    });
+
+    test('skips listener if removed during notification traversal', () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback listenerB;
+
+      void listenerA() {
+        calls.add('listenerA');
+        // Remove listenerB during notification
+        listenable.removeListener(listenerB);
+      }
+
+      listenerB = () {
+        calls.add('listenerB');
+      };
+
+      listenable.addListener(listenerA);
+      listenable.addListener(listenerB);
+
+      controller.set(1);
+
+      // listenerB was removed by listenerA before being visited, so it should not be called
+      expect(calls, ['listenerA']);
+
+      // Next notification only invokes remaining listeners
+      controller.set(2);
+      expect(calls, ['listenerA', 'listenerA']);
+
+      listenable.removeListener(listenerA);
+    });
+
+    test(
+        'linked list: listener removes itself during notification (self-removal)',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback selfRemovingListener;
+
+      selfRemovingListener = () {
+        calls.add('self');
+        listenable.removeListener(selfRemovingListener);
+      };
+
+      void subsequentListener() {
+        calls.add('subsequent');
+      }
+
+      listenable.addListener(selfRemovingListener);
+      listenable.addListener(subsequentListener);
+
+      controller.set(1);
+      // Both called on first notify
+      expect(calls, ['self', 'subsequent']);
+
+      // Second notify only calls subsequentListener
+      controller.set(2);
+      expect(calls, ['self', 'subsequent', 'subsequent']);
+
+      listenable.removeListener(subsequentListener);
+    });
+
+    test('linked list: listener removes preceding listener during notification',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback listenerA;
+      late final VoidCallback listenerB;
+      late final VoidCallback listenerC;
+
+      listenerA = () => calls.add('A');
+      listenerB = () {
+        calls.add('B');
+        // Remove predecessor A
+        listenable.removeListener(listenerA);
+      };
+      listenerC = () => calls.add('C');
+
+      listenable.addListener(listenerA);
+      listenable.addListener(listenerB);
+      listenable.addListener(listenerC);
+
+      controller.set(1);
+      expect(calls, ['A', 'B', 'C']);
+
+      controller.set(2);
+      expect(calls, ['A', 'B', 'C', 'B', 'C']);
+
+      listenable.removeListener(listenerB);
+      listenable.removeListener(listenerC);
+    });
+
+    test('linked list: listener adds new listener during notification', () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback newListener;
+      newListener = () => calls.add('new');
+
+      bool added = false;
+      void originalListener() {
+        calls.add('original');
+        if (!added) {
+          added = true;
+          listenable.addListener(newListener);
+        }
+      }
+
+      listenable.addListener(originalListener);
+
+      controller.set(1);
+      // New listener added during dispatch is NOT called in the current notification pass
+      expect(calls, ['original']);
+
+      controller.set(2);
+      // Both original and new listener called in subsequent notification
+      expect(calls, ['original', 'original', 'new']);
+
+      listenable.removeListener(originalListener);
+      listenable.removeListener(newListener);
+    });
+
+    test('linked list: removes all remaining listeners during notification',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback l1;
+      late final VoidCallback l2;
+      late final VoidCallback l3;
+
+      l1 = () {
+        calls.add('l1');
+        listenable.removeListener(l1);
+        listenable.removeListener(l2);
+        listenable.removeListener(l3);
+      };
+      l2 = () => calls.add('l2');
+      l3 = () => calls.add('l3');
+
+      listenable.addListener(l1);
+      listenable.addListener(l2);
+      listenable.addListener(l3);
+
+      controller.set(1);
+      // Only l1 executed; l2 and l3 were removed before being visited
+      expect(calls, ['l1']);
+
+      // All unlinked, further updates do not throw or notify
+      controller.set(2);
+      expect(calls, ['l1']);
+    });
+
+    test('linked list: handles duplicate registrations and partial removal',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      int count = 0;
+      void duplicateListener() {
+        count++;
+      }
+
+      // Add same callback twice
+      listenable.addListener(duplicateListener);
+      listenable.addListener(duplicateListener);
+
+      controller.set(1);
+      expect(count, 2);
+
+      // Remove one instance
+      listenable.removeListener(duplicateListener);
+
+      controller.set(2);
+      // Only one instance called this time (2 + 1 = 3)
+      expect(count, 3);
+
+      // Remove the second instance
+      listenable.removeListener(duplicateListener);
+
+      controller.set(3);
+      expect(count, 3);
+    });
+
+    test(
+        'linked list: re-entrant notifications dispatch safely without loop corruption',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final history = <String>[];
+
+      void recursiveListener() {
+        final currentVal = listenable.value;
+        history.add('rec:$currentVal');
+        if (currentVal < 2) {
+          controller.set(currentVal + 1);
+        }
+      }
+
+      void secondaryListener() {
+        history.add('sec:${listenable.value}');
+      }
+
+      listenable.addListener(recursiveListener);
+      listenable.addListener(secondaryListener);
+
+      controller.set(1);
+
+      // Recursive cycle unwinds cleanly without stack or list corruption
+      // rec:1 sets 2 (terminal dirty) -> outer pass finishes with sec:2 -> subsequent pass runs rec:2, sec:2
+      expect(history, ['rec:1', 'sec:2', 'rec:2', 'sec:2']);
+
+      listenable.removeListener(recursiveListener);
+      listenable.removeListener(secondaryListener);
+    });
+
+    test(
+        're-entrant notify: listener removed during re-entrant notification pass',
+        () {
+      final controller = WhatController<int>(0);
+      final listenable = controller.what.toListenable();
+
+      final calls = <String>[];
+      late final VoidCallback listenerB;
+      bool nestedTriggered = false;
+
+      void listenerA() {
+        calls.add('A:${listenable.value}');
+        if (!nestedTriggered) {
+          nestedTriggered = true;
+          // Re-entrant mutation
+          controller.set(2);
+        }
+      }
+
+      listenerB = () {
+        calls.add('B:${listenable.value}');
+        // Remove B
+        listenable.removeListener(listenerB);
+      };
+
+      void listenerC() {
+        calls.add('C:${listenable.value}');
+      }
+
+      listenable.addListener(listenerA);
+      listenable.addListener(listenerB);
+      listenable.addListener(listenerC);
+
+      controller.set(1);
+
+      // Verify that removed listener B is never called after removal, and C is not starved
+      expect(calls.where((c) => c.startsWith('B')).length, 1);
+      expect(calls.contains('C:2'), true);
+
+      listenable.removeListener(listenerA);
+      listenable.removeListener(listenerC);
     });
   });
 }

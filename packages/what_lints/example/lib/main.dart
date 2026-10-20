@@ -17,7 +17,7 @@
 // # pubspec.yaml
 // dev_dependencies:
 //   custom_lint: ^0.8.1
-//   what_lints: ^0.1.0
+//   what_lints: ^0.2.0
 //
 // # analysis_options.yaml
 // analyzer:
@@ -42,12 +42,12 @@ final status = WhatController('idle');
 // =============================================================================
 
 // #case tour/avoid_untracked_what_read/bad
-// Reading `.data` without `via()` creates no dependency edge, so this node
+// Reading `.data` or `untracked()` without `via()` creates no dependency edge, so this node
 // silently never recomputes when `count` changes.
-final untracked = computed((via) {
+final untrackedRead = computed((via) {
   final f = via(factor);
   // expect_lint: avoid_untracked_what_read
-  return count.peek * f;
+  return untracked(count) * f;
 });
 
 // #case tour/avoid_untracked_what_read/good
@@ -252,7 +252,7 @@ class _LeakyRunnerState extends State<LeakyRunner> {
   @override
   void initState() {
     super.initState();
-    _runner = count.effect(() => debugPrint('${count.peek}')).run();
+    _runner = count.effect(() => debugPrint('${untracked(count)}')).run();
   }
 
   @override
@@ -273,7 +273,7 @@ class _CleanRunnerState extends State<CleanRunner> {
   @override
   void initState() {
     super.initState();
-    _runner = count.effect(() => debugPrint('${count.peek}')).run();
+    _runner = count.effect(() => debugPrint('${untracked(count)}')).run();
   }
 
   @override
@@ -284,45 +284,6 @@ class _CleanRunnerState extends State<CleanRunner> {
 
   @override
   Widget build(BuildContext context) => const SizedBox();
-}
-
-// #case tour/dispose_what_flutter_controller/bad
-class LeakyTextField extends StatefulWidget {
-  const LeakyTextField({super.key});
-
-  @override
-  State<LeakyTextField> createState() => _LeakyTextFieldState();
-}
-
-class _LeakyTextFieldState extends State<LeakyTextField> {
-  // expect_lint: dispose_what_flutter_controller
-  late final WhatTextEditingController _text =
-      WhatTextEditingController(status);
-
-  @override
-  Widget build(BuildContext context) => TextField(controller: _text);
-}
-
-// #case tour/dispose_what_flutter_controller/good
-class CleanTextField extends StatefulWidget {
-  const CleanTextField({super.key});
-
-  @override
-  State<CleanTextField> createState() => _CleanTextFieldState();
-}
-
-class _CleanTextFieldState extends State<CleanTextField> {
-  late final WhatTextEditingController _text =
-      WhatTextEditingController(status);
-
-  @override
-  void dispose() {
-    _text.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => TextField(controller: _text);
 }
 
 // #case tour/prefer_what_over_controller/bad

@@ -294,7 +294,7 @@ void main() {
         expect(terminal.data, 3);
         expect(builderCount, 3);
 
-        final groupSnapshot1 = mappedGroup.peekState.snapshot;
+        final groupSnapshot1 = untracked.state(mappedGroup).snapshot;
         final nodeA = groupSnapshot1.data[0];
         final nodeB = groupSnapshot1.data[1];
         final nodeC = groupSnapshot1.data[2];
@@ -304,7 +304,7 @@ void main() {
 
         // Builder should NOT be called again
         expect(builderCount, 3);
-        final groupSnapshot2 = mappedGroup.peekState.snapshot;
+        final groupSnapshot2 = untracked.state(mappedGroup).snapshot;
         expect(groupSnapshot2.data.length, 3);
         expect(identical(groupSnapshot2.data[0], nodeC), isTrue);
         expect(identical(groupSnapshot2.data[1], nodeB), isTrue);
@@ -313,7 +313,7 @@ void main() {
         // Remove B: ['A', 'C']
         controller.set(['A', 'C']);
         expect(builderCount, 3);
-        final groupSnapshot3 = mappedGroup.peekState.snapshot;
+        final groupSnapshot3 = untracked.state(mappedGroup).snapshot;
         expect(groupSnapshot3.data.length, 2);
         expect(identical(groupSnapshot3.data[0], nodeA), isTrue);
         expect(identical(groupSnapshot3.data[1], nodeC), isTrue);

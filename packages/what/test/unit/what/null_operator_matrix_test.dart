@@ -50,20 +50,20 @@ void main() {
           FormatException('Invalid payload format'),
         );
 
-        expect(errorWhat.peekState.hasData, isFalse);
-        expect(errorWhat.peekState.isEmpty, isFalse);
-        expect(errorWhat.peekState.hasError, isTrue);
-        expect(errorWhat.peekState.snapshot.hasError, isTrue);
+        expect(untracked.state(errorWhat).hasData, isFalse);
+        expect(untracked.state(errorWhat).isEmpty, isFalse);
+        expect(untracked.state(errorWhat).hasError, isTrue);
+        expect(untracked.state(errorWhat).snapshot.hasError, isTrue);
 
         // Fail-fast on .data
         expect(
-          () => errorWhat.peek,
+          () => untracked(errorWhat),
           throwsA(isA<WhatSnapshotExtractionException>()),
         );
 
         // Safe accessors
-        expect(errorWhat.peekState.dataOrNull, isNull);
-        expect(errorWhat.peekState.dataOrElse(() => 999), 999);
+        expect(untracked.state(errorWhat).dataOrNull, isNull);
+        expect(untracked.state(errorWhat).dataOrElse(() => 999), 999);
       });
     });
 
@@ -74,34 +74,34 @@ void main() {
         final uppercaseWhat = computed((via) => via(source.what)?.toUpperCase());
         final lengthWhat = computed((via) => via(source.what)?.length ?? 0);
 
-        expect(uppercaseWhat.peek, 'APPLE');
-        expect(lengthWhat.peek, 5);
+        expect(untracked(uppercaseWhat), 'APPLE');
+        expect(untracked(lengthWhat), 5);
 
         // Mutate to null
         source.data = null;
-        expect(uppercaseWhat.peek, isNull);
-        expect(lengthWhat.peek, 0);
+        expect(untracked(uppercaseWhat), isNull);
+        expect(untracked(lengthWhat), 0);
 
         // Mutate back to non-null
         source.data = 'banana';
-        expect(uppercaseWhat.peek, 'BANANA');
-        expect(lengthWhat.peek, 6);
+        expect(untracked(uppercaseWhat), 'BANANA');
+        expect(untracked(lengthWhat), 6);
       });
 
       test('2.2 fallback recovery on nullable What', () {
         final lateWhat = WhatController<String?>.late();
 
         final fallbackToNull = computed<String?>((via) => via.state(lateWhat.what).hasData ? via(lateWhat.what) : null);
-        expect(fallbackToNull.peekState.hasData, isTrue);
-        expect(fallbackToNull.peek, isNull);
+        expect(untracked.state(fallbackToNull).hasData, isTrue);
+        expect(untracked(fallbackToNull), isNull);
 
         final safeFallback = computed((via) => via.state(lateWhat.what).dataOrElse(() => 'default-val'));
-        expect(safeFallback.peek, 'default-val');
+        expect(untracked(safeFallback), 'default-val');
 
         // Populate with null
         lateWhat.data = null;
-        expect(fallbackToNull.peek, isNull);
-        expect(safeFallback.peek, isNull); // valid payload is preserved
+        expect(untracked(fallbackToNull), isNull);
+        expect(untracked(safeFallback), isNull); // valid payload is preserved
       });
 
       test('2.3 guard conditionally gates computed', () {
@@ -113,26 +113,26 @@ void main() {
           guard: (via) => via(canProceed.what).guarded('Blocked by security guard'),
         );
 
-        expect(guarded.peekState.hasData, isTrue);
-        expect(guarded.peek, 10);
+        expect(untracked.state(guarded).hasData, isTrue);
+        expect(untracked(guarded), 10);
 
         // Block
         canProceed.data = false;
         count.data = 20;
 
-        expect(guarded.peekState.isEmpty, isTrue);
-        expect(guarded.peekState.hasData, isFalse);
-        expect(guarded.peekState.snapshot.emptyReason, 'Blocked by security guard');
+        expect(untracked.state(guarded).isEmpty, isTrue);
+        expect(untracked.state(guarded).hasData, isFalse);
+        expect(untracked.state(guarded).snapshot.emptyReason, 'Blocked by security guard');
         expect(
-          () => guarded.peek,
+          () => untracked(guarded),
           throwsA(isA<WhatSnapshotExtractionException>()),
         );
 
         // Restore
         canProceed.data = true;
         count.data = 30;
-        expect(guarded.peekState.hasData, isTrue);
-        expect(guarded.peek, 30);
+        expect(untracked.state(guarded).hasData, isTrue);
+        expect(untracked(guarded), 30);
       });
     });
   });

@@ -336,11 +336,10 @@ base class _ViaEffectTerminal extends _Terminal
         if (!guard(_via)) return;
       }
       _action(_via);
+    } on _ViaShortCircuit {
+      succeeded = true;
+      return;
     } catch (error, stackTrace) {
-      if (error is _ViaShortCircuit) {
-        succeeded = true;
-        return;
-      }
       succeeded = false;
       _handleUncaughtError(error, stackTrace);
     } finally {
@@ -406,11 +405,10 @@ base class _HandledViaEffectTerminal extends _Terminal
       _currentHandle = handle;
 
       _action(_via, handle);
+    } on _ViaShortCircuit {
+      succeeded = true;
+      return;
     } catch (error, stackTrace) {
-      if (error is _ViaShortCircuit) {
-        succeeded = true;
-        return;
-      }
       succeeded = false;
       _handleUncaughtError(error, stackTrace);
     } finally {

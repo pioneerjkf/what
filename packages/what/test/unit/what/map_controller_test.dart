@@ -16,7 +16,7 @@ void main() {
 
         expect(controller.hasData, isTrue);
         expect(controller.data, equals({'a': 1, 'b': 2}));
-        expect(controller.what.peek, equals({'a': 1, 'b': 2}));
+        expect(untracked(controller.what), equals({'a': 1, 'b': 2}));
 
         // Immutability check: data must be unmodifiable
         expect(() => controller.data['c'] = 3, throwsUnsupportedError);
@@ -262,16 +262,16 @@ void main() {
         final terminal = RawWhatTerminal(totalFruits, onInvalidated: () {});
         terminal.activate();
 
-        expect(totalFruits.peek, equals(3));
-        expect(hasBanana.peek, isFalse);
+        expect(untracked(totalFruits), equals(3));
+        expect(untracked(hasBanana), isFalse);
 
         store.edit((draft) {
           draft['banana'] = 5;
           draft['orange'] = 2;
         });
 
-        expect(totalFruits.peek, equals(10));
-        expect(hasBanana.peek, isTrue);
+        expect(untracked(totalFruits), equals(10));
+        expect(untracked(hasBanana), isTrue);
 
         terminal.deactivate();
       });

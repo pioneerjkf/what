@@ -43,7 +43,7 @@ The What Framework resolves these challenges using an **Explicit Dependency Mani
 │     // Explicit dependency registration strictly via injected via!              │
 │     return via(a) + via(b);                                                     │
 │   });                                                                           │
-│   * Benefits: Raw reads (node.peek) are pure 0-overhead dereferences,          │
+│   * Benefits: Raw reads (untracked(node)) are pure 0-overhead inlined calls,    │
 │               compile-time AST verifiable, zero lexical leaks                   │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -56,17 +56,21 @@ Inside any reactive tracking scope ([`computed`](../../lib/src/what/computed.dar
 1. **`via(what)` — Direct Payload Extraction with Short-Circuiting**:
    Registers `what` as an upstream dependency for the current evaluation epoch. If `what` contains valid data (`_ValidWhatState`), returns `T` directly. If `what` is empty or holds an error, throws an internal [`_ViaShortCircuit`](../../lib/src/engine/_internal/_via.dart#L44) sentinel to immediately bypass downstream calculation without running invalid logic.
 2. **`via.state(what)` — Defensive State Inspection**:
-   Registers `what` as an upstream dependency and returns its zero-allocation [`WhatState<T>`](../../lib/src/what/what.dart) container without short-circuiting, enabling exhaustive pattern matching (`state.match(data: ..., empty: ..., error: ...)`) inside derivations.
+   Registers `what` as an upstream dependency and returns its zero-allocation [`WhatState<T>`](../../lib/src/what/state.dart) container without short-circuiting, enabling exhaustive pattern matching (`state.match(data: ..., empty: ..., error: ...)`) inside derivations.
 3. **`via.tether(tether)` — Declarative Lifecycle Binding**:
    Binds a non-propagating lifecycle node ([`Tether`](../../lib/src/engine/tether.dart)) to the enclosing scope's active/dormant state and epoch lifecycle.
 
-### 2.2 Zero-Overhead Raw Reads
+### 2.2 Symmetrical Gateway: Tracked `via(...)` vs. Untracked `untracked(...)`
 
-Outside tracking scopes (or for untracked inspection), property access on a `What<T>` node (`.peek`, `.peekState`) is a **pure field dereference** with zero ambient tracking or stack inspection overhead:
+What establishes a completely symmetrical, zero-allocation gateway architecture:
+- Inside reactive scopes (`computed`, `effect`, `build`): use **`via(node)`** and **`via.state(node)`** to register dynamic LPDAG edges.
+- Outside reactive scopes (event handlers, imperative methods, tests): use **`untracked(node)`** and **`untracked.state(node)`** for 0-allocation raw reads with zero dependency tracking.
+
+By keeping `What<T>` an opaque node handle with zero public read getters, What eliminates AI hallucinations and accidental unreactive leaks.
 
 ```dart
 // 1. Pure raw read: 0 global scope lookups, 0 edge mutations, 0 heap allocations
-final current = counter.what.peek; 
+final current = untracked(counter.what); 
 
 // 2. Explicit registration within dynamic derivations:
 final doubled = computed((via) {
@@ -75,7 +79,7 @@ final doubled = computed((via) {
 });
 ```
 
-Because of this separation, standard field reads on `What` compile down to direct memory access instructions via `@pragma('vm:prefer-inline')`, matching the performance of raw Dart instance field access ($O(1)$, nanosecond scale).
+Because of this separation, `untracked(...)` compiles down to direct memory access instructions via `@pragma('vm:prefer-inline')`, matching the performance of raw Dart instance field access ($O(1)$, nanosecond scale).
 
 ---
 
@@ -113,22 +117,25 @@ Furthermore, What incorporates an **$O(1)$ Sequential Cursor Fast-Path Optimizat
 [Phase 2: During Evaluation via(source) Invocations]
   1. Fast-Path (O(1)):
      if (identical(_cursor._source, source)) {
-       matchedEdge = _cursor;
+       _cursor._seenEpoch = currentEpoch;
        _cursor = _cursor._nextSource; // Advance cursor sequentially
+       return;
      }
   2. Slow-Path (Dynamic Branch Switch / Order Reorder):
      matchedEdge = _findSourceEdge(source);
-     if (matchedEdge != null && matchedEdge._seenEpoch != currentEpoch) {
-       _cursor = matchedEdge._nextSource;
+     if (matchedEdge != null) {
+       if (matchedEdge._seenEpoch != currentEpoch) {
+         // Self-healing: relink matched edge before cursor to align list order
+         if (_cursor != null) _moveSourceEdgeBefore(matchedEdge, _cursor);
+         matchedEdge._seenEpoch = currentEpoch;
+       }
+     } else {
+       // New dependency: insert before cursor (or at tail if cursor is null)
+       newEdge = _cursor != null 
+           ? _addAndAttachSourceEdgeBefore(source, _cursor)
+           : _addAndAttachSourceEdge(source);
+       newEdge._seenEpoch = currentEpoch;
      }
-  3. Insertion (New Branch Node):
-     if (matchedEdge == null) {
-       matchedEdge = _lifecycle.isActive 
-           ? _addAndAttachSourceEdge(source) 
-           : _addSourceEdge(source);
-     }
-  4. Stamp Active Epoch:
-     matchedEdge._seenEpoch = currentEpoch;
 
 [Phase 3: _endEpoch() Single-Pass Sweeping (_sweepObsoleteEdges)]
   curr = _sourceHead;
@@ -148,11 +155,13 @@ Furthermore, What incorporates an **$O(1)$ Sequential Cursor Fast-Path Optimizat
 ```mermaid
 flowchart TD
     Start["Evaluation begins (_beginEpoch: ++_epoch, _cursor = _sourceHead)"] --> FastCheck{"identical(_cursor._source, source)?"}
-    FastCheck -- "Yes (Sequential Match)" --> FastAdvance["matchedEdge = _cursor<br/>_cursor = _cursor._nextSource (O(1))"]
-    FastCheck -- "No (Branch Flip / New Node)" --> SlowFind["_findSourceEdge(source) or _addAndAttachSourceEdge"]
-    FastAdvance --> Stamp["Stamp matchedEdge._seenEpoch = currentEpoch"]
-    SlowFind --> Stamp
-    Stamp --> EvalNext{"More dependencies in closure?"}
+    FastCheck -- "Yes (Sequential Match)" --> FastAdvance["_cursor._seenEpoch = currentEpoch<br/>_cursor = _cursor._nextSource (O(1))"]
+    FastCheck -- "No (Branch Flip / Order Shift / New)" --> SlowFind["_findSourceEdge(source)"]
+    SlowFind -- "Found (Re-order)" --> Relink["_moveSourceEdgeBefore(matched, _cursor)<br/>matched._seenEpoch = currentEpoch"]
+    SlowFind -- "Not Found (New)" --> Insert["Insert before _cursor (or tail)<br/>newEdge._seenEpoch = currentEpoch"]
+    FastAdvance --> EvalNext{"More dependencies in closure?"}
+    Relink --> EvalNext
+    Insert --> EvalNext
     EvalNext -- "Yes" --> FastCheck
     EvalNext -- "No" --> Sweep["_sweepObsoleteEdges: Single linked-list traversal"]
     Sweep --> EpochCheck{"edge._seenEpoch == currentEpoch?"}
@@ -160,7 +169,7 @@ flowchart TD
     CommitCheck -- "Yes" --> Commit["edge._pulledVersion = source._version"]
     CommitCheck -- "No" --> Keep["Retain edge intact"]
     EpochCheck -- "No (Stale: older epoch)" --> Detach["Sever and unlink (_detachAndRemoveSourceEdge)"]
-    Commit --> End["Evaluation complete (0 Stale Edges, 0 Heap Allocs)"]
+    Commit --> End["Evaluation complete (Self-Healed O(1) Edges, 0 Heap Allocs)"]
     Keep --> End
     Detach --> End
 ```
@@ -203,16 +212,19 @@ To short-circuit execution cleanly and defensively:
 ### 4.2 Epoch Completion and State Forwarding
 In [`_ComputedPullMixin`](../../lib/src/what/_internal/_computed.dart#L50):
 ```dart
+} on _ViaShortCircuit catch (e) {
+  succeeded = true;
+  state = e.state._retype<T>();
 } catch (error, stackTrace) {
-  succeeded = error is _ViaShortCircuit;
+  succeeded = false;
   state = _WhatState.fromCaught(error, stackTrace);
 } finally {
   _endEpoch(currentEpoch, succeeded: succeeded, commitVersions: false);
 }
 ```
 
-1. **`succeeded = error is _ViaShortCircuit`**:
-   Because short-circuiting represents a legitimate partial evaluation of the current active branch, `succeeded` is `true`.
+1. **`on _ViaShortCircuit catch (e)` (Stack Trace Avoidance)**:
+   Because short-circuiting represents a legitimate partial evaluation of the current active branch, `succeeded` is `true`. Catching the sentinel without a second `stackTrace` parameter ensures the Dart VM does not synthesize or allocate a `StackTrace` object.
    Consequently, `_endEpoch` successfully executes `_sweepObsoleteEdges`, pruning any edges that were not visited prior to the short-circuit point.
 2. **`_WhatState.fromCaught` & Type-Preserving Retyping**:
    ```dart
@@ -270,19 +282,19 @@ final userSession = computed((via) {
 
 ## 6. Static Analysis Guards: The `avoid_untracked_what_read` Lint Rule
 
-The only potential pitfall in an explicit manifest architecture is an accidental raw read of reactive state (e.g., `controller.data`, `what.peek`, `what.peekState`, `what.snapshot`) without wrapping in `via(...)` or `via.state(...)` inside a derivation closure:
+The only potential pitfall in an explicit manifest architecture is an accidental raw read of reactive state (e.g., `controller.data`, `untracked(what)`, `untracked.state(what)`, `what.snapshot`) without wrapping in `via(...)` or `via.state(...)` inside a derivation closure:
 
 ```dart
 // [Anti-Pattern] Missing via() bypasses dependency registration!
 final badComputed = computed((via) {
-  return count.what.peek * 2; // When count mutates, badComputed is NOT invalidated!
+  return untracked(count.what) * 2; // When count mutates, badComputed is NOT invalidated!
 });
 ```
 
 The What Framework guards against this at compile time via `package:what_lints`:
 
 * **Lint Rule**: `avoid_untracked_what_read`
-* **Mechanics**: An analyzer plugin inspects Dart AST trees to detect un-wrapped property access (`.peek`, `.peekState`, `.data`, `.snapshot`, `.hasData`) or manual downcasting on reactive entities within `computed`, `composed`, `switched`, `Effect`, and `WhatWidget.build` closures, reporting diagnostic errors immediately and offering quick-fixes to wrap with `via(node)` or `via.state(node)`.
+* **Mechanics**: An analyzer plugin inspects Dart AST trees to detect un-wrapped property access (`.data`, `.snapshot`, `.hasData`), invocations of `untracked(...)`, or manual downcasting on reactive entities within `computed`, `composed`, `switched`, `Effect`, and `WhatWidget.build` closures, reporting diagnostic errors immediately and offering quick-fixes to wrap with `via(node)` or `via.state(node)`.
 
 ---
 
@@ -293,7 +305,7 @@ The What Framework guards against this at compile time via `package:what_lints`:
 2. **1-Pass Pruning Precision**:  
    Deactivated branch edges are severed synchronously upon completion of evaluation, never deferred to subsequent frames or the garbage collector.
 3. **Pure Field Dereference Equivalence**:  
-   Reading `what.peek` traverses no proxy wrappers, compiling down directly to native machine field read instructions.
+   Calling `untracked(what)` traverses no proxy wrappers, compiling down directly to native machine field read instructions via inlined VM pragma.
 4. **Lifecycle Plane Orthogonality**:  
    [`Tether`](../../lib/src/engine/tether.dart) nodes bound via `via.tether()` never emit invalidation pulses to parent scopes (`_isNewerThan() == false`), synchronizing solely with parent dormancy and epoch sweeps.
 5. **Short-Circuit Clean Sweeping**:  

@@ -67,13 +67,13 @@ void main() {
 
         final evaluations = <int>[];
         final terminal = RawWhatTerminal(d, onInvalidated: () {
-          evaluations.add(d.peek);
+          evaluations.add(untracked(d));
         });
         terminal.activate();
 
         // Initial evaluation
-        expect(d.peek, 13);
-        evaluations.add(d.peek);
+        expect(untracked(d), 13);
+        evaluations.add(untracked(d));
 
         // Mutate upstream source a to 2
         // If glitch-free, d evaluates b=4, c=12 -> 16 in one consolidated step

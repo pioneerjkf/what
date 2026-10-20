@@ -28,7 +28,7 @@ void main() {
       // Upon activation:
       // watchEffect runs initially: 1
       // tupleEffect and singleEffect skip initial run: 0
-      final initialRuns = store.effectRunCount.peek;
+      final initialRuns = untracked(store.effectRunCount);
       expect(initialRuns, equals(1));
 
       // 1. Mutate primary counter
@@ -36,61 +36,61 @@ void main() {
       // Allow microtask scheduler to flush
       await Future<void>.delayed(Duration.zero);
 
-      final runsAfterInc = store.effectRunCount.peek;
+      final runsAfterInc = untracked(store.effectRunCount);
       expect(runsAfterInc, greaterThan(initialRuns));
 
       // 2. Untracked execution boundary
       // Mutating untrackedNode must NOT trigger watchEffect
-      final beforeUntracked = store.effectRunCount.peek;
+      final beforeUntracked = untracked(store.effectRunCount);
       store.mutateUntracked();
       await Future<void>.delayed(Duration.zero);
       // Only the manual log call in mutateUntracked happens, watchEffect does NOT fire
       // (effectRunCount is incremented by effects, not by mutateUntracked directly)
-      expect(store.effectRunCount.peek, beforeUntracked);
+      expect(untracked(store.effectRunCount), beforeUntracked);
 
       // 3. Dynamic dependency branch tracking
       // When isTrackingDetails is false, mutating detailPayload must NOT trigger effect
-      final beforePayload = store.effectRunCount.peek;
+      final beforePayload = untracked(store.effectRunCount);
       store.cycleDetailPayload();
       await Future<void>.delayed(Duration.zero);
-      expect(store.effectRunCount.peek, beforePayload);
+      expect(untracked(store.effectRunCount), beforePayload);
 
       // Toggle dynamic branch to true
       store.toggleDetailTracking(true);
       await Future<void>.delayed(Duration.zero);
 
       // Now mutating detailPayload MUST trigger watchEffect!
-      final beforeActivePayload = store.effectRunCount.peek;
+      final beforeActivePayload = untracked(store.effectRunCount);
       store.cycleDetailPayload();
       await Future<void>.delayed(Duration.zero);
-      expect(store.effectRunCount.peek, greaterThan(beforeActivePayload));
+      expect(untracked(store.effectRunCount), greaterThan(beforeActivePayload));
 
       // 4. Explicit Tuple Effect ((counter, alertThreshold).effect)
       // Set threshold to 10 and counter to 9 (no alert)
       store.setAlertThreshold(10);
       store.setCounter(9);
       await Future<void>.delayed(Duration.zero);
-      expect(store.lastThresholdAlert.peek, 'None');
+      expect(untracked(store.lastThresholdAlert), 'None');
 
       // Now increment to 10 (meets threshold)
       store.incrementCounter();
       await Future<void>.delayed(Duration.zero);
-      expect(store.lastThresholdAlert.peek, contains('Threshold Reached!'));
+      expect(untracked(store.lastThresholdAlert), contains('Threshold Reached!'));
 
       // 5. Lifecycle deactivation & reactivation
       store.toggleLifecycle(false);
       terminal.evaluate();
-      final runsWhileInactive = store.effectRunCount.peek;
+      final runsWhileInactive = untracked(store.effectRunCount);
       store.incrementCounter();
       await Future<void>.delayed(Duration.zero);
-      expect(store.effectRunCount.peek, runsWhileInactive);
+      expect(untracked(store.effectRunCount), runsWhileInactive);
 
       // Reactivate
       store.toggleLifecycle(true);
       terminal.evaluate();
       store.incrementCounter();
       await Future<void>.delayed(Duration.zero);
-      expect(store.effectRunCount.peek, greaterThan(runsWhileInactive));
+      expect(untracked(store.effectRunCount), greaterThan(runsWhileInactive));
 
       terminal.deactivate();
     });
@@ -147,7 +147,7 @@ void main() {
       final scopedStore = showcaseStore.sections.scopedStateDi;
 
       // Initially false
-      expect(scopedStore.isVipUnlocked.peek, false);
+      expect(untracked(scopedStore.isVipUnlocked), false);
 
       // Mount widget
       await tester.pumpWidget(
@@ -162,7 +162,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Initially total is $290 (< $300), VIP is false
-      expect(scopedStore.isVipUnlocked.peek, false);
+      expect(untracked(scopedStore.isVipUnlocked), false);
       expect(find.textContaining('Cart < \$300'), findsOneWidget);
 
       // Increment item1 (120*2 + 170 = $410 >= $300)
@@ -170,7 +170,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Computed isVipUnlocked is true, and watch.effect triggered Milestone SnackBar!
-      expect(scopedStore.isVipUnlocked.peek, true);
+      expect(untracked(scopedStore.isVipUnlocked), true);
       expect(find.textContaining('VIP (\$300+)'), findsOneWidget);
       expect(find.textContaining('VIP Milestone Unlocked!'), findsOneWidget);
 
@@ -188,7 +188,7 @@ void main() {
       // Decrement item1 (total drops to $290 < $300)
       scopedStore.decrementItem1();
       await tester.pumpAndSettle();
-      expect(scopedStore.isVipUnlocked.peek, false);
+      expect(untracked(scopedStore.isVipUnlocked), false);
 
       // Remount widget
       await tester.pumpWidget(
@@ -205,7 +205,7 @@ void main() {
       // Trigger VIP again while mounted
       scopedStore.incrementItem1();
       await tester.pumpAndSettle();
-      expect(scopedStore.isVipUnlocked.peek, true);
+      expect(untracked(scopedStore.isVipUnlocked), true);
       expect(find.textContaining('VIP Milestone Unlocked!'), findsOneWidget);
     });
   });

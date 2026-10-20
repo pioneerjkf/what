@@ -10,7 +10,7 @@ part of '../../framework.dart';
 
 /// Internal edge representation connecting a [_MooringTerminal] to a moored [_Node].
 final class _MooringEdge implements _TargetEdge {
-  _MooringEdge({required this.terminal});
+  _MooringEdge({required this.terminal, this.source});
 
   _Node? source;
   final _MooringTerminal terminal;
@@ -44,8 +44,6 @@ final class _MooringTerminal extends _Terminal {
   _MooringTerminal._();
   static final _MooringTerminal instance = _MooringTerminal._();
 
-  final List<_MooringEdge> _edgePool = <_MooringEdge>[];
-
   // Pure LPDAG head pointer tracking currently moored nodes
   _MooringEdge? _mooringHead;
 
@@ -58,8 +56,7 @@ final class _MooringTerminal extends _Terminal {
   _PeriodGraceHandle moor(covariant _Node node, Duration duration) {
     final wasEmpty = _mooringHead == null;
 
-    final edge = _edgePool.isNotEmpty ? _edgePool.removeLast() : _MooringEdge(terminal: this);
-    edge.source = node;
+    final edge = _MooringEdge(terminal: this, source: node);
 
     // 1. Prepend to _mooringHead in O(1)
     edge._nextMooring = _mooringHead;
@@ -87,11 +84,10 @@ final class _MooringTerminal extends _Terminal {
     return handle;
   }
 
-  /// Unmoors the edge and returns it to the pool in O(1).
+  /// Unmoors the edge in O(1).
   void unmoor(_MooringEdge edge) {
     _removeMooringEdge(edge);
     edge.source = null;
-    _edgePool.add(edge);
 
     // Dynamic deactivation back to dormant state when head becomes null
     if (_mooringHead == null) {

@@ -24,7 +24,7 @@ class SearchStore {
   SearchStore() {
     // SWR / Debounce search simulation using Timer
     query.what.effect(() {
-      final term = query.what.peek;
+      final term = untracked(query.what);
       if (term.isEmpty) {
         results.empty('empty-query');
       } else {
@@ -158,6 +158,31 @@ void main() {
         throw StateError('Mutation prohibited');
       },
       errors: () => [isA<StateError>()],
+      expect: () => [0],
+    );
+
+    whatTest<CounterStore>(
+      '9. errors catches and asserts asynchronous thrown exceptions during act with wait',
+      build: () => CounterStore(0),
+      target: (store) => store.count.what,
+      act: (store) async {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        throw StateError('Async mutation prohibited');
+      },
+      wait: const Duration(milliseconds: 100),
+      errors: () => [isA<StateError>()],
+      expect: () => [0],
+    );
+
+    whatTest<CounterStore>(
+      '10. errors catches and asserts synchronous thrown exceptions during act with wait',
+      build: () => CounterStore(0),
+      target: (store) => store.count.what,
+      act: (store) {
+        throw ArgumentError('Sync mutation prohibited with wait');
+      },
+      wait: const Duration(milliseconds: 50),
+      errors: () => [isA<ArgumentError>()],
       expect: () => [0],
     );
   });

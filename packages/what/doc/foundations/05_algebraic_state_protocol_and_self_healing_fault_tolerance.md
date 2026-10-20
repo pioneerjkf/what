@@ -44,9 +44,9 @@ The What Framework resolves these structural defects through the **[`WhatState`]
 
 In the What Framework, state observation is standardized through the **[`WhatState<T>`](../../lib/src/what/state.dart#L94)** Universal Reactive State Protocol. 
 
-Imperative state controllers ([`WhatController`](../../lib/src/what/controller.dart)), immutable snapshots ([`WhatSnapshot`](../../lib/src/what/snapshot.dart)), consumer terminals ([`RawWhatTerminal`](../../lib/src/engine/terminal.dart#L182)), domain computations ([`Computation`](../../lib/src/what/computed.dart#L468)), and live state views ([`.peekState`](../../lib/src/what/what.dart)) all implement the [`WhatState`](../../lib/src/what/state.dart#L94) protocol.
+Imperative state controllers ([`WhatController`](../../lib/src/what/controller.dart)), immutable snapshots ([`WhatSnapshot`](../../lib/src/what/snapshot.dart)), consumer terminals ([`RawWhatTerminal`](../../lib/src/engine/terminal.dart#L182)), domain computations ([`Computation`](../../lib/src/what/computed.dart#L468)), and untracked state views ([`untracked.state(what)`](../../lib/src/what/untracked.dart)) all implement the [`WhatState`](../../lib/src/what/state.dart#L94) protocol.
 
-*(Note: [`What`](../../lib/src/what/what.dart) itself confines its public untracked read surface strictly to [`.peek`](../../lib/src/what/what.dart) and [`.peekState`](../../lib/src/what/what.dart), keeping pure field dereferencing decoupled from state inspection).*
+*(Note: [`What`](../../lib/src/what/what.dart) itself is an opaque handle with zero public read getters. Reading raw values or inspecting states outside tracking scopes is provided via the symmetrical [`untracked(what)`](../../lib/src/what/untracked.dart) and [`untracked.state(what)`](../../lib/src/what/untracked.dart) functors).*
 
 ```text
                     ┌────────────────────────────────────────┐
@@ -85,12 +85,12 @@ To eliminate silent null propagation while preventing unhandled app crashes, [`W
 ```dart
 final what = WhatController<String>('Alice').what;
 
-// 1. Fail-Fast Extraction (Raw Peek)
+// 1. Fail-Fast Extraction (untracked)
 // Throws WhatSnapshotExtractionException immediately if isEmpty or hasError
-final value = what.peek;
+final value = untracked(what);
 
-// 2. Safe Fallback Extraction via WhatState view (peekState)
-final state = what.peekState;
+// 2. Safe Fallback Extraction via WhatState view (untracked.state)
+final state = untracked.state(what);
 final safeValue = state.dataOrNull ?? 'Guest';
 final fallbackValue = state.dataOrElse(() => 'Default');
 

@@ -13,8 +13,8 @@ void main() {
       final completer = Completer<int>();
       final futureWhat = completer.future.toWhat();
 
-      expect(futureWhat.peekState.isEmpty, isTrue);
-      expect(futureWhat.peekState.hasData, isFalse);
+      expect(untracked.state(futureWhat).isEmpty, isTrue);
+      expect(untracked.state(futureWhat).hasData, isFalse);
 
       var effectRuns = 0;
       int? lastValue;
@@ -36,7 +36,7 @@ void main() {
 
       expect(effectRuns, 2);
       expect(lastValue, 42);
-      expect(futureWhat.peekState.hasData, isTrue);
+      expect(untracked.state(futureWhat).hasData, isTrue);
 
       dispose();
     });
@@ -161,7 +161,7 @@ void main() {
       await Future.delayed(Duration.zero);
 
       expect(effectRuns, 2);
-      expect(futureWhat.peekState.hasError, isTrue);
+      expect(untracked.state(futureWhat).hasError, isTrue);
       expect(observedError, isA<FormatException>());
 
       dispose();

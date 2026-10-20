@@ -222,6 +222,44 @@ base mixin _NaryEdgeMixin<N extends _Node> on _Lifecycle implements _DirtyListen
     edge._source._attachTargetEdgeOptimistically(edge);
   }
 
+  /// Inserts [edge] immediately before [target] in the upstream source list.
+  @pragma('vm:prefer-inline')
+  void _insertBeforeSourceEdge(_Edge edge, _Edge target) {
+    final prev = target._prevSource;
+    edge._prevSource = prev;
+    edge._nextSource = target;
+    target._prevSource = edge;
+    if (prev != null) {
+      prev._nextSource = edge;
+    } else {
+      _sourceHead = edge;
+    }
+  }
+
+  /// Moves existing [edge] immediately before [target] in the upstream source list.
+  @pragma('vm:prefer-inline')
+  void _moveSourceEdgeBefore(_Edge edge, _Edge target) {
+    if (identical(edge, target) || identical(target._prevSource, edge)) return;
+    _removeSourceEdge(edge);
+    _insertBeforeSourceEdge(edge, target);
+  }
+
+  /// Creates and links an [_Edge] for [source] immediately before [target] in the upstream source list.
+  @pragma('vm:prefer-inline')
+  _Edge _addSourceEdgeBefore(_Node source, _Edge target) {
+    final edge = _Edge(source: source, target: this);
+    _insertBeforeSourceEdge(edge, target);
+    return edge;
+  }
+
+  /// Creates, links, and attaches an [_Edge] for [source] immediately before [target].
+  @pragma('vm:prefer-inline')
+  _Edge _addAndAttachSourceEdgeBefore(_Node source, _Edge target) {
+    final edge = _addSourceEdgeBefore(source, target);
+    _attachSourceEdge(edge);
+    return edge;
+  }
+
   /// Creates, links, and attaches an [_Edge] for [source] to the upstream source list.
   @pragma('vm:prefer-inline')
   _Edge _addAndAttachSourceEdge(_Node source) {

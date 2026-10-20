@@ -101,7 +101,7 @@
     <text class="meta-label" x="142" y="1">FINE-GRAINED REACTIVE UI &amp; MOTION ENGINE</text>
 
     <!-- Right Swiss Spec: Core Capability Text -->
-    <text class="meta-label" x="884" y="1" text-anchor="end">FLUTTER 3.10+ · HIGH-PERFORMANCE · GLITCH-FREE</text>
+    <text class="meta-label" x="884" y="1" text-anchor="end">FLUTTER 3.27+ · HIGH-PERFORMANCE · GLITCH-FREE</text>
   </g>
 
   <!-- Top Hairline Divider -->
@@ -132,8 +132,8 @@
 
     <!-- Feature 02 -->
     <g transform="translate(0, 218)">
-      <text class="sans kw" x="0" y="0" font-size="16.5" font-weight="600">Durable Lifecycle &amp; CJK IME Shield</text>
-      <text class="sans kw-sub" x="0" y="24" font-size="13.5">Zero Hangul syllable corruption · Unmount-frozen state</text>
+      <text class="sans kw" x="0" y="0" font-size="16.5" font-weight="600">Durable Lifecycle &amp; State Mooring</text>
+      <text class="sans kw-sub" x="0" y="24" font-size="13.5">Zero listener leaks · Unmount-frozen state</text>
     </g>
 
     <!-- Micro Spec Line (Aligned with right footer baseline at y=432) -->

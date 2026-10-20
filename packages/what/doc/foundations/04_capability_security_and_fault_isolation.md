@@ -30,11 +30,10 @@ Read-only observation capabilities and mutable producer handles are strictly iso
 │  Consumer Layer (UI / Widgets / Presentation)                          │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  What<T> (Interface: Pure Read-Only Observation Capability)            │
-│  • T get peek;                       (Untracked direct read)           │
-│  • WhatState<T> get peekState;       (Live FSM state view)             │
-│  • via(what) / via.state(what)       (Tracked dynamic read)            │
-│  * (Exposes exactly ZERO mutation methods, setters, or controllers)    │
+│  What<T> (Interface: Pure Opaque DAG Node Handle)                      │
+│  • untracked(what) / untracked.state(what)  (Untracked direct read)    │
+│  • via(what) / via.state(what)              (Tracked dynamic read)     │
+│  * (Exposes ZERO public read getters, ZERO mutation methods)           │
 │                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
                                    ▲

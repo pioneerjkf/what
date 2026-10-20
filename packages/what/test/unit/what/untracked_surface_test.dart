@@ -7,34 +7,35 @@ import 'package:what/effect.dart';
 import 'package:what/what.dart';
 
 void main() {
-  group('What Read Surface: peek and peekState (A5, D3, D8, D9)', () {
-    test('x.peek returns value, throws WhatSnapshotExtractionException on Empty/Error', () {
+  group('What Read Surface: untracked and untracked.state', () {
+    test('untracked(x) returns value, throws WhatSnapshotExtractionException on Empty/Error', () {
       final ctrl = WhatController<int>(42);
-      expect(ctrl.what.peek, equals(42));
+      expect(untracked(ctrl.what), equals(42));
 
       ctrl.set(100);
-      expect(ctrl.what.peek, equals(100));
+      expect(untracked(ctrl.what), equals(100));
 
       ctrl.empty('reset');
-      expect(() => ctrl.what.peek, throwsA(isA<WhatSnapshotExtractionException>()));
+      expect(() => untracked(ctrl.what), throwsA(isA<WhatSnapshotExtractionException>()));
 
       ctrl.setError('fail');
-      expect(() => ctrl.what.peek, throwsA(isA<WhatSnapshotExtractionException>()));
+      expect(() => untracked(ctrl.what), throwsA(isA<WhatSnapshotExtractionException>()));
     });
 
-    test('x.what.data and x.what.isEmpty are compile-time errors (untracked reads require peek/peekState)', () {
-      // Invariant: What<T> does not implement WhatState<T> on its public static surface.
+    test('x.what has zero public read getters (untracked reads require untracked() or untracked.state())', () {
+      // Invariant: What<T> is strictly an opaque node handle and does not implement WhatState<T>
+      // or expose any public read getters on its public surface.
       // Therefore, inside or outside closures:
-      //   ctrl.what.data    --> Compile-time Error: undefined_getter
-      //   ctrl.what.isEmpty --> Compile-time Error: undefined_getter
-      // Untracked reads must explicitly route through .peek (value) or .peekState (state view).
+      //   ctrl.what.data       --> Compile-time Error: undefined_getter
+      //   ctrl.what.isEmpty    --> Compile-time Error: undefined_getter
+      // Untracked reads must explicitly route through untracked(x) or untracked.state(x).
       final ctrl = WhatController<int>(10);
-      expect(ctrl.what.peek, equals(10));
-      expect(ctrl.what.peekState.hasData, isTrue);
-      expect(ctrl.what.peekState.isEmpty, isFalse);
+      expect(untracked(ctrl.what), equals(10));
+      expect(untracked.state(ctrl.what).hasData, isTrue);
+      expect(untracked.state(ctrl.what).isEmpty, isFalse);
     });
 
-    test('identical(via.state(x), x.peekState) - both return the node itself', () {
+    test('identical(via.state(x), untracked.state(x)) - both return the node itself', () {
       final ctrl = WhatController<int>(10);
       WhatState<int>? viaState;
 
@@ -48,8 +49,8 @@ void main() {
 
       expect(viaState, isNotNull);
       expect(identical(viaState, ctrl.what), isTrue);
-      expect(identical(ctrl.what.peekState, ctrl.what), isTrue);
-      expect(identical(viaState, ctrl.what.peekState), isTrue);
+      expect(identical(untracked.state(ctrl.what), ctrl.what), isTrue);
+      expect(identical(viaState, untracked.state(ctrl.what)), isTrue);
 
       r.deactivate();
     });
@@ -106,22 +107,22 @@ void main() {
       r.deactivate();
     });
 
-    test('x.peekState.snapshot captures an immutable snapshot unaffected by subsequent mutations', () {
+    test('untracked.state(x).snapshot captures an immutable snapshot unaffected by subsequent mutations', () {
       final ctrl = WhatController<String>('initial');
-      final snapshot1 = ctrl.what.peekState.snapshot;
+      final snapshot1 = untracked.state(ctrl.what).snapshot;
 
       expect(snapshot1.hasData, isTrue);
       expect(snapshot1.data, equals('initial'));
 
       ctrl.set('updated');
-      final snapshot2 = ctrl.what.peekState.snapshot;
+      final snapshot2 = untracked.state(ctrl.what).snapshot;
 
       expect(snapshot1.data, equals('initial'));
       expect(snapshot2.data, equals('updated'));
-      expect(ctrl.what.peek, equals('updated'));
+      expect(untracked(ctrl.what), equals('updated'));
 
       ctrl.empty('cleared');
-      final snapshot3 = ctrl.what.peekState.snapshot;
+      final snapshot3 = untracked.state(ctrl.what).snapshot;
 
       expect(snapshot1.data, equals('initial'));
       expect(snapshot2.data, equals('updated'));

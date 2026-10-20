@@ -11,7 +11,7 @@ part of '../../framework.dart';
 /// Base reactive relay node that dynamically couples and reroutes its mainstream
 /// upstream source based on lateral control-plane mutations evaluated through a [RawViaTerminal].
 abstract base class _DeltaWhat<T> extends _CoupledUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>
+    with _WhatStateMixin<T>
     implements What<T> {
   _DeltaWhat() : super.late() {
     _deltaTerminal = RawViaTerminal(_evaluateDelta, onInvalidated: _onDeltaDirty);
@@ -107,18 +107,18 @@ abstract base class _DeltaWhat<T> extends _CoupledUnaryRelay<What<T>>
     try {
       final result = _deltaTerminal.evaluate();
       _performCouple(result, queuePush);
-    } catch (error, stackTrace) {
-      if (error is _ViaShortCircuit) {
-        final state = error.state;
-        if (state is _EmptyWhatState) {
-          _performCouple(What.empty(state.emptyReason), queuePush);
-          return;
-        }
-        if (state is _ErrorWhatState) {
-          _performCouple(What.error(state.error, state.stackTrace), queuePush);
-          return;
-        }
+    } on _ViaShortCircuit catch (e) {
+      final state = e.state;
+      if (state is _EmptyWhatState) {
+        _performCouple(What.empty(state.emptyReason), queuePush);
+        return;
       }
+      if (state is _ErrorWhatState) {
+        _performCouple(What.error(state.error, state.stackTrace), queuePush);
+        return;
+      }
+      _performCouple(_catchError(e, null), queuePush);
+    } catch (error, stackTrace) {
       _performCouple(_catchError(error, stackTrace), queuePush);
     }
   }

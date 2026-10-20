@@ -63,10 +63,10 @@ void main() {
         final terminal = RawWhatTerminal(group, onInvalidated: () {});
         terminal.activate();
 
-        expect(group.peekState.hasData, isTrue);
-        expect(group.peekState.isEmpty, isFalse);
-        expect(group.peekState.hasError, isFalse);
-        expect(group.peek, [c1, c2]);
+        expect(untracked.state(group).hasData, isTrue);
+        expect(untracked.state(group).isEmpty, isFalse);
+        expect(untracked.state(group).hasError, isFalse);
+        expect(untracked(group), [c1, c2]);
 
         terminal.deactivate();
       });
@@ -80,21 +80,21 @@ void main() {
 
         final compositeGroup = What.constant([s1, s2]);
 
-        expect(compositeGroup.peekState.hasData, isTrue);
-        expect(compositeGroup.peek, [s1, s2]);
-        expect(What.constant([c1, c2]).peekState.hasData, isTrue);
+        expect(untracked.state(compositeGroup).hasData, isTrue);
+        expect(untracked(compositeGroup), [s1, s2]);
+        expect(untracked.state(What.constant([c1, c2])).hasData, isTrue);
       });
 
       test('2.3 What.empty and What.error factories for lists', () {
         final groupEmpty = What<List<What<int>>>.empty();
-        expect(groupEmpty.peekState.isEmpty, isTrue);
-        expect(groupEmpty.peekState.hasData, isFalse);
-        expect(groupEmpty.peekState.dataOrElse(() => const []), isEmpty);
+        expect(untracked.state(groupEmpty).isEmpty, isTrue);
+        expect(untracked.state(groupEmpty).hasData, isFalse);
+        expect(untracked.state(groupEmpty).dataOrElse(() => const []), isEmpty);
 
         final groupError = What<List<What<int>>>.error('Error in group');
-        expect(groupError.peekState.hasError, isTrue);
-        expect(groupError.peekState.hasData, isFalse);
-        expect(groupError.peekState.error, 'Error in group');
+        expect(untracked.state(groupError).hasError, isTrue);
+        expect(untracked.state(groupError).hasData, isFalse);
+        expect(untracked.state(groupError).error, 'Error in group');
       });
     });
 
@@ -109,14 +109,14 @@ void main() {
 
         expect(controller.hasData, isTrue);
         expect(controller.data.length, equals(2));
-        expect(controller.data[0].peekState.snapshot.data, equals(10));
-        expect(controller.data[1].peekState.snapshot.data, equals(20));
+        expect(untracked.state(controller.data[0]).snapshot.data, equals(10));
+        expect(untracked.state(controller.data[1]).snapshot.data, equals(20));
 
         final what3 = WhatController<int>(30);
         controller.set([what3.what]);
 
         expect(controller.data.length, equals(1));
-        expect(controller.data[0].peekState.snapshot.data, equals(30));
+        expect(untracked.state(controller.data[0]).snapshot.data, equals(30));
       });
 
       test('3.2 WhatListController.late initialization and delayed set', () {
@@ -131,7 +131,7 @@ void main() {
 
         expect(controller.hasData, isTrue);
         expect(controller.data.length, equals(1));
-        expect(controller.data[0].peekState.snapshot.data, equals(100));
+        expect(untracked.state(controller.data[0]).snapshot.data, equals(100));
       });
 
       test('3.3 WhatListController setGuarded, setError, and empty', () {
@@ -267,7 +267,7 @@ void main() {
 
         // Aggregate operator works seamlessly on primitive list
         final sum = group.what.aggregate((nums) => nums.reduce((a, b) => a + b));
-        expect(sum.peek, 7);
+        expect(untracked(sum), 7);
 
         terminal.deactivate();
       });
@@ -275,10 +275,10 @@ void main() {
       test('3.9 aggregate works polymorphically on What<Set<T>> and What<Iterable<T>>', () {
         final setWhat = WhatController<Set<int>>({10, 20, 30});
         final total = setWhat.what.aggregate((elements) => elements.fold<int>(0, (a, b) => a + b));
-        expect(total.peek, 60);
+        expect(untracked(total), 60);
 
         setWhat.set({10, 20, 40});
-        expect(total.peek, 70);
+        expect(untracked(total), 70);
       });
     });
 
@@ -296,7 +296,7 @@ void main() {
         final terminal = RawWhatTerminal(aggregated, onInvalidated: () {});
         terminal.activate();
 
-        expect(aggregated.peek, 60);
+        expect(untracked(aggregated), 60);
 
         terminal.deactivate();
       });
@@ -310,7 +310,7 @@ void main() {
         final terminal = RawWhatTerminal(combined, onInvalidated: () {});
         terminal.activate();
 
-        expect(combined.peek, ['apple', 'banana']);
+        expect(untracked(combined), ['apple', 'banana']);
 
         terminal.deactivate();
       });
@@ -328,11 +328,11 @@ void main() {
         final terminal = RawWhatTerminal(converged, onInvalidated: () {});
         terminal.activate();
 
-        expect(converged.peek, 'HIGH');
+        expect(untracked(converged), 'HIGH');
 
         c1.set(0);
         c2.set(10);
-        expect(converged.peek, 'LOW');
+        expect(untracked(converged), 'LOW');
 
         terminal.deactivate();
       });
@@ -347,7 +347,7 @@ void main() {
         final terminal = RawWhatTerminal(folded, onInvalidated: () {});
         terminal.activate();
 
-        expect(folded.peek, 106);
+        expect(untracked(folded), 106);
         terminal.deactivate();
       });
 
@@ -361,7 +361,7 @@ void main() {
         final terminal = RawWhatTerminal(reduced, onInvalidated: () {});
         terminal.activate();
 
-        expect(reduced.peek, 'a-b-c');
+        expect(untracked(reduced), 'a-b-c');
         terminal.deactivate();
       });
 
@@ -381,8 +381,8 @@ void main() {
         tInt.activate();
         tDouble.activate();
 
-        expect(sumInt.peek, 35);
-        expect(sumDouble.peek, 4.0);
+        expect(untracked(sumInt), 35);
+        expect(untracked(sumDouble), 4.0);
 
         tInt.deactivate();
         tDouble.deactivate();
@@ -401,14 +401,14 @@ void main() {
         tEvery.activate();
         tAny.activate();
 
-        expect(allEven.peek, isTrue);
-        expect(anyGreaterThan15.peek, isTrue);
+        expect(untracked(allEven), isTrue);
+        expect(untracked(anyGreaterThan15), isTrue);
 
         g1.set(11);
-        expect(allEven.peek, isFalse);
+        expect(untracked(allEven), isFalse);
 
         g2.set(10);
-        expect(anyGreaterThan15.peek, isFalse);
+        expect(untracked(anyGreaterThan15), isFalse);
 
         tEvery.deactivate();
         tAny.deactivate();
@@ -460,13 +460,13 @@ void main() {
         expect(dirtyCount, 0);
         terminal.activate();
 
-        expect(combined.peek, ['A', 'B']);
+        expect(untracked(combined), ['A', 'B']);
 
         c1.set('Alpha');
         expect(dirtyCount, 1);
 
         // Compute only on pull
-        expect(combined.peek, ['Alpha', 'B']);
+        expect(untracked(combined), ['Alpha', 'B']);
 
         terminal.deactivate();
       });
@@ -626,16 +626,16 @@ void main() {
     // 6. Unified Collection Convenience Extensions (what.dart export)
     // =========================================================================
     group('6. Unified Collection Convenience Extensions (Single Entrypoint)', () {
-      test('6.1 Iterable<WhatState<T>> via peekState.data and dataOrNull extract values correctly', () {
+      test('6.1 Iterable<WhatState<T>> via untracked.state data and dataOrNull extract values correctly', () {
         final w1 = What.constant(10);
         final w2 = What.constant(20);
         final w3 = What<int>.empty();
-        final list = [w1.peekState, w2.peekState];
+        final list = [untracked.state(w1), untracked.state(w2)];
 
         expect(list.data.toList(), equals([10, 20]));
         expect(list.dataOrNull.toList(), equals([10, 20]));
 
-        final mixed = [w1.peekState, w3.peekState];
+        final mixed = [untracked.state(w1), untracked.state(w3)];
         expect(mixed.dataOrNull.toList(), equals([10, null]));
         expect(() => mixed.data.toList(), throwsA(isA<WhatSnapshotExtractionException>()));
       });
@@ -672,7 +672,7 @@ void main() {
         final state1 = WhatSnapshot<String>('hello');
         final state2 = What<String>.constant('world');
         final stateEmpty = const WhatSnapshot<String>.empty();
-        final List<WhatState<String>> list = [state1, state2.peekState];
+        final List<WhatState<String>> list = [state1, untracked.state(state2)];
 
         expect(list.data.toList(), equals(['hello', 'world']));
         expect(list.dataOrNull.toList(), equals(['hello', 'world']));

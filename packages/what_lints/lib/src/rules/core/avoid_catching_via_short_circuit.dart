@@ -8,8 +8,7 @@ part of '../../../what_lints.dart';
 ///
 /// ### Rationale:
 /// What uses a lightweight internal short-circuit sentinel (`_ViaShortCircuit`) to instantly
-/// drop downstream derivation evaluation and propagate `Empty` or `Error` states synchronously
-/// with zero allocations.
+/// drop downstream derivation evaluation and propagate `Empty` or `Error` states synchronously.
 ///
 /// Wrapping `via(...)` calls in a broad `try/catch` (`catch (_)`, `on Object`, `on Exception`,
 /// `on Error`) inadvertently intercepts this sentinel, breaking What's 3-state propagation and

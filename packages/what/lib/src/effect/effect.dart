@@ -276,7 +276,7 @@ sealed class EffectGroup extends Effect {
 /// // [Anti-Pattern] Synchronously mutating target inside its own effect without an exit condition
 /// final counter = WhatController(0);
 /// Effect([counter.what], () {
-///   counter.set(counter.what.peek + 1); // Triggers infinite invalidation loop!
+///   counter.set(untracked(counter.what) + 1); // Triggers infinite invalidation loop!
 /// });
 /// ```
 ///
@@ -285,7 +285,7 @@ sealed class EffectGroup extends Effect {
 /// // [Recommended] Perform external I/O or update distinct downstream state
 /// final counter = WhatController(0);
 /// Effect([counter.what], () {
-///   analyticsService.logCounter(counter.what.peek); // Pure side-effect sink
+///   analyticsService.logCounter(untracked(counter.what)); // Pure side-effect sink
 /// });
 /// ```
 ///
@@ -296,7 +296,7 @@ sealed class EffectGroup extends Effect {
 ///
 /// final syncEffect = Effect(
 ///   [user.what, auth.what],
-///   () => syncSession(user.what.peek, auth.what.peek),
+///   () => syncSession(untracked(user.what), untracked(auth.what)),
 ///   take: 5,
 /// );
 /// ```
@@ -328,7 +328,7 @@ sealed class Effect extends Tether {
   /// ```dart
   /// final counter = WhatController(0);
   /// final effect = Effect([counter.what], () {
-  ///   print('Counter mutated to: ${counter.what.peek}');
+  ///   print('Counter mutated to: ${untracked(counter.what)}');
   /// });
   /// ```
   factory Effect(
@@ -367,7 +367,7 @@ sealed class Effect extends Tether {
   /// ```dart
   /// final query = WhatController('');
   /// final effect = Effect.unary(query.what, () {
-  ///   analyticsService.logSearch(query.what.peek);
+  ///   analyticsService.logSearch(untracked(query.what));
   /// });
   /// ```
   factory Effect.unary(
@@ -599,7 +599,7 @@ sealed class Effect extends Tether {
 ///   final query = WhatController('');
 ///   late final searchEffect = query.what.effect.debounce(
 ///     const Duration(milliseconds: 300),
-///     () => apiService.search(query.what.peek),
+///     () => apiService.search(untracked(query.what)),
 ///   );
 /// }
 /// ```
@@ -610,7 +610,7 @@ sealed class Effect extends Tether {
 /// final searchEffect = DebounceEffect(
 ///   [query.what],
 ///   const Duration(milliseconds: 300),
-///   () => apiService.search(query.what.peek),
+///   () => apiService.search(untracked(query.what)),
 /// );
 /// ```
 sealed class DebounceEffect extends Effect {
@@ -640,7 +640,7 @@ sealed class DebounceEffect extends Effect {
   /// final effect = DebounceEffect(
   ///   [query.what],
   ///   const Duration(milliseconds: 300),
-  ///   () => apiService.search(query.what.peek),
+  ///   () => apiService.search(untracked(query.what)),
   /// );
   /// ```
   factory DebounceEffect(
@@ -678,7 +678,7 @@ sealed class DebounceEffect extends Effect {
   /// final effect = DebounceEffect.unary(
   ///   query.what,
   ///   const Duration(milliseconds: 300),
-  ///   () => apiService.search(query.what.peek),
+  ///   () => apiService.search(untracked(query.what)),
   /// );
   /// ```
   factory DebounceEffect.unary(
@@ -746,7 +746,7 @@ sealed class DebounceEffect extends Effect {
 /// // [Recommended] Use throttle for continuous events like scrolling or window resizing
 /// final effect = scrollOffset.what.effect.throttle(
 ///   const Duration(milliseconds: 100),
-///   () => syncScroll(scrollOffset.what.peek),
+///   () => syncScroll(untracked(scrollOffset.what)),
 /// );
 /// ```
 ///
@@ -756,7 +756,7 @@ sealed class DebounceEffect extends Effect {
 /// final scrollThrottle = ThrottleEffect(
 ///   [scroll.what],
 ///   const Duration(milliseconds: 100),
-///   () => syncScrollOffset(scroll.what.peek),
+///   () => syncScrollOffset(untracked(scroll.what)),
 /// );
 /// ```
 sealed class ThrottleEffect extends Effect {
@@ -786,7 +786,7 @@ sealed class ThrottleEffect extends Effect {
   /// final effect = ThrottleEffect(
   ///   [scroll.what],
   ///   const Duration(milliseconds: 100),
-  ///   () => syncScroll(scroll.what.peek),
+  ///   () => syncScroll(untracked(scroll.what)),
   /// );
   /// ```
   factory ThrottleEffect(
@@ -824,7 +824,7 @@ sealed class ThrottleEffect extends Effect {
   /// final effect = ThrottleEffect.unary(
   ///   scroll.what,
   ///   const Duration(milliseconds: 100),
-  ///   () => syncScroll(scroll.what.peek),
+  ///   () => syncScroll(untracked(scroll.what)),
   /// );
   /// ```
   factory ThrottleEffect.unary(

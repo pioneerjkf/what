@@ -38,7 +38,7 @@ part of '../../framework.dart';
 /// ```text
 /// [ Upstream What<T> Mutates ]
 ///              │
-///              │ (Phase 1: O(1) Push-Dirty Invalidation)
+///              │ (Phase 1: 0-Compute Push-Dirty Invalidation)
 ///              ▼
 /// [ RawComputedTerminal<Widget>.onInvalidated: markNeedsBuild() ]
 ///              │
@@ -97,15 +97,15 @@ final class ComposedFunctor {
   /// * Returns a lightweight reactive [Widget] bound to the active [WhatVia] tracking scope.
   ///
   /// **Warning (Anti-Pattern Prevention):**
-  /// - Do NOT read `.peek` directly inside [builder] without wrapping in `via(...)`. Directly reading
-  ///   `.peek` performs an untracked read and bypasses reactive invalidations.
+  /// - Do NOT read untracked values directly inside [builder] without wrapping in `via(...)`. Directly calling
+  ///   `untracked(...)` performs an untracked read and bypasses reactive invalidations.
   /// - Do NOT trigger state mutations inside [builder], as this violates Flutter's single-pass render contract.
   ///
   /// **BAD:**
   /// ```dart
-  /// // [Anti-Pattern] Reading .peek directly inside composed
+  /// // [Anti-Pattern] Reading untracked directly inside composed
   /// Widget build(BuildContext context) {
-  ///   return composed((context, via) => Text('Count: ${counter.what.peek}')); // NEVER rebuilds!
+  ///   return composed((context, via) => Text('Count: ${untracked(counter.what)}')); // NEVER rebuilds!
   /// }
   /// ```
   ///
@@ -165,8 +165,8 @@ final class ComposedFunctor {
   }) =>
       _ComposedWithChildWidget(
         builder: builder,
-        child: child,
         key: key,
+        child: child,
       );
 
   /// Creates an inline reactive widget with isolated static [children] subtrees.
@@ -203,8 +203,8 @@ final class ComposedFunctor {
   }) =>
       _ComposedWithChildrenWidget(
         builder: builder,
-        children: children,
         key: key,
+        children: children,
       );
 
   /// Functor providing element-managed [TickerProvider] ([vsync]) entrypoints.
@@ -282,8 +282,8 @@ final class ComposedVsyncFunctor {
   }) =>
       _ComposedVsyncWithChildWidget(
         builder: builder,
-        child: child,
         key: key,
+        child: child,
       );
 
   /// Creates an inline reactive widget providing [TickerProvider] and isolated static [children].
@@ -318,8 +318,8 @@ final class ComposedVsyncFunctor {
   }) =>
       _ComposedVsyncWithChildrenWidget(
         builder: builder,
-        children: children,
         key: key,
+        children: children,
       );
 }
 
@@ -423,10 +423,10 @@ final class ComposedAnimateFunctor {
       _ComposedAnimateWithChildWidget(
         controller: controller,
         builder: builder,
-        child: child,
         onActivate: onActivate,
         onDeactivate: onDeactivate,
         key: key,
+        child: child,
       );
 
   /// Creates an inline reactive widget bound to a [DurableAnimationController] with isolated static [children].
@@ -469,10 +469,10 @@ final class ComposedAnimateFunctor {
       _ComposedAnimateWithChildrenWidget(
         controller: controller,
         builder: builder,
-        children: children,
         onActivate: onActivate,
         onDeactivate: onDeactivate,
         key: key,
+        children: children,
       );
 }
 
@@ -564,11 +564,11 @@ final class ComposedDriveFunctor {
       _ComposedDriveWithChildWidget<T>(
         onTick: onTick,
         builder: builder,
-        child: child,
         initialValue: initialValue,
         distinct: distinct,
         equals: equals,
         key: key,
+        child: child,
       );
 
   /// Creates an inline reactive widget driven by a continuous frame ticker with isolated static [children].
@@ -613,10 +613,10 @@ final class ComposedDriveFunctor {
       _ComposedDriveWithChildrenWidget<T>(
         onTick: onTick,
         builder: builder,
-        children: children,
         initialValue: initialValue,
         distinct: distinct,
         equals: equals,
         key: key,
+        children: children,
       );
 }

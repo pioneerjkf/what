@@ -23,7 +23,7 @@ Add `what_flutter_test` to your `dev_dependencies` in `pubspec.yaml`:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  what_flutter_test: ^0.1.0
+  what_flutter_test: ^0.2.0
 ```
 
 ---

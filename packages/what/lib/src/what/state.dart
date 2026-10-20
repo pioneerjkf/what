@@ -14,7 +14,7 @@ part of '../framework.dart';
 /// - [Computation] (Class-based derivation component)
 ///
 /// Note that [What] itself does not implement [WhatState] directly; instead, it exposes
-/// an untracked live view via [What.peekState] or scoped tracking via [WhatVia.state].
+/// an untracked live view via [WhatUntracked.state] or scoped tracking via [WhatVia.state].
 ///
 /// Guarantees consistent state interrogation ([WhatState.data], [WhatState.hasData], [WhatState.isEmpty],
 /// [WhatState.emptyReason], [WhatState.hasError], [WhatState.error], [WhatState.stackTrace]) and declarative pattern
@@ -47,15 +47,15 @@ part of '../framework.dart';
 /// [computed / Effect.via Scope]
 ///             │ (Injected WhatVia parameter)
 ///             ▼
-///      via(sourceWhat)  ──>  [Registers Source Edge & Returns Payload T]
+///      via(sourceWhat)          ──>  [Registers Source Edge & Returns Payload T]
 ///
 /// [Outside Derivation Scope / Raw Read]
 ///             │
-///      sourceWhat.peek  ──>  [Pure Direct Field Dereference (Zero Tracking Overhead)]
+///      untracked(sourceWhat)    ──>  [Pure Direct Field Dereference (Zero Tracking Overhead)]
 /// ```
 ///
 /// ## Key Invariants & Architectural Benefits
-/// 1. **Zero-Overhead Raw Reads & Explicit Tracking**: Reading `.peek` or `.peekState` directly on
+/// 1. **Zero-Overhead Raw Reads & Explicit Tracking**: Reading via [untracked] or [WhatUntracked.state] directly on
 ///    a node is a pure field dereference with zero tracking overhead and no dynamic tracking stack penalty.
 ///    Reactive derivations explicitly declare dependencies via the injected [WhatVia] parameter (`via(node)`).
 /// 2. **3-State Exclusivity**: A [WhatState] entity is strictly in one of three mutually exclusive states:
@@ -66,15 +66,15 @@ part of '../framework.dart';
 ///    Use [WhatState.dataOrNull], [WhatState.dataOrElse], or [WhatStateMatchExtension.match] for safe exhaustive pattern matching.
 ///
 /// **Warning (Anti-Pattern Prevention):**
-/// - Do NOT read `.peek` or `.peekState` directly inside a [computed] or `Effect.via` scope without wrapping in `via(...)`,
-///   as reading `.peek` directly performs a pure untracked read.
+/// - Do NOT read untracked values directly inside a [computed] or `Effect.via` scope without wrapping in `via(...)`,
+///   as calling `untracked(node)` performs a pure untracked read.
 /// - Do NOT read [WhatState.data] without checking [WhatState.hasData] or handling fallback via [WhatState.dataOrNull] / [WhatState.dataOrElse].
 ///
 /// **BAD:**
 /// ```dart
-/// // [Anti-Pattern] Reading .peek without via() bypasses dependency registration
+/// // [Anti-Pattern] Reading untracked without via() bypasses dependency registration
 /// final badComputed = computed((via) {
-///   return count.what.peek * 2; // count is NOT tracked!
+///   return untracked(count.what) * 2; // count is NOT tracked!
 /// });
 /// ```
 ///
@@ -91,9 +91,9 @@ part of '../framework.dart';
 /// final count = WhatController(0);
 /// final doubled = computed((via) => via(count.what) * 2);
 ///
-/// print(doubled.peek); // 0
+/// print(untracked(doubled)); // 0
 /// count.data = 5;
-/// print(doubled.peek); // 10
+/// print(untracked(doubled)); // 10
 /// ```
 abstract interface class WhatState<T> {
   /// The underlying snapshot representing this entity's current state.

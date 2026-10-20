@@ -45,7 +45,7 @@ The application is structured into 18 distinct, self-contained chapters covering
  │    └── 04. Scoped State DI (what.provide / whatOf)
  │
  ├── [Tier 2: Real-World App Essentials 05~10]
- │    ├── 05. Zero-Jump Form Binding & WhatTextEditingController
+ │    ├── 05. Standard Form Input & Listenable Bridge (toWhatBy)
  │    ├── 06. Async UI, SWR & WhatPendingIndicator
  │    ├── 07. Imperative Signals vs State Anti-Pattern (WhatListener)
  │    ├── 08. Scroll Kinematics & 120fps Surgical Micro-Rebuilds
@@ -82,9 +82,9 @@ The application is structured into 18 distinct, self-contained chapters covering
 
 ### 4.2. Real-World App Essentials (Chapters 05 - 10)
 
-* **05. Zero-Jump Form Binding (`05_text_editing_controller`)**: Eliminates cursor jumping, infinite echo loops, and text input lag during bi-directional reactive form sync via `WhatTextEditingController`, fine-grained `Graceful` debounce policies, and clean auto-disposal.
+* **05. Standard Form Input & Listenable Bridge (`05_text_editing_controller`)**: Direct use of native Flutter `TextEditingController` with zero-overhead `toWhatBy((c) => c.text)` bridge into What reactive graph, Demand-Driven Dormancy, and automated unmount disposal via `What.managed`.
 * **06. Async UI, SWR & WhatPendingIndicator (`06_async_swr_builder`)**: Declarative 4-state asynchronous building (`data`, `loading`, `error`, `empty`), flicker-free Stale-While-Revalidate (SWR) cache retention, surgical linear `WhatPendingIndicator` bound directly to `What<bool>`, and zero-alloc `what.build.async` inline functor cascades.
-* **07. Imperative Signals vs State Anti-Pattern (`07_imperative_signals`)**: Transient one-off signals (`WhatSignalController`) vs persistent boolean state, showing how `WhatListener` eliminates zombie dialog states upon remount.
+* **07. Imperative Signals vs State Anti-Pattern (`07_imperative_signals`)**: Transient one-off signals (`WhatSignalController` from `package:what`, re-exported by `what_flutter`) vs persistent boolean state, showing how `WhatListener` eliminates zombie dialog states upon remount.
 * **08. Scroll Kinematics & 120fps Surgical Micro-Rebuilds (`08_scroll_kinematics`)**: High-frequency scroll tracking via `scrollController.toWhatBy(...)` where a heavy 100-item ListView NEVER rebuilds, and only the lightweight AppBar Opacity updates at 120fps.
 * **09. Reactive Effects & Side-Effect Pipeline (`09_reactive_effects`)**: Isolated reactive side-effects executing without UI widget rebuilds (`Rebuild Count: 0`), explicit dynamic branch discovery (`Effect.via`), untracked boundary protection, explicit tuple effects (`(a, b).effect`), direct unary effect (`source.effect`), and full lifecycle management (`activate`, `deactivate`, `dispose`).
 * **10. Temporal Pipelines & Rate-Limiting (`10_temporal_orchestration`)**: Leading/trailing debounce and throttle rate-limiting pipelines.

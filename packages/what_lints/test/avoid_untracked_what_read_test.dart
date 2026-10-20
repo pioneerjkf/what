@@ -38,8 +38,22 @@ class _UntrackedPayloadVisitor extends RecursiveAstVisitor<void> {
       if (AvoidUntrackedWhatRead.isUntrackedInWhatViaScope(node)) {
         untrackedNodes.add(node);
       }
+    } else if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+      if (AvoidUntrackedWhatRead.isUntrackedInWhatViaScope(node)) {
+        untrackedNodes.add(node);
+      }
     }
     super.visitMethodInvocation(node);
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    if (WhatTypeChecker.isWhatUntrackedInvocation(node)) {
+      if (AvoidUntrackedWhatRead.isUntrackedInWhatViaScope(node)) {
+        untrackedNodes.add(node);
+      }
+    }
+    super.visitFunctionExpressionInvocation(node);
   }
 
   @override
@@ -260,12 +274,12 @@ class MyWhatWidget extends WhatWidget {
 
       expect(visitor.untrackedNodes.length, equals(0));
     });
-    test('detects untracked .peek and .peekState inside computed', () {
+    test('detects untracked(...) and untracked.state(...) inside computed', () {
       final unit = parseString(content: '''
 void testComputed() {
   final result = computed((via) {
-    final a = countWhat.peek;
-    final b = countWhat.peekState.hasData;
+    final a = untracked(countWhat);
+    final b = untracked.state(countWhat);
     return a;
   });
 }
@@ -274,7 +288,7 @@ void testComputed() {
       final visitor = _UntrackedPayloadVisitor();
       unit.accept(visitor);
 
-      expect(visitor.untrackedNodes.length, equals(3));
+      expect(visitor.untrackedNodes.length, equals(2));
     });
 
     test('detects untracked .data on WhatController inside computed', () {
@@ -308,6 +322,63 @@ void testComputed() {
 
       // Both the cast and the .data read are caught
       expect(visitor.untrackedNodes.length, greaterThanOrEqualTo(1));
+    });
+
+    test('detects untracked(...) inside computed', () {
+      final unit = parseString(content: '''
+void testComputed() {
+  final result = computed((via) {
+    final a = untracked(countWhat);
+    return a * 2;
+  });
+}
+''').unit;
+
+      final visitor = _UntrackedPayloadVisitor();
+      unit.accept(visitor);
+
+      expect(visitor.untrackedNodes.length, equals(1));
+    });
+
+    test('detects untracked.state(...) inside computed', () {
+      final unit = parseString(content: '''
+void testComputed() {
+  final result = computed((via) {
+    final state = untracked.state(countWhat);
+    return state.data;
+  });
+}
+''').unit;
+
+      final visitor = _UntrackedPayloadVisitor();
+      unit.accept(visitor);
+
+      expect(visitor.untrackedNodes.length, greaterThanOrEqualTo(1));
+    });
+
+    test('permits untracked(...) inside event handlers in WhatWidget', () {
+      final unit = parseString(content: '''
+class MyWidget extends WhatWidget {
+  final What<int> countWhat;
+  MyWidget(this.countWhat);
+
+  @override
+  Widget build(BuildContext context, WhatVia via) {
+    return ElevatedButton(
+      onPressed: () {
+        final a = untracked(countWhat);
+        print(a);
+      },
+      child: Text('Click'),
+    );
+  }
+}
+''').unit;
+
+      final visitor = _UntrackedPayloadVisitor();
+      unit.accept(visitor);
+
+      expect(visitor.untrackedNodes.length, equals(0));
     });
   });
 }

@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:what_flutter/framework.dart';
 
 base class ReparentableCounterWidget extends WhatWidget {
-  ReparentableCounterWidget({super.key, required this.counterWhat});
+  const ReparentableCounterWidget({super.key, required this.counterWhat});
 
   final What<int> counterWhat;
 

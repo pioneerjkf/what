@@ -293,14 +293,14 @@ void main() {
         });
 
         // Prime lazySource to establish active edge from root to lazySource
-        expect(lazySource.peek, 20);
+        expect(untracked(lazySource), 20);
         expect(compRuns, 1);
 
         var effectRuns = 0;
         var capturedValue = 0;
         final effect = Effect.unary(lazySource, () {
           effectRuns++;
-          capturedValue = lazySource.peek;
+          capturedValue = untracked(lazySource);
         });
 
         final host = RawViaTerminal((via) => via.tether(effect), onInvalidated: () {});
@@ -349,18 +349,18 @@ void main() {
         expect(computeCount, 0);
 
         // First downstream read forces coupler._resolve() -> lazyTarget._resolve() -> version bump
-        expect(downstream.peek, 51);
+        expect(untracked(downstream), 51);
         expect(computeCount, 1);
         expect(downstreamRuns, 1);
 
         // Subsequent read on unchanged data is cached
-        expect(downstream.peek, 51);
+        expect(untracked(downstream), 51);
         expect(computeCount, 1);
         expect(downstreamRuns, 1);
 
         // Upstream mutation propagates through coupler to downstream
         root.data = 7;
-        expect(downstream.peek, 71);
+        expect(untracked(downstream), 71);
         expect(computeCount, 2);
         expect(downstreamRuns, 2);
       });
@@ -369,20 +369,20 @@ void main() {
         final initial = WhatController(42);
         final coupler = WhatCoupler<int>(initial.what);
 
-        expect(coupler.what.peek, 42);
+        expect(untracked(coupler.what), 42);
 
         // Decouple transitions to Empty state and increments version
         coupler.decouple();
-        expect(coupler.what.peekState.isEmpty, isTrue);
+        expect(untracked.state(coupler.what).isEmpty, isTrue);
 
         // Set error transitions to Error state and increments version
         coupler.setError(Exception('Failed to load'));
-        expect(coupler.what.peekState.hasError, isTrue);
+        expect(untracked.state(coupler.what).hasError, isTrue);
 
         // Re-couple to valid node
         final fresh = WhatController(100);
         coupler.couple(fresh.what);
-        expect(coupler.what.peek, 100);
+        expect(untracked(coupler.what), 100);
       });
 
       test('3.3 What.switched: Synchronizes version when switching branches to uncomputed lazy computed', () {
@@ -413,7 +413,7 @@ void main() {
         });
 
         // Initial read: branchA
-        expect(downstream.peek, 'Result: 20');
+        expect(untracked(downstream), 'Result: 20');
         expect(aRuns, 1);
         expect(bRuns, 0);
         expect(downstreamRuns, 1);
@@ -423,13 +423,13 @@ void main() {
 
         // Downstream read must trigger switchedWhat._resolve() which pulls lazyB,
         // synchronizes _pulledVersion, advances switchedWhat._version, and serves fresh state.
-        expect(downstream.peek, 'Result: 60');
+        expect(untracked(downstream), 'Result: 60');
         expect(bRuns, 1);
         expect(downstreamRuns, 2);
 
         // Mutating rootB must correctly notify downstream because pulledVersion matches
         rootB.data = 25;
-        expect(downstream.peek, 'Result: 75');
+        expect(untracked(downstream), 'Result: 75');
         expect(bRuns, 2);
         expect(downstreamRuns, 3);
       });
@@ -482,17 +482,17 @@ void main() {
           throw UnsupportedError('Unsupported dynamic route');
         });
 
-        expect(switchedWhat.peek, 100);
+        expect(untracked(switchedWhat), 100);
 
         // Trigger switch error
         flag.data = false;
-        expect(switchedWhat.peekState.hasError, isTrue);
-        expect(switchedWhat.peekState.error, isA<UnsupportedError>());
+        expect(untracked.state(switchedWhat).hasError, isTrue);
+        expect(untracked.state(switchedWhat).error, isA<UnsupportedError>());
 
         // Restore to valid branch
         flag.data = true;
-        expect(switchedWhat.peekState.hasData, isTrue);
-        expect(switchedWhat.peek, 100);
+        expect(untracked.state(switchedWhat).hasData, isTrue);
+        expect(untracked(switchedWhat), 100);
       });
     });
 
@@ -515,24 +515,24 @@ void main() {
         }).distinct();
 
         // First read
-        expect(distinctNode.peek, 10);
+        expect(untracked(distinctNode), 10);
         expect(sourceComputeRuns, 1);
         expect(distinctRuns, 1);
 
         // Read again on unchanged: 0 computations
-        expect(distinctNode.peek, 10);
+        expect(untracked(distinctNode), 10);
         expect(sourceComputeRuns, 1);
         expect(distinctRuns, 1);
 
         // Mutate root to produce same quotient: 105 ~/ 10 == 10
         root.data = 105;
-        expect(distinctNode.peek, 10);
+        expect(untracked(distinctNode), 10);
         expect(sourceComputeRuns, 2);
         // distinctNode re-evaluated lazySource, found it was identical 10, did NOT bump version
         expect(distinctRuns, 2);
 
         // Subsequent read on unchanged data: must NOT re-evaluate!
-        expect(distinctNode.peek, 10);
+        expect(untracked(distinctNode), 10);
         expect(sourceComputeRuns, 2);
         expect(distinctRuns, 2);
       });
@@ -542,18 +542,18 @@ void main() {
         final pendingCoupler = WhatCoupler<bool>.late();
         final retained = root.what.retained(pending: pendingCoupler);
 
-        expect(retained.peek, 'Initial');
-        expect(pendingCoupler.what.peek, isFalse);
+        expect(untracked(retained), 'Initial');
+        expect(untracked(pendingCoupler.what), isFalse);
 
         // Invalidate root to empty
         root.empty('Loading...');
-        expect(retained.peek, 'Initial', reason: 'Retained node must retain previous valid state');
-        expect(pendingCoupler.what.peek, isTrue);
+        expect(untracked(retained), 'Initial', reason: 'Retained node must retain previous valid state');
+        expect(untracked(pendingCoupler.what), isTrue);
 
         // Restore root to valid
         root.data = 'Updated';
-        expect(retained.peek, 'Updated');
-        expect(pendingCoupler.what.peek, isFalse);
+        expect(untracked(retained), 'Updated');
+        expect(untracked(pendingCoupler.what), isFalse);
       });
 
       test('4.3 KeyedMapWhat: Dynamic list generation from lazy source synchronizes version cleanly', () {
@@ -570,24 +570,24 @@ void main() {
           convert: (item) => item.toUpperCase(),
         );
 
-        expect(elements.peek, ['ITEM 0', 'ITEM 1', 'ITEM 2']);
+        expect(untracked(elements), ['ITEM 0', 'ITEM 1', 'ITEM 2']);
         expect(listComputeRuns, 1);
 
         // Subsequent read is clean
-        expect(elements.peek, ['ITEM 0', 'ITEM 1', 'ITEM 2']);
+        expect(untracked(elements), ['ITEM 0', 'ITEM 1', 'ITEM 2']);
         expect(listComputeRuns, 1);
 
         count.data = 4;
-        expect(elements.peek, ['ITEM 0', 'ITEM 1', 'ITEM 2', 'ITEM 3']);
+        expect(untracked(elements), ['ITEM 0', 'ITEM 1', 'ITEM 2', 'ITEM 3']);
         expect(listComputeRuns, 2);
       });
 
       test('4.4 DebouncedWhat: Deferred pull synchronizes version upon timer expiration', () async {
         final root = WhatController(1);
         final debounced = root.what.debounced(const Duration(milliseconds: 20));
-        final observed = <int>[debounced.peek];
+        final observed = <int>[untracked(debounced)];
         final terminal = RawWhatTerminal(debounced, onInvalidated: () {
-          observed.add(debounced.peek);
+          observed.add(untracked(debounced));
         });
         terminal.activate();
 
@@ -607,7 +607,7 @@ void main() {
 
         // Now debounced emits trailing and synchronizes version
         expect(observed, [1, 4]);
-        expect(debounced.peek, 4);
+        expect(untracked(debounced), 4);
 
         terminal.deactivate();
       });
@@ -620,9 +620,9 @@ void main() {
           trailing: true,
         );
 
-        final observed = <String>[throttled.peek];
+        final observed = <String>[untracked(throttled)];
         final terminal = RawWhatTerminal(throttled, onInvalidated: () {
-          observed.add(throttled.peek);
+          observed.add(untracked(throttled));
         });
         terminal.activate();
 
@@ -641,7 +641,7 @@ void main() {
 
         // Trailing value emitted and version synchronized
         expect(observed, ['A', 'B', 'C']);
-        expect(throttled.peek, 'C');
+        expect(untracked(throttled), 'C');
 
         terminal.deactivate();
       });

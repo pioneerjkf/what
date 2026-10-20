@@ -10,7 +10,7 @@ part of '../../framework.dart';
 
 /// Abstract base class for reactive computed nodes that track dependencies via [_WhatViaEpochMixin].
 abstract base class _ComputedWhatBase<T> extends _NaryRelay<_Node>
-    with _WhatViaEpochMixin, _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>
+    with _WhatViaEpochMixin, _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>
     implements What<T> {}
 
 /// Dynamic dependency tracking and compute execution mixin via [WhatVia].
@@ -25,6 +25,10 @@ base mixin _ComputedPullMixin<T> on _PullResolver<T>, _WhatViaEpochMixin {
   @pragma('vm:prefer-inline')
   _WhatState<T> _pull() {
     if (this case final _Node node) {
+      // Note: Version is bumped unconditionally on pull for zero-overhead performance.
+      // Implicit Object.== checks are intentionally omitted to avoid virtual dispatch
+      // penalties on hot paths and mutable state hazards. For value-equality early cutoff,
+      // explicitly chain `.distinct([equals])`.
       node._version++;
     }
     final currentEpoch = _beginEpoch();
@@ -47,8 +51,11 @@ base mixin _ComputedPullMixin<T> on _PullResolver<T>, _WhatViaEpochMixin {
       } else {
         state = _ValidWhatState<T>(result);
       }
+    } on _ViaShortCircuit catch (e) {
+      succeeded = true;
+      state = e.state._retype<T>();
     } catch (error, stackTrace) {
-      succeeded = error is _ViaShortCircuit;
+      succeeded = false;
       state = _WhatState.fromCaught(error, stackTrace);
     } finally {
       _endEpoch(currentEpoch, succeeded: succeeded, commitVersions: false);
@@ -113,8 +120,11 @@ base class _ComputationWhat<T> extends _ComputedWhatBase<T> {
           state = _ValidWhatState<T>(result);
         }
       }
+    } on _ViaShortCircuit catch (e) {
+      succeeded = true;
+      state = e.state._retype<T>();
     } catch (error, stackTrace) {
-      succeeded = error is _ViaShortCircuit;
+      succeeded = false;
       state = _WhatState.fromCaught(error, stackTrace);
     } finally {
       _endEpoch(currentEpoch, succeeded: succeeded, commitVersions: false);

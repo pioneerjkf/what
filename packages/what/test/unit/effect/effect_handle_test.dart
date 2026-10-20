@@ -42,7 +42,7 @@ void main() {
 
       final runner = query.what.effect.handled((handle) {
         handles.add(handle);
-        final current = query.what.peek;
+        final current = untracked(query.what);
         log.add('run: $current');
 
         handle.onCleanup(() {
@@ -103,7 +103,7 @@ void main() {
       final cleanupOrder = <int>[];
 
       final runner = (a.what, b.what).effect.handled((handle) {
-        final sum = a.what.peek + b.what.peek;
+        final int sum = untracked(a.what) + untracked(b.what);
         handle.onCleanup(() {
           cleanupOrder.add(sum);
         });
@@ -225,7 +225,7 @@ void main() {
           runCount++;
           handle.onCleanup(() => cleanups++);
         },
-        guard: () => counter.what.peek.isEven,
+        guard: () => untracked(counter.what).isEven,
       ).run();
 
       counter.set(2); // Even -> runs
@@ -281,7 +281,7 @@ void main() {
       final receivedResults = <String>[];
 
       final runner = query.what.effect.handled((handle) async {
-        final currentQuery = query.what.peek;
+        final currentQuery = untracked(query.what);
         final delayMs = currentQuery == 'first' ? 50 : 10;
 
         // Simulate async I/O

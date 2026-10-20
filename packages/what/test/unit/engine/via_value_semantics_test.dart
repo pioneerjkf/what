@@ -14,23 +14,23 @@ void main() {
 
       final sum = computed((via) => via(a.what) + via(b.what));
 
-      expect(sum.peek, 30);
+      expect(untracked(sum), 30);
 
       a.data = 15;
-      expect(sum.peek, 35);
+      expect(untracked(sum), 35);
 
       b.data = 25;
-      expect(sum.peek, 40);
+      expect(untracked(sum), 40);
     });
 
     test('2. Upstream Empty short-circuits and preserves emptyReason (D2)', () {
       final a = WhatController<int>.late(reason: 'WaitingForInput');
       final derived = computed((via) => via(a.what) * 2);
 
-      expect(derived.peekState.isEmpty, isTrue);
-      expect(derived.peekState.emptyReason, 'WaitingForInput');
-      expect(derived.peekState.hasError, isFalse);
-      expect(derived.peekState.hasData, isFalse);
+      expect(untracked.state(derived).isEmpty, isTrue);
+      expect(untracked.state(derived).emptyReason, 'WaitingForInput');
+      expect(untracked.state(derived).hasError, isFalse);
+      expect(untracked.state(derived).hasData, isFalse);
     });
 
     test('3. Upstream Error short-circuits and preserves original error without double-wrapping (D2)', () {
@@ -38,10 +38,10 @@ void main() {
       final a = WhatController<int>.error(err);
       final derived = computed((via) => via(a.what) * 2);
 
-      expect(derived.peekState.hasError, isTrue);
-      expect(derived.peekState.error, same(err));
-      expect(derived.peekState.isEmpty, isFalse);
-      expect(derived.peekState.hasData, isFalse);
+      expect(untracked.state(derived).hasError, isTrue);
+      expect(untracked.state(derived).error, same(err));
+      expect(untracked.state(derived).isEmpty, isFalse);
+      expect(untracked.state(derived).hasData, isFalse);
     });
 
     test('4. 2-step chain (a -> b -> c) preserves Empty reason across hops', () {
@@ -49,19 +49,19 @@ void main() {
       final b = computed((via) => via(a.what) + 1);
       final c = computed((via) => via(b) * 2);
 
-      expect(c.peekState.isEmpty, isTrue);
-      expect(c.peekState.emptyReason, 'Step1Reason');
+      expect(untracked.state(c).isEmpty, isTrue);
+      expect(untracked.state(c).emptyReason, 'Step1Reason');
     });
 
     test('5. Self-healing: When upstream changes from Empty to Data, downstream recovers', () {
       final a = WhatController<int>.late(reason: 'InitialEmpty');
       final derived = computed((via) => via(a.what) * 2);
 
-      expect(derived.peekState.isEmpty, isTrue);
+      expect(untracked.state(derived).isEmpty, isTrue);
 
       a.data = 21;
-      expect(derived.peekState.hasData, isTrue);
-      expect(derived.peek, 42);
+      expect(untracked.state(derived).hasData, isTrue);
+      expect(untracked(derived), 42);
     });
 
     test('6. 1-Pass Epoch Sweeping on short-circuit: unreached branches are pruned', () {
@@ -79,18 +79,18 @@ void main() {
 
       // Initial evaluation: cond is true, t is empty -> short-circuits at t.
       // fDerived should NOT have been evaluated.
-      expect(res.peekState.isEmpty, isTrue);
+      expect(untracked.state(res).isEmpty, isTrue);
       expect(fEvaluations, 0);
 
       // Mutating f should not trigger res or fDerived because fDerived was never tracked or was pruned.
       f.data = 200;
       expect(fEvaluations, 0);
-      expect(res.peekState.isEmpty, isTrue);
+      expect(untracked.state(res).isEmpty, isTrue);
 
       // Switching cond to false activates the fDerived branch.
       cond.data = false;
-      expect(res.peekState.hasData, isTrue);
-      expect(res.peek, 200);
+      expect(untracked.state(res).hasData, isTrue);
+      expect(untracked(res), 200);
       expect(fEvaluations, 1);
     });
 
@@ -105,10 +105,10 @@ void main() {
         return 'Has: ${state.data}';
       });
 
-      expect(status.peek, 'Empty: NoData');
+      expect(untracked(status), 'Empty: NoData');
 
       a.data = 10;
-      expect(status.peek, 'Has: 10');
+      expect(untracked(status), 'Has: 10');
     });
 
     test('8. Guard condition evaluates and takes precedence over short-circuit', () {
@@ -122,12 +122,12 @@ void main() {
         },
       );
 
-      expect(derived.peekState.isEmpty, isTrue);
-      expect(derived.peekState.emptyReason, 'ValueTooLow');
+      expect(untracked.state(derived).isEmpty, isTrue);
+      expect(untracked.state(derived).emptyReason, 'ValueTooLow');
 
       a.data = 15;
-      expect(derived.peekState.hasData, isTrue);
-      expect(derived.peek, 30);
+      expect(untracked.state(derived).hasData, isTrue);
+      expect(untracked(derived), 30);
     });
 
     test('9. Effect.via short-circuits silently without calling action on Empty', () async {
@@ -161,8 +161,8 @@ void main() {
         throw customEx;
       });
 
-      expect(derived.peekState.hasError, isTrue);
-      expect(derived.peekState.error, same(customEx));
+      expect(untracked.state(derived).hasError, isTrue);
+      expect(untracked.state(derived).error, same(customEx));
     });
   });
 }

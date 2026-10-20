@@ -17,26 +17,26 @@ final other = WhatController(1).what;
 final badComputed = computed((via) {
   final factor = via(other);
   // expect_lint: avoid_untracked_what_read
-  return count.peek * factor;
+  return untracked(count) * factor;
 });
 
 // #case avoid_untracked_what_read/bad/mixed-tracked-and-untracked
 final badMixed = computed((via) {
   // expect_lint: avoid_untracked_what_read
-  return via(count) + other.peek;
+  return via(count) + untracked(other);
 });
 
 // #case avoid_untracked_what_read/bad/method-read-in-computed
 final badMethod = computed((via) {
   final factor = via(other);
   // expect_lint: avoid_untracked_what_read
-  return count.peekState.dataOrElse(() => 0) * factor;
+  return untracked.state(count).dataOrElse(() => 0) * factor;
 });
 
 // #case avoid_untracked_what_read/bad/data-in-effect-via
 final badEffect = Effect.via((via) {
   // expect_lint: avoid_untracked_what_read
-  print(count.peek);
+  print(untracked(count));
 });
 
 // #case avoid_untracked_what_read/bad/data-in-what-widget-build
@@ -46,14 +46,14 @@ final class BadCounterText extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     // expect_lint: avoid_untracked_what_read
-    return Text('${count.peek}');
+    return Text('${untracked(count)}');
   }
 }
 
 // #case avoid_untracked_what_read/bad/data-in-composed
 Widget badComposed() => composed((context, via) {
       // expect_lint: avoid_untracked_what_read
-      return Text('${count.peek}');
+      return Text('${untracked(count)}');
     });
 
 // =============================================================================
@@ -64,7 +64,7 @@ Widget badComposed() => composed((context, via) {
 final goodComputed = computed((via) => via(count) + via(other));
 
 // #case avoid_untracked_what_read/good/raw-read-outside-scope
-int goodRawRead() => count.peek;
+int goodRawRead() => untracked(count);
 
 // #case avoid_untracked_what_read/good/raw-read-in-event-callback
 final class GoodCounterButton extends WhatWidget {
@@ -73,7 +73,7 @@ final class GoodCounterButton extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     return TextButton(
-      onPressed: () => print(count.peek),
+      onPressed: () => print(untracked(count)),
       child: Text('${via(count)}'),
     );
   }
@@ -108,7 +108,7 @@ final goodGuard = computed(
 );
 
 // #case avoid_untracked_what_read/good/regression-P10-manifest-effect-targets
-final goodManifestEffect = Effect([count], () => print(count.peek));
+final goodManifestEffect = Effect([count], () => print(untracked(count)));
 
 // #case avoid_untracked_what_read/good/regression-P12-terminal-effect-in-build
 final class GoodTerminalEffectInBuild extends WhatWidget {
@@ -117,8 +117,8 @@ final class GoodTerminalEffectInBuild extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     via.tether(count.effect(() {
-      if (count.peek > 0) {
-        print('count=${count.peek}');
+      if (untracked(count) > 0) {
+        print('count=${untracked(count)}');
       }
     }));
     return const SizedBox();

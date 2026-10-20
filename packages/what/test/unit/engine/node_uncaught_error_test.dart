@@ -14,7 +14,7 @@ void main() {
     runZonedGuarded(() {
       final t1 = RawWhatTerminal<int>(comp, onInvalidated: () {});
       t1.activate();
-      expect(comp.peek, 42); // pull to create the resource
+      expect(untracked(comp), 42); // pull to create the resource
 
       // Deactivate will trigger dispose, which throws.
       // Since t1 is deactivated, comp has no terminals, so it falls back to Zone handler.
@@ -43,13 +43,13 @@ void main() {
 
     t1.activate();
     t2.activate();
-    expect(comp.peek, 1); // pull to create the resource
+    expect(untracked(comp), 1); // pull to create the resource
 
     // ctrl.set(false) triggers update. guard becomes false.
     // _disposeCurrent is called. dispose throws 'Downstream Dispose Error'.
     // _handleUncaughtError is called. terminals are still active.
     ctrl.set(false);
-    expect(comp.peekState.isEmpty, true); // state should transition to empty due to guard
+    expect(untracked.state(comp).isEmpty, true); // state should transition to empty due to guard
 
     expect(
         terminalError, isA<Exception>().having((e) => e.toString(), 'message', contains('Downstream Dispose Error')));

@@ -17,7 +17,7 @@ void main() {
         final completer = Completer<int>();
         final asyncWhat = completer.future.toWhat();
 
-        expect(asyncWhat.peekState.snapshot.isEmpty, isTrue);
+        expect(untracked.state(asyncWhat).snapshot.isEmpty, isTrue);
 
         final terminal = RawWhatTerminal(asyncWhat, onInvalidated: () {});
         terminal.activate();
@@ -81,10 +81,10 @@ void main() {
         final futures = [completer1.future, completer2.future];
 
         final group = futures.toWhat();
-        expect(group.peek.length, 2);
+        expect(untracked(group).length, 2);
 
-        final t1 = RawWhatTerminal(group.peek[0], onInvalidated: () {});
-        final t2 = RawWhatTerminal(group.peek[1], onInvalidated: () {});
+        final t1 = RawWhatTerminal(untracked(group)[0], onInvalidated: () {});
+        final t2 = RawWhatTerminal(untracked(group)[1], onInvalidated: () {});
         t1.activate();
         t2.activate();
 
@@ -203,10 +203,10 @@ void main() {
         final streams = [controller1.stream, controller2.stream];
 
         final group = streams.toWhat();
-        expect(group.peek.length, 2);
+        expect(untracked(group).length, 2);
 
-        final t1 = RawWhatTerminal(group.peek[0], onInvalidated: () {});
-        final t2 = RawWhatTerminal(group.peek[1], onInvalidated: () {});
+        final t1 = RawWhatTerminal(untracked(group)[0], onInvalidated: () {});
+        final t2 = RawWhatTerminal(untracked(group)[1], onInvalidated: () {});
         t1.activate();
         t2.activate();
 
@@ -232,8 +232,8 @@ void main() {
         final completer = Completer<String>();
         final asyncWhat = What.future(completer.future, initialFactory: () => 'Loading');
 
-        expect(asyncWhat.peekState.snapshot.hasData, isTrue);
-        expect(asyncWhat.peek, 'Loading');
+        expect(untracked.state(asyncWhat).snapshot.hasData, isTrue);
+        expect(untracked(asyncWhat), 'Loading');
 
         final terminal = RawWhatTerminal(asyncWhat, onInvalidated: () {});
         terminal.activate();
@@ -253,7 +253,7 @@ void main() {
           distinct: true,
         );
 
-        expect(asyncWhat.peek, 0);
+        expect(untracked(asyncWhat), 0);
 
         int dirtyCount = 0;
         final terminal = RawWhatTerminal(asyncWhat, onInvalidated: () => dirtyCount++);

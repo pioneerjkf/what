@@ -337,9 +337,9 @@ extension ListenableWhatExtension<L extends Listenable> on L {
 /// │          ▼ (.toListenable(sync: bool))                                          │
 /// │   _WhatValueListenable<T>                                                       │
 /// │          │                                                                      │
-/// │          ├─► .value ──► Evaluates _what.peek (Throws if Empty or Error)         │
+/// │          ├─► .value ──► Evaluates untracked(_what) (Throws if Empty or Error)   │
 /// │          │                                                                      │
-/// │          ├─► .addListener(cb) ──► First Listener? (_listeners.length == 1)      │
+/// │          ├─► .addListener(cb) ──► First Listener? (wasEmpty)                     │
 /// │          │                             │                                        │
 /// │          │                             ▼                                        │
 /// │          │                      RawWhatTerminal.activate()                      │
@@ -351,7 +351,7 @@ extension ListenableWhatExtension<L extends Listenable> on L {
 /// │          │                      _notify() iterates listeners with               │
 /// │          │                      FlutterError isolation per callback             │
 /// │          │                                                                      │
-/// │          └─► .removeListener(cb) ──► Last Listener? (_listeners.isEmpty)        │
+/// │          └─► .removeListener(cb) ──► Last Listener? (_head == null)              │
 /// │                                        │                                        │
 /// │                                        ▼                                        │
 /// │                                 RawWhatTerminal.deactivate()                    │
@@ -362,8 +362,8 @@ extension ListenableWhatExtension<L extends Listenable> on L {
 ///
 /// ## Architectural Benefits
 /// 1. **Zero-Overhead Terminal Mooring**: The internal [RawWhatTerminal] is created and activated
-///    if and only if one or more Flutter listeners are registered. When the listener list drops to zero,
-///    it transitions to dormancy.
+///    if and only if one or more Flutter listeners are registered. When all listeners are unlinked
+///    (`_head == null`), it transitions to dormancy.
 /// 2. **Flexible Invalidation Modes**: Supports immediate synchronous notifications (`sync: true`)
 ///    to satisfy standard Flutter expectations, or microtask batching (`sync: false`) via
 ///    [WhatComputationExtension.coalesced].
@@ -416,7 +416,7 @@ extension WhatListenableExtension<T> on What<T> {
   ///   microtask batch coalescing via [WhatComputationExtension.coalesced].
   ///
   /// **Ensures:**
-  /// * Returns a [ValueListenable<T>] whose [ValueListenable.value] accesses this [What<T>] node via [What.peek].
+  /// * Returns a [ValueListenable<T>] whose [ValueListenable.value] accesses this [What<T>] node via [untracked].
   /// * Dynamically activates graph subscriptions on the first listener and deactivates on the last.
   ///
   /// **Throws:**

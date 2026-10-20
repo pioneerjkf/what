@@ -54,8 +54,8 @@ class PhysicsBoundsStore {
     final sim1 = SpringSimulation(
       SpringDescription(
         mass: 1.0,
-        stiffness: springStiffness.peek,
-        damping: springDamping.peek,
+        stiffness: untracked(springStiffness),
+        damping: untracked(springDamping),
       ),
       0.0, // Apex (Air)
       1.0, // Ground (Settled position)
@@ -65,8 +65,8 @@ class PhysicsBoundsStore {
     final sim2 = SpringSimulation(
       SpringDescription(
         mass: 1.0,
-        stiffness: springStiffness.peek,
-        damping: springDamping.peek,
+        stiffness: untracked(springStiffness),
+        damping: untracked(springDamping),
       ),
       0.0,
       1.0,
@@ -89,8 +89,8 @@ class PhysicsBoundsStore {
   void runFrictionSimulation() {
     physicsBoundedFrozenCtrl.value = 0.0;
     physicsBoundedCatchUpCtrl.value = 0.0;
-    final sim1 = FrictionSimulation(frictionDrag.peek, 0.0, 1.2);
-    final sim2 = FrictionSimulation(frictionDrag.peek, 0.0, 1.2);
+    final sim1 = FrictionSimulation(untracked(frictionDrag), 0.0, 1.2);
+    final sim2 = FrictionSimulation(untracked(frictionDrag), 0.0, 1.2);
     physicsBoundedFrozenCtrl.animateWith(sim1);
     physicsBoundedCatchUpCtrl.animateWith(sim2);
   }

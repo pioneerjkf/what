@@ -556,6 +556,114 @@ void main() {
 
       host.deactivate();
     });
+
+    test('16. _trackDependency self-healing order realignment and dynamic insertion before cursor', () {
+      final a = WhatController('A');
+      final b = WhatController('B');
+      final c = WhatController('C');
+      final order = WhatController(['A', 'B', 'C']);
+
+      var invalidations = 0;
+      final terminal = RawViaTerminal(
+        (via) {
+          final keys = via(order.what);
+          final buffer = StringBuffer();
+          for (final key in keys) {
+            if (key == 'A') buffer.write(via(a.what));
+            if (key == 'B') buffer.write(via(b.what));
+            if (key == 'C') buffer.write(via(c.what));
+          }
+          return buffer.toString();
+        },
+        onInvalidated: () => invalidations++,
+      );
+
+      terminal.activate();
+
+      // Epoch 1: Initial order [A, B, C]
+      expect(terminal.evaluate(), 'ABC');
+      expect(invalidations, 0);
+
+      // Epoch 2: Inverted order [C, B, A] -> triggers _moveSourceEdgeBefore to realign list
+      order.data = ['C', 'B', 'A'];
+      expect(invalidations, 1);
+      expect(terminal.evaluate(), 'CBA');
+
+      // Epoch 3: Stable inverted order [C, B, A] -> should hit O(1) sequential fast-path smoothly
+      c.data = 'C2';
+      expect(invalidations, 2);
+      expect(terminal.evaluate(), 'C2BA');
+
+      // Epoch 4: Shuffled order [B, A, C]
+      order.data = ['B', 'A', 'C'];
+      expect(invalidations, 3);
+      expect(terminal.evaluate(), 'BAC2');
+
+      // Epoch 5: Dynamic insertion in the middle [B, new D, A, C]
+      final d = WhatController('D');
+      order.data = ['B', 'D', 'A', 'C'];
+      expect(invalidations, 4);
+
+      var dInvalidations = 0;
+      final terminal2 = RawViaTerminal(
+        (via) {
+          final keys = via(order.what);
+          final buffer = StringBuffer();
+          for (final key in keys) {
+            if (key == 'A') buffer.write(via(a.what));
+            if (key == 'B') buffer.write(via(b.what));
+            if (key == 'C') buffer.write(via(c.what));
+            if (key == 'D') buffer.write(via(d.what));
+          }
+          return buffer.toString();
+        },
+        onInvalidated: () => dInvalidations++,
+      )..activate();
+
+      expect(terminal2.evaluate(), 'BDAC2');
+
+      // Mutating newly inserted node D triggers invalidation
+      d.data = 'D2';
+      expect(dInvalidations, 1);
+      expect(terminal2.evaluate(), 'BD2AC2');
+
+      terminal.deactivate();
+      terminal2.deactivate();
+    });
+
+    test('17. _trackDependency re-read with interleaved order retains integrity', () {
+      final a = WhatController(1);
+      final b = WhatController(2);
+      final c = WhatController(3);
+
+      final terminal = RawViaTerminal(
+        (via) {
+          // Re-reads interleaved with out-of-order dependencies
+          final r1 = via(c.what);
+          final r2 = via(a.what);
+          final r3 = via(c.what); // Re-read c
+          final r4 = via(b.what);
+          final r5 = via(a.what); // Re-read a
+          return '$r1,$r2,$r3,$r4,$r5';
+        },
+        onInvalidated: () {},
+      );
+
+      terminal.activate();
+      expect(terminal.evaluate(), '3,1,3,2,1');
+
+      // Mutate each dependency and verify proper propagation
+      a.data = 10;
+      expect(terminal.evaluate(), '3,10,3,2,10');
+
+      b.data = 20;
+      expect(terminal.evaluate(), '3,10,3,20,10');
+
+      c.data = 30;
+      expect(terminal.evaluate(), '30,10,30,20,10');
+
+      terminal.deactivate();
+    });
   });
 }
 
@@ -567,13 +675,13 @@ final class _DirectTestVia implements WhatVia {
   @override
   T call<T>(What<T> what) {
     onCall(what);
-    return what.peek;
+    return untracked(what);
   }
 
   @override
   WhatState<T> state<T>(What<T> what) {
     onCall(what);
-    return what.peekState;
+    return untracked.state(what);
   }
 
   @override

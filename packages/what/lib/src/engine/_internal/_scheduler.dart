@@ -24,8 +24,8 @@ abstract base class _SchedulerBase {
 /// Central asynchronous microtask scheduler coordinating batch execution passes.
 ///
 /// ### Mixin Execution Order (Call-Stack Unwinding)
-/// Due to Dart's mixin linearization and `super._onTask()` invocation order, the mixins
-/// are ordered such that:
+/// Due to Dart's mixin linearization and `super._onTask()` invocation wrapped in `try/finally`,
+/// each stage is guaranteed to flush its pending queue even if a preceding stage throws an uncaught error:
 /// 1. [_SchedulerBase] resets the scheduling flag `_isScheduled = false`.
 /// 2. [_CoalescedSchedulerMixin] flushes trailing coalesced pulses in the DAG first.
 /// 3. [_EagerSchedulerMixin] pre-emptively switches and allocates eager nodes next.
@@ -66,24 +66,27 @@ base mixin _CoalescedSchedulerMixin on _SchedulerBase {
   @mustCallSuper
   @override
   void _onTask() {
-    super._onTask();
-    if (_coalescedSet.isEmpty) return;
-
-    final processing = _coalescedSet;
-    _coalescedSet = _coalescedSwapSet;
-    _coalescedSwapSet = processing;
-
     try {
-      for (final target in processing) {
-        if (!target._lifecycle.isActive) continue;
+      super._onTask();
+    } finally {
+      if (_coalescedSet.isNotEmpty) {
+        final processing = _coalescedSet;
+        _coalescedSet = _coalescedSwapSet;
+        _coalescedSwapSet = processing;
+
         try {
-          target._performCoalesce();
-        } catch (error, stackTrace) {
-          target._handleUncaughtError(error, stackTrace);
+          for (final target in processing) {
+            if (!target._lifecycle.isActive) continue;
+            try {
+              target._performCoalesce();
+            } catch (error, stackTrace) {
+              target._handleUncaughtError(error, stackTrace);
+            }
+          }
+        } finally {
+          processing.clear();
         }
       }
-    } finally {
-      processing.clear();
     }
   }
 }
@@ -111,24 +114,27 @@ base mixin _EagerSchedulerMixin on _SchedulerBase {
   @mustCallSuper
   @override
   void _onTask() {
-    super._onTask();
-    if (_eagerSet.isEmpty) return;
-
-    final processing = _eagerSet;
-    _eagerSet = _eagerSwapSet;
-    _eagerSwapSet = processing;
-
     try {
-      for (final target in processing) {
-        if (!target._lifecycle.isActive) continue;
+      super._onTask();
+    } finally {
+      if (_eagerSet.isNotEmpty) {
+        final processing = _eagerSet;
+        _eagerSet = _eagerSwapSet;
+        _eagerSwapSet = processing;
+
         try {
-          target._performScheduledEager();
-        } catch (error, stackTrace) {
-          target._handleUncaughtError(error, stackTrace);
+          for (final target in processing) {
+            if (!target._lifecycle.isActive) continue;
+            try {
+              target._performScheduledEager();
+            } catch (error, stackTrace) {
+              target._handleUncaughtError(error, stackTrace);
+            }
+          }
+        } finally {
+          processing.clear();
         }
       }
-    } finally {
-      processing.clear();
     }
   }
 }
@@ -156,24 +162,27 @@ base mixin _TerminalSchedulerMixin on _SchedulerBase {
   @mustCallSuper
   @override
   void _onTask() {
-    super._onTask();
-    if (_terminalSet.isEmpty) return;
-
-    final processing = _terminalSet;
-    _terminalSet = _terminalSwapSet;
-    _terminalSwapSet = processing;
-
     try {
-      for (final target in processing) {
-        if (!target._lifecycle.isActive) continue;
+      super._onTask();
+    } finally {
+      if (_terminalSet.isNotEmpty) {
+        final processing = _terminalSet;
+        _terminalSet = _terminalSwapSet;
+        _terminalSwapSet = processing;
+
         try {
-          target._performScheduled();
-        } catch (error, stackTrace) {
-          target._handleUncaughtError(error, stackTrace);
+          for (final target in processing) {
+            if (!target._lifecycle.isActive) continue;
+            try {
+              target._performScheduled();
+            } catch (error, stackTrace) {
+              target._handleUncaughtError(error, stackTrace);
+            }
+          }
+        } finally {
+          processing.clear();
         }
       }
-    } finally {
-      processing.clear();
     }
   }
 }
@@ -197,23 +206,26 @@ base mixin _GracefulSchedulerMixin on _SchedulerBase {
   @mustCallSuper
   @override
   void _onTask() {
-    super._onTask();
-    if (_pendingGraceHandles.isEmpty) return;
-
-    final processing = _pendingGraceHandles;
-    _pendingGraceHandles = _swapGraceHandles;
-    _swapGraceHandles = processing;
-
     try {
-      for (final handle in processing) {
+      super._onTask();
+    } finally {
+      if (_pendingGraceHandles.isNotEmpty) {
+        final processing = _pendingGraceHandles;
+        _pendingGraceHandles = _swapGraceHandles;
+        _swapGraceHandles = processing;
+
         try {
-          handle._onExpired();
-        } catch (error, stackTrace) {
-          handle.node._handleUncaughtError(error, stackTrace);
+          for (final handle in processing) {
+            try {
+              handle._onExpired();
+            } catch (error, stackTrace) {
+              handle.node._handleUncaughtError(error, stackTrace);
+            }
+          }
+        } finally {
+          processing.clear();
         }
       }
-    } finally {
-      processing.clear();
     }
   }
 }

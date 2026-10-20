@@ -422,13 +422,15 @@ void main() {
     // =========================================================================
     // 6. Top-Level graceful Functor & DSL Tests
     // =========================================================================
-    group('6. Top-Level graceful Functor & DSL', () {
-      test('6.1 graceful constant works directly as default microtask policy', () async {
+    // 6. Graceful Class Factories & Constants
+    // =========================================================================
+    group('6. Graceful Class Factories & Constants', () {
+      test('6.1 Graceful.microtask works directly as default microtask policy', () async {
         int disposed = 0;
         final res = managed<int>(
           create: (_) => 42,
           dispose: (_) => disposed++,
-          graceful: graceful,
+          graceful: Graceful.microtask,
         );
 
         final t = RawWhatTerminal(res, onInvalidated: () {});
@@ -442,12 +444,12 @@ void main() {
         expect(disposed, 1); // Disposed after microtask
       });
 
-      test('6.2 graceful() callable syntax works as microtask policy', () async {
+      test('6.2 Graceful() default constructor works as microtask policy', () async {
         int disposed = 0;
         final res = managed<int>(
           create: (_) => 100,
           dispose: (_) => disposed++,
-          graceful: graceful(),
+          graceful: const Graceful(),
         );
 
         final t = RawWhatTerminal(res, onInvalidated: () {});
@@ -460,12 +462,12 @@ void main() {
         expect(disposed, 1);
       });
 
-      test('6.3 graceful.period() creates active time-based mooring policy', () async {
+      test('6.3 Graceful.period() creates active time-based mooring policy', () async {
         int disposed = 0;
         final res = managed<int>(
           create: (_) => 999,
           dispose: (_) => disposed++,
-          graceful: graceful.period(const Duration(milliseconds: 60)),
+          graceful: const Graceful.period(Duration(milliseconds: 60)),
         );
 
         final t = RawWhatTerminal(res, onInvalidated: () {});
@@ -481,9 +483,10 @@ void main() {
         expect(disposed, 1); // Expired and disposed
       });
 
-      test('6.4 graceful.microtask explicitly aliases the microtask policy', () {
-        expect(graceful.microtask, same(graceful));
-        expect(Graceful.microtask, same(graceful));
+      test('6.4 Graceful.none represents null sentinel', () {
+        expect(Graceful.none, isNull);
+        expect(Graceful.microtask, isA<Graceful>());
+        expect(const Graceful(), isA<Graceful>());
       });
     });
   });

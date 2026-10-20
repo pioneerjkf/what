@@ -284,7 +284,7 @@ The What Framework resolves this with a two-tiered **Graceful Lifecycle** archit
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.1 Tier 1: Microtask Deferral (`graceful` / `Graceful.microtask`)
+### 5.1 Tier 1: Microtask Deferral (`Graceful()` / `Graceful.microtask`)
 
 Implemented via [`_MicrotaskGraceHandle`](../../lib/src/engine/_internal/_graceful.dart#L19) and [`_GracefulSchedulerMixin`](../../lib/src/engine/_internal/_scheduler.dart#L181):
 * Defers deactivation until the trailing microtask pass of the current tick.
@@ -292,7 +292,7 @@ Implemented via [`_MicrotaskGraceHandle`](../../lib/src/engine/_internal/_gracef
   $$\Delta \text{Allocations} = 0, \quad \Delta \text{Deactivations} = 0$$
 * Prevents teardown churn during Flutter element reparenting and Hero transitions.
 
-### 5.2 Tier 2: Time-Based Mooring (`graceful.period(Duration)` / `_MooringTerminal`)
+### 5.2 Tier 2: Time-Based Mooring (`Graceful.period(Duration)` / `_MooringTerminal`)
 
 For long-lived route transitions, nodes are moored to the global [`_MooringTerminal`](../../lib/src/engine/_internal/_mooring.dart#L43):
 
@@ -306,7 +306,7 @@ For long-lived route transitions, nodes are moored to the global [`_MooringTermi
    }
    ```
    While moored, upstream invalidations mark the node dirty, but `_MooringTerminal` **never pulls or computes data**. It consumes zero CPU cycles for unobserved state updates.
-3. **$O(1)$ Edge Recycling**: `_MooringTerminal` recycles `_MooringEdge` instances through an internal `_edgePool`, eliminating heap allocation during navigation.
+3. **$O(1)$ Intrusive Edge Unmooring**: `_MooringTerminal` manages `_MooringEdge` instances through intrusive doubly-linked pointers, achieving $O(1)$ insertion and detachment without lingering heap overhead.
 4. **Early Return vs. Expiration**:
    - **Early Return**: If a consumer reconnects before the duration expires, the timer cancels, the mooring edge unmoors, and cached state is delivered with **0ms instant latency**.
    - **Expiration**: If the timer expires without re-entry, `_MooringTerminal.unmoor()` detaches the edge, dropping the subscriber count to zero and triggering synchronous cascading teardown.

@@ -45,7 +45,7 @@ composed                             ((context, via) => ...)            // 1. Re
 3. **Animation Isolation (`composed.animate(...)`)**: Isolates high-frequency frame ticking from parent trees, rendering at 120fps.
 4. **Continuous Frame Drivers (`composed.drive(...)`)**: Drives frame-autonomous widgets using display VSYNC ticks and elapsed durations.
 
-*(For zero-rebuild declarative side-effects, use `WhatListener` / `UnaryWhatListener`.)*
+*(For zero-rebuild declarative side-effects, use `WhatListener`.)*
 
 ---
 

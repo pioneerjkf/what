@@ -19,11 +19,11 @@ void main() {
 
       final terminal = RawWhatTerminal(sum, onInvalidated: () {
         notificationCount++;
-        lastNotifiedValue = sum.peek;
+        lastNotifiedValue = untracked(sum);
       });
       terminal.activate();
 
-      expect(sum.peek, equals(6));
+      expect(untracked(sum), equals(6));
       expect(notificationCount, equals(0));
 
       // Batch 3 mutations together
@@ -39,7 +39,7 @@ void main() {
       // After batch exits, exactly one notification must be delivered
       expect(notificationCount, equals(1));
       expect(lastNotifiedValue, equals(60));
-      expect(sum.peek, equals(60));
+      expect(untracked(sum), equals(60));
 
       terminal.deactivate();
     });
@@ -56,11 +56,11 @@ void main() {
 
       final terminal = RawWhatTerminal(profile, onInvalidated: () {
         notificationCount++;
-        lastNotifiedProfile = profile.peek;
+        lastNotifiedProfile = untracked(profile);
       });
       terminal.activate();
 
-      expect(profile.peek, equals('A B (20)'));
+      expect(untracked(profile), equals('A B (20)'));
       expect(notificationCount, equals(0));
 
       batch(() {
@@ -88,7 +88,7 @@ void main() {
       // Outermost batch finishes -> Single flush with all nested changes
       expect(notificationCount, equals(1));
       expect(lastNotifiedProfile, equals('John Doe (31)'));
-      expect(profile.peek, equals('John Doe (31)'));
+      expect(untracked(profile), equals('John Doe (31)'));
 
       terminal.deactivate();
     });
@@ -102,18 +102,18 @@ void main() {
 
       final terminal = RawWhatTerminal(derived, onInvalidated: () {
         notificationCount++;
-        lastNotified = derived.peek;
+        lastNotified = untracked(derived);
       });
       terminal.activate();
 
-      expect(derived.peek, equals(10));
+      expect(untracked(derived), equals(10));
       expect(notificationCount, equals(0));
 
       batch(() {
         a.data = 2;
 
         // RYOW: Reading derived immediately reflects the eager dirty propagation!
-        expect(derived.peek, equals(20));
+        expect(untracked(derived), equals(20));
 
         // Terminal notification remains deferred
         expect(notificationCount, equals(0));
@@ -122,7 +122,7 @@ void main() {
         a.data = 5;
 
         // RYOW: Reading again re-evaluates cleanly
-        expect(derived.peek, equals(50));
+        expect(untracked(derived), equals(50));
         expect(notificationCount, equals(0));
 
         a.data = 10;
@@ -131,7 +131,7 @@ void main() {
       // Outermost batch exit flushes exactly once with the latest value (100)
       expect(notificationCount, equals(1));
       expect(lastNotified, equals(100));
-      expect(derived.peek, equals(100));
+      expect(untracked(derived), equals(100));
 
       terminal.deactivate();
     });
@@ -150,12 +150,12 @@ void main() {
 
       final observations = <int>[];
       final terminal = RawWhatTerminal(sum, onInvalidated: () {
-        observations.add(sum.peek);
+        observations.add(untracked(sum));
       });
       terminal.activate();
 
       // Initial state: left=2, right=11, sum=13.
-      expect(sum.peek, equals(13));
+      expect(untracked(sum), equals(13));
       expect(observations, isEmpty);
 
       batch(() {
@@ -164,7 +164,7 @@ void main() {
 
       // Exactly 1 notification, absolutely no intermediate glitches
       expect(observations, equals([40]));
-      expect(sum.peek, equals(40));
+      expect(untracked(sum), equals(40));
 
       terminal.deactivate();
     });

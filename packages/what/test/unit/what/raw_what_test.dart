@@ -327,7 +327,7 @@ void main() {
           0,
           onActivated: () {},
           onDeactivated: () => deactivatedCount++,
-          graceful: graceful.microtask,
+          graceful: Graceful.microtask,
         );
 
         final terminal = RawWhatTerminal(raw.what, onInvalidated: () {});

@@ -68,11 +68,11 @@ void main() {
 
       expect(proxyView, isA<What<int>>());
       expect(proxyView, isNot(isA<WhatController<int>>()));
-      expect(proxyView.peek, 42);
+      expect(untracked(proxyView), 42);
 
       // Mutating source reflects in proxy view
       mutable.data = 99;
-      expect(proxyView.peek, 99);
+      expect(untracked(proxyView), 99);
 
       // Auto-tracking works through proxy view
       var observed = 0;
@@ -83,7 +83,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(observed, 99);
       mutable.data = 100;
-      expect(proxyView.peek, 100);
+      expect(untracked(proxyView), 100);
 
       effectDispose();
     });
@@ -134,10 +134,10 @@ void main() {
       final node = count.what;
 
       expect(node, isA<What<int>>());
-      expect(node.peek, 5);
+      expect(untracked(node), 5);
 
       count.data = 25;
-      expect(node.peek, 25);
+      expect(untracked(node), 25);
     });
 
     test('setGuarded gracefully catches errors and injects error state', () {

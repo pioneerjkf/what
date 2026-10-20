@@ -42,9 +42,12 @@ part of '../../framework.dart';
 ///
 /// ## Key Invariants & Architectural Benefits
 /// 1. **Zero Subtree Rebuild Storms**: State mutations inside [what] never trigger wide `InheritedWidget` rebuild passes.
-/// 2. **Surgical Leaf Rebuilds**: Only widgets explicitly observing the state via [WhatVia] are invalidated in $O(1)$.
+/// 2. **Surgical Leaf Rebuilds**: Only widgets explicitly observing the state via [WhatVia] are invalidated (Rebuild Scope: Leaf Only).
 /// 3. **Sound Scoped Discovery**: Seamless context lookup via [WhatBuildContextProviderExtension.whatOf]
 ///    and [WhatViaContextExtension.of].
+/// 4. **Exact Type Resolution**: InheritedWidget resolution relies on exact reified type keys (`WhatProvider<T>`).
+///    Subtypes or base classes do not match automatically. If polymorphic consumption is needed,
+///    explicitly provision as the base type (e.g. `WhatProvider<FooBase>(what: fooWhat)`).
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - Avoid wrapping transient subtrees with new [WhatProvider] instances repeatedly in build methods
@@ -122,19 +125,28 @@ class WhatProvider<T> extends InheritedWidget {
   ///
   /// * [context]: The active [BuildContext] to search upwards from.
   ///
+  /// **Exact Type Resolution:**
+  /// * Lookup matches the exact reified type [T]. Subtypes or base classes do not match.
+  ///
   /// **Requires:**
   /// * An ancestor [WhatProvider<T>] must exist in the [context] hierarchy.
   ///
   /// **Ensures:**
   /// * Returns the nearest ancestor [What<T>] node.
+  ///
+  /// **Throws:**
+  /// * Throws [FlutterError] in all build modes if no matching [WhatProvider<T>] is found.
   static What<T> of<T>(BuildContext context) => context.whatOf<T>();
 
   /// Retrieves the [What<T?>] state from the nearest ancestor [WhatProvider<T>], if present.
   ///
   /// * [context]: The active [BuildContext] to search upwards from.
   ///
+  /// **Exact Type Resolution:**
+  /// * Lookup matches the exact reified type [T]. Subtypes or base classes do not match.
+  ///
   /// **Ensures:**
-  /// * Returns the ancestor provider's [What<T>], or [What.constant(null)] if no matching ancestor provider exists.
+  /// * Returns the ancestor provider's [What<T>], or [What.constantNull] if no matching ancestor provider exists.
   static What<T?> maybeOf<T>(BuildContext context) => context.maybeWhatOf<T>();
 }
 
@@ -163,6 +175,11 @@ extension WhatProvideExtension<T> on What<T> {
 extension WhatBuildContextProviderExtension on BuildContext {
   /// Reactively subscribes to an ancestor [WhatProvider] and returns its inner [What<T>] state.
   ///
+  /// **Exact Type Resolution:**
+  /// Lookup matches the exact reified type [T]. Subtypes or base classes do not match
+  /// (e.g., `WhatProvider<Dog>` cannot be resolved via `context.whatOf<Animal>()`).
+  /// To query by a base class or interface, explicitly provision as `WhatProvider<Animal>`.
+  ///
   /// **Requires:**
   /// * An ancestor [WhatProvider<T>] must exist in the widget tree when evaluated.
   ///
@@ -171,25 +188,43 @@ extension WhatBuildContextProviderExtension on BuildContext {
   ///   and returns its inner [What<T>] reactive node.
   ///
   /// **Throws:**
-  /// * Throws [AssertionError] in debug mode if no matching [WhatProvider<T>] is found in the current hierarchy.
+  /// * Throws [FlutterError] in all build modes if no matching [WhatProvider<T>] is found in the current hierarchy.
   @pragma('vm:prefer-inline')
   What<T> whatOf<T>() {
     final provider = dependOnInheritedWidgetOfExactType<WhatProvider<T>>();
-    assert(
-      provider != null,
-      'No ancestor WhatProvider<$T> found in the current BuildContext hierarchy.',
-    );
-    return provider!.what;
+    if (provider == null) {
+      throw FlutterError.fromParts(<DiagnosticsNode>[
+        ErrorSummary(
+            'No ancestor WhatProvider<$T> found in the current BuildContext hierarchy.'),
+        ErrorDescription(
+          'BuildContext.whatOf<$T>() was called with a context that does not contain '
+          'a WhatProvider<$T> ancestor.\n'
+          'Lookup is strictly by exact runtime type ($T). InheritedWidget resolution does '
+          'not match subtypes or base classes (e.g., WhatProvider<Foo> cannot be resolved as FooBase).',
+        ),
+        ErrorHint(
+          'Ensure that a WhatProvider<$T> is mounted above this widget in the widget tree, '
+          'or use context.maybeWhatOf<$T>() if the provider is optional. '
+          'If providing a subclass for a base class interface, provide it explicitly as '
+          'WhatProvider<$T>(what: instance).',
+        ),
+        describeElement('The context used was'),
+      ]);
+    }
+    return provider.what;
   }
 
   /// Reactively subscribes to an optional ancestor [WhatProvider] and returns its inner [What<T?>] state.
   ///
+  /// **Exact Type Resolution:**
+  /// Lookup matches the exact reified type [T]. Subtypes or base classes do not match.
+  ///
   /// **Ensures:**
-  /// * Returns the ancestor provider's [What<T>], or [What.constant(null)] if no matching ancestor provider exists.
+  /// * Returns the ancestor provider's [What<T>], or [What.constantNull] if no matching ancestor provider exists.
   @pragma('vm:prefer-inline')
   What<T?> maybeWhatOf<T>() {
     final provider = dependOnInheritedWidgetOfExactType<WhatProvider<T>>();
-    return provider?.what ?? What.constant(null);
+    return provider?.what ?? What.constantNull;
   }
 }
 
@@ -201,6 +236,9 @@ extension WhatViaContextExtension on WhatVia {
   /// fluent call, eliminating nested `via(context.whatOf<T>())` boilerplate.
   ///
   /// * [context]: The active [BuildContext] to locate the ancestor provider from.
+  ///
+  /// **Exact Type Resolution:**
+  /// * Lookup matches the exact reified type [T]. Subtypes or base classes do not match.
   ///
   /// **Requires:**
   /// * An ancestor [WhatProvider<T>] must exist in the [context] widget tree.
@@ -227,9 +265,12 @@ extension WhatViaContextExtension on WhatVia {
   ///
   /// * [context]: The active [BuildContext] to locate the ancestor provider from.
   ///
+  /// **Exact Type Resolution:**
+  /// * Lookup matches the exact reified type [T]. Subtypes or base classes do not match.
+  ///
   /// **Ensures:**
   /// * Subscribes this reactive tracking scope to the ancestor [What<T?>] node if found,
-  ///   or [What.constant(null)] if no matching provider exists.
+  ///   or [What.constantNull] if no matching provider exists.
   /// * Returns the underlying value of type [T?].
   ///
   /// ## Examples

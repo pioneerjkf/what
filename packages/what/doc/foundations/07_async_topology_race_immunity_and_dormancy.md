@@ -339,7 +339,7 @@ void _activate() {
 ```
 
 * It evaluates **only the latest settled parameter values once synchronously**, coupling to the fresh pipeline with zero roundtrip delay.
-* Similarly, if an inactive node is inspected via `.peek` or `_read()`, `_resolve()` catches `_needsSwitch` and executes a guarded switch on-demand.
+* Similarly, if an inactive node is inspected via `untracked(node)` or `_read()`, `_resolve()` catches `_needsSwitch` and executes a guarded switch on-demand.
 
 ---
 

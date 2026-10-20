@@ -18,13 +18,13 @@ part of '../framework.dart';
 /// - [What<T>] NEVER implements [WhatController<T>], and underlying physical entry nodes
 ///   are private to the library, preventing rogue downcasting at runtime.
 ///
-/// Exposes [peek] and [peekState] to inspect node values and live state with zero-overhead
-/// direct field dereferencing outside tracking scopes, and explicit [WhatVia] dependency
-/// registration within derivation closures (`via(node)` for values, `via.state(node)` for live states).
+/// Values and live states are read outside tracking scopes via the global [untracked] functor
+/// ([untracked] for values, [WhatUntracked.state] for live states), and explicitly tracked
+/// within derivation closures via injected [WhatVia] (`via(node)` for values, `via.state(node)` for live states).
 ///
 /// ## System Architectural Flow
 ///
-/// ### 1. 3-State Finite State Machine (Observed via .peekState)
+/// ### 1. 3-State Finite State Machine (Observed via untracked.state)
 /// ```text
 ///                     ┌────────────────────────────────────────┐
 ///                     │     What<T> 3-State State Machine      │
@@ -50,39 +50,39 @@ part of '../framework.dart';
 /// [computed / Effect.via Scope]
 ///             │ (Injected WhatVia parameter)
 ///             ▼
-///      via(sourceWhat)        ──>  [Registers Source Edge in Active LPDAG & Evaluates T]
-///      via.state(sourceWhat)  ──>  [Registers Source Edge & Returns Live WhatState<T>]
+///      via(sourceWhat)          ──>  [Registers Source Edge in Active LPDAG & Evaluates T]
+///      via.state(sourceWhat)    ──>  [Registers Source Edge & Returns Live WhatState<T>]
 ///
 /// [Outside Derivation Scope / Raw Read]
 ///             │
-///      sourceWhat.peek        ──>  [Pure Direct Field Dereference: Returns T (Zero Overhead)]
-///      sourceWhat.peekState   ──>  [Zero-Allocation Live WhatState<T> View]
+///      untracked(sourceWhat)    ──>  [Pure Direct Field Dereference: Returns T (Zero Overhead)]
+///      untracked.state(sourceWhat) ──> [Zero-Allocation Live WhatState<T> View]
 /// ```
 ///
 /// ## Key Invariants & Architectural Benefits
-/// 1. **Zero-Overhead Raw Reads & Explicit Tracking**: Reading `.peek`, `.peekState`, etc.,
-///    directly on a node is a pure field dereference with zero tracking overhead and no dynamic
+/// 1. **Zero-Overhead Raw Reads & Explicit Tracking**: Reading via [untracked]
+///    is a pure field dereference with zero tracking overhead and no dynamic
 ///    tracking stack penalty. Reactive derivations explicitly declare dependencies via the injected
 ///    [WhatVia] parameter (`via(node)`).
 /// 2. **3-State Exclusivity**: A [What] node's observed state is strictly in one of three mutually exclusive states:
 ///    * **Data** ([WhatState.hasData] == true): Contains a valid payload of type `T` (including `null` for `T?`).
 ///    * **Empty** ([WhatState.isEmpty] == true): Uninitialized or dormant state with optional [WhatState.emptyReason].
 ///    * **Error** ([WhatState.hasError] == true): Exception state encapsulating [WhatState.error] and optional [WhatState.stackTrace].
-/// 3. **Sound Fail-Fast Extraction**: Reading `.peek` while in Empty or Error state throws
-///    [WhatSnapshotExtractionException]. Use `.peekState.dataOrNull`, `.peekState.dataOrElse()`, or `.peekState.match()`
-///    (or `.peekState.snapshot.match()`) for safe total pattern matching.
+/// 3. **Sound Fail-Fast Extraction**: Reading via [untracked] while in Empty or Error state throws
+///    [WhatSnapshotExtractionException]. Use `untracked.state(node).dataOrNull`, `untracked.state(node).dataOrElse()`,
+///    or `untracked.state(node).match()` for safe total pattern matching.
 ///
 /// **Warning (Anti-Pattern Prevention):**
-/// - Do NOT read `.peek` or `.peekState` directly inside a [computed] or `Effect.via` scope without
-///   wrapping in `via(...)`, as reading `.peek` directly performs a pure untracked read.
+/// - Do NOT read reactive nodes untracked directly inside a [computed] or `Effect.via` scope without
+///   wrapping in `via(...)`, as [untracked] intentionally bypasses dependency registration.
 /// - Do NOT mutate a [WhatController] inside a [computed] or effect reading that same node
 ///   without a terminating condition, as this induces topological reentrancy cycles.
 ///
 /// **BAD:**
 /// ```dart
-/// // [Anti-Pattern] Reading .peek without via() bypasses dependency registration
+/// // [Anti-Pattern] Reading untracked without via() bypasses dependency registration
 /// final badComputed = computed((via) {
-///   return count.what.peek * 2; // count is NOT tracked!
+///   return untracked(count.what) * 2; // count is NOT tracked!
 /// });
 /// ```
 ///
@@ -99,24 +99,14 @@ part of '../framework.dart';
 /// final counter = WhatController(0);
 /// final doubled = computed((via) => via(counter.what) * 2);
 ///
-/// print(doubled.peek); // 0
+/// print(untracked(doubled)); // 0
 /// counter.data = 5;
-/// print(doubled.peek); // 10
+/// print(untracked(doubled)); // 10
 /// ```
 abstract base class What<T> extends _Node {
   What._();
 
   _WhatState<T> _read();
-
-  /// Reads the current value untracked. Throws [WhatSnapshotExtractionException]
-  /// if the node is in Empty or Error state (Fail-Fast).
-  T get peek;
-
-  /// Returns an untracked live view of the node's state.
-  ///
-  /// In practice, returns the node itself (`this`) with zero allocation.
-  /// To preserve an immutable snapshot at this point in time, access `.snapshot`.
-  WhatState<T> get peekState;
 
   /// Creates a constant static leaf node holding an immutable valid [data] payload.
   ///
@@ -128,9 +118,21 @@ abstract base class What<T> extends _Node {
   /// ## Examples
   /// ```dart
   /// final fixedConfig = What.constant(42);
-  /// print(fixedConfig.peek); // 42
+  /// print(untracked(fixedConfig)); // 42
   /// ```
   factory What.constant(T data) = _ConstantWhat<T>;
+
+  /// A canonical, immutable static leaf node permanently holding a `null` payload.
+  ///
+  /// Because [Null] is a subtype of `T?` for any type `T` and [What] is covariant,
+  /// this singleton can be used as a zero-allocation default or fallback for any
+  /// nullable reactive state [What<T?>] without casting.
+  ///
+  /// ## Examples
+  /// ```dart
+  /// final What<String?> fallback = config?.nameWhat ?? What.constantNull;
+  /// ```
+  static final What<Null> constantNull = _ConstantWhat<Null>(null);
 
   /// Creates a constant static leaf node permanently in an uninitialized (Empty) state.
   ///
@@ -142,7 +144,7 @@ abstract base class What<T> extends _Node {
   /// ## Examples
   /// ```dart
   /// final placeholder = What<String>.empty('Awaiting initial login');
-  /// print(placeholder.peekState.isEmpty); // true
+  /// print(untracked.state(placeholder).isEmpty); // true
   /// ```
   factory What.empty([Object? emptyReason]) = _ConstantWhat<T>.empty;
 
@@ -157,7 +159,7 @@ abstract base class What<T> extends _Node {
   /// ## Examples
   /// ```dart
   /// final failedNode = What<int>.error(StateError('Resource offline'));
-  /// print(failedNode.peekState.hasError); // true
+  /// print(untracked.state(failedNode).hasError); // true
   /// ```
   factory What.error(Object error, [StackTrace? stackTrace]) = _ConstantWhat<T>.error;
 
@@ -200,7 +202,7 @@ abstract base class What<T> extends _Node {
   /// // [Anti-Pattern] Invoking What.future inside build re-executes the future every frame
   /// Widget build(BuildContext context) {
   ///   final profileWhat = What.future(fetchProfile(userId)); // Triggers new fetch on each build!
-  ///   return Text('${profileWhat.peekState.dataOrNull?.name}');
+  ///   return Text('${untracked.state(profileWhat).dataOrNull?.name}');
   /// }
   /// ```
   ///
@@ -267,7 +269,7 @@ abstract base class What<T> extends _Node {
   /// // [Anti-Pattern] Opening stream subscription inside build method
   /// Widget build(BuildContext context) {
   ///   final stockWhat = What.stream(stockStream); // Re-subscribes every frame!
-  ///   return Text('${stockWhat.peekState.dataOrNull}');
+  ///   return Text('${untracked.state(stockWhat).dataOrNull}');
   /// }
   /// ```
   ///
@@ -408,7 +410,7 @@ extension WhatComputationExtension<T> on What<T> {
   ///
   /// **Dormant State Semantics (Raw Reads):**
   /// While this node is inactive (unobserved by active terminals or effects), reading
-  /// `.peek` or `.peekState` bypasses temporal timers and synchronously pulls the latest
+  /// `untracked(node)` or `untracked.state(node)` bypasses temporal timers and synchronously pulls the latest
   /// upstream state on demand (Subscriber-driven Inactive Dormancy).
   ///
   /// **Ensures:**
@@ -443,7 +445,7 @@ extension WhatComputationExtension<T> on What<T> {
   ///
   /// **Dormant State Semantics (Raw Reads):**
   /// While this node is inactive (unobserved by active terminals or effects), reading
-  /// `.peek` or `.peekState` bypasses temporal timers and synchronously pulls the latest
+  /// `untracked(node)` or `untracked.state(node)` bypasses temporal timers and synchronously pulls the latest
   /// upstream state on demand (Subscriber-driven Inactive Dormancy).
   ///
   /// **Ensures:**
@@ -475,20 +477,24 @@ extension WhatComputationExtension<T> on What<T> {
   ///    [Timer Cancelled, Node Kept Alive]          [Node Safely Deactivated]
   /// ```
   ///
-  /// * [graceful]: The mooring policy configuration. Defaults to a 5-minute mooring period if omitted.
+  /// * [graceful]: The deactivation grace policy configuration. Defaults to [Graceful.microtask] if omitted.
   ///
   /// **Ensures:**
   /// * Returns a [What<T>] node shielded by the specified deactivation grace policy.
   ///
   /// ## Examples
   /// ```dart
-  /// final resilientFeed = liveFeedWhat.graceful(
+  /// // 1. Shields against rapid UI route transitions using default microtask deferral:
+  /// final resilientNode = liveFeedWhat.graceful();
+  ///
+  /// // 2. Shields with time-based mooring:
+  /// final cachedFeed = liveFeedWhat.graceful(
   ///   const Graceful.period(Duration(seconds: 30)),
   /// );
   /// ```
   @pragma('vm:prefer-inline')
   What<T> graceful([
-    Graceful graceful = const Graceful.period(Duration(minutes: 5)),
+    Graceful graceful = Graceful.microtask,
   ]) =>
       _GracefulWhat<T>(this, graceful: graceful);
 

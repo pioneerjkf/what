@@ -76,6 +76,7 @@ part 'what/signal.dart';
 part 'what/snapshot.dart';
 part 'what/state.dart';
 part 'what/switched.dart';
+part 'what/untracked.dart';
 part 'what/what.dart';
 part 'what/_internal/_async.dart';
 part 'what/_internal/_collection.dart';
@@ -91,6 +92,7 @@ part 'what/_internal/_signal.dart';
 part 'what/_internal/_snapshot.dart';
 part 'what/_internal/_state.dart';
 part 'what/_internal/_switched.dart';
+part 'what/_internal/_untracked.dart';
 part 'what/_internal/_what.dart';
 
 // =============================================================================

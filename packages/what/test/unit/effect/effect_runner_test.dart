@@ -280,7 +280,7 @@ void main() {
         final results = <String>[];
 
         final runner = query.what.effect.debounce(const Duration(milliseconds: 30), () {
-          results.add(query.what.peek);
+          results.add(untracked(query.what));
         }).run();
 
         // Rapid mutations
@@ -305,7 +305,7 @@ void main() {
         final results = <String>[];
 
         final runner = query.what.effect.debounce(const Duration(milliseconds: 50), () {
-          results.add(query.what.peek);
+          results.add(untracked(query.what));
         }).run();
 
         query.data = 'hello';
@@ -331,7 +331,7 @@ void main() {
         final captured = <int>[];
         // EffectRunner attached directly to unevaluated lazy computed node
         final runner = doubled.effect(() {
-          captured.add(doubled.peek);
+          captured.add(untracked(doubled));
         }).run();
 
         expect(runner.isActive, isTrue);
@@ -364,8 +364,8 @@ void main() {
         a.data = 10;
         await Future<void>.delayed(Duration.zero);
         expect(executions, 1);
-        expect(sum.peek, 12);
-        expect(product.peek, 20);
+        expect(untracked(sum), 12);
+        expect(untracked(product), 20);
 
         runner.deactivate();
       });

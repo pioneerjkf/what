@@ -8,7 +8,7 @@ import 'package:what_flutter/framework.dart';
 
 // Test WhatWidget implementations
 base class CounterWhatWidget extends WhatWidget {
-  CounterWhatWidget({
+  const CounterWhatWidget({
     super.key,
     required this.counterWhat,
     this.prefix = 'Count',
@@ -61,6 +61,16 @@ base class ViaMaybeOfWhatWidget extends WhatWidget {
     final optionalTheme = via.maybeOf<String>(context);
     return Text('Theme: ${optionalTheme ?? "default"}');
   }
+}
+
+abstract class _TestBaseClass {
+  String get val;
+}
+
+class _TestChildClass implements _TestBaseClass {
+  _TestChildClass(this.val);
+  @override
+  final String val;
 }
 
 void main() {
@@ -337,6 +347,105 @@ void main() {
       );
 
       expect(widget1.updateShouldNotify(widget3), isTrue);
+    });
+
+    testWidgets(
+        'whatOf<T>() throws FlutterError when WhatProvider<T> is absent',
+        (tester) async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Builder(
+            builder: (context) {
+              return Text('${context.whatOf<int>()}');
+            },
+          ),
+        ),
+      );
+
+      final dynamic exception = tester.takeException();
+      expect(exception, isA<FlutterError>());
+      expect(
+        exception.toString(),
+        contains('No ancestor WhatProvider<int> found'),
+      );
+    });
+
+    testWidgets(
+        'maybeWhatOf<T>() returns canonical What.constantNull singleton when absent',
+        (tester) async {
+      late What<int?> extracted1;
+      late What<String?> extracted2;
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Builder(
+            builder: (context) {
+              extracted1 = context.maybeWhatOf<int>();
+              extracted2 = context.maybeWhatOf<String>();
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(identical(extracted1, What.constantNull), isTrue);
+      expect(identical(extracted2, What.constantNull), isTrue);
+      expect(identical(extracted1, extracted2), isTrue);
+    });
+
+    testWidgets(
+        'whatOf<T>() requires exact type match and fails on supertype unless explicitly provided',
+        (tester) async {
+      final childWhat =
+          WhatController<_TestChildClass>(_TestChildClass('exact_payload'))
+              .what;
+
+      // 1. Provided as WhatProvider<_TestChildClass>
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: WhatProvider<_TestChildClass>(
+            what: childWhat,
+            child: Builder(
+              builder: (context) {
+                // Exact type succeeds
+                expect(
+                  untracked(context.whatOf<_TestChildClass>()).val,
+                  equals('exact_payload'),
+                );
+                // Supertype lookup fails with FlutterError
+                expect(
+                  () => context.whatOf<_TestBaseClass>(),
+                  throwsA(isA<FlutterError>()),
+                );
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
+
+      // 2. Explicitly provided as WhatProvider<_TestBaseClass>
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: WhatProvider<_TestBaseClass>(
+            what: childWhat,
+            child: Builder(
+              builder: (context) {
+                // Supertype lookup succeeds now that it is explicitly provisioned
+                expect(
+                  untracked(context.whatOf<_TestBaseClass>()).val,
+                  equals('exact_payload'),
+                );
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
     });
   });
 

@@ -4,7 +4,7 @@
 
 part of '../../framework.dart';
 
-base class _ConstantWhat<T> extends What<T> with _WhatStateMixin<T>, _WhatPeekMixin<T> {
+base class _ConstantWhat<T> extends What<T> with _WhatStateMixin<T> {
   _ConstantWhat(T data)
       : _state = _ValidWhatState<T>(data),
         super._();
@@ -30,7 +30,7 @@ base class _ConstantWhat<T> extends What<T> with _WhatStateMixin<T>, _WhatPeekMi
 
 /// Internal reactive node filtering out consecutive duplicate payloads.
 final class _DistinctWhat<T> extends _StaticUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>
+    with _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>
     implements What<T> {
   _DistinctWhat(super.source, {bool Function(T previous, T next)? equals}) : _equals = equals;
 
@@ -102,7 +102,7 @@ final class _DistinctWhat<T> extends _StaticUnaryRelay<What<T>>
 ///    itself dirty or propagating dirty flags downstream, it starts/resets a timer.
 ///    During this window, `_dirtyState` remains [_DirtyState.clean].
 /// 2. **Cache Integrity (Read Committed)**:
-///    If any downstream node or external caller reads `.peek` (or evaluates via `WhatVia`) during
+///    If any downstream node or external caller reads `untracked(node)` (or evaluates via `WhatVia`) during
 ///    this window, [_PullResolver._resolve] sees `_dirtyState == _DirtyState.clean`, **completely
 ///    bypasses [_pull]**, and immediately returns the cached, previous [_state].
 ///    This guarantees that uncommitted, intermediate mutations never contaminate
@@ -113,7 +113,7 @@ final class _DistinctWhat<T> extends _StaticUnaryRelay<What<T>>
 ///    observers notified, and subsequent state reads finally invoke [_pull]
 ///    to fetch the fresh upstream state.
 abstract base class _GatedRelayWhat<T> extends _StaticUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>, _PushOriginMixin
+    with _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>, _PushOriginMixin
     implements What<T> {
   _GatedRelayWhat(
     super.source, {
@@ -246,7 +246,7 @@ final class _CoalescedWhat<T> extends _GatedRelayWhat<T> implements _CoalescedSc
 ///    flags downstream or marking itself dirty, it schedules or resets a [Timer].
 /// 2. **Temporal Isolation (Shielding Downstream)**: While the timer is ticking,
 ///    `_dirtyState` remains [_DirtyState.clean]. If any downstream node (or external caller)
-///    reads `.peek` or evaluates via [WhatVia] during this window, [_PullResolver._resolve] bypasses [_pull]
+///    reads `untracked(node)` or evaluates via [WhatVia] during this window, [_PullResolver._resolve] bypasses [_pull]
 ///    and immediately returns the cached, previous [_state]. This guarantees that
 ///    downstream computations (e.g. SWR, search API calls) are never contaminated
 ///    by intermediate, uncommitted mutations.
@@ -315,7 +315,7 @@ final class _DebouncedWhat<T> extends _TemporalRelayWhat<T> {
     }
 
     // Intentional Suppression: Do NOT call super._invalidate() or mark dirty here!
-    // Keeping _dirtyState == clean ensures that any intermediate .peek / _read() reads
+    // Keeping _dirtyState == clean ensures that any intermediate untracked(...) / _read() reads
     // return the previous committed cached state without invoking _pull().
     _cancelTimer();
     _timer = Timer(duration, _onTimerExpired);
@@ -391,11 +391,11 @@ final class _ThrottledWhat<T> extends _TemporalRelayWhat<T> {
 // =============================================================================
 
 final class _GracefulWhat<T> extends _StaticUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>, _GracefulNodeMixin
+    with _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>, _GracefulNodeMixin
     implements What<T> {
   _GracefulWhat(
     super.source, {
-    Graceful graceful = const Graceful.period(Duration(minutes: 5)),
+    Graceful graceful = Graceful.microtask,
   }) : _graceful = graceful;
 
   @override
@@ -414,7 +414,7 @@ final class _GracefulWhat<T> extends _StaticUnaryRelay<What<T>>
 // =============================================================================
 
 base class _RetainedWhat<T> extends _StaticUnaryRelay<What<T>>
-    with _WhatStateMixin<T>, _WhatPeekMixin<T>, _PullResolver<T>, _PullRelay<T>
+    with _WhatStateMixin<T>, _PullResolver<T>, _PullRelay<T>
     implements What<T> {
   _RetainedWhat(super.source, [WhatCoupler<bool>? pendingCoupler]) {
     if (pendingCoupler != null) {
@@ -486,7 +486,7 @@ base class _RetainedWhat<T> extends _StaticUnaryRelay<What<T>>
 
 /// Secondary facet node representing the independent [What<bool>] pending notification pipeline.
 final class _PendingFacetWhat<T> extends _StaticUnaryRelay<_RetainedWhat<T>>
-    with _WhatStateMixin<bool>, _WhatPeekMixin<bool>, _PullResolver<bool>, _PullRelay<bool>
+    with _WhatStateMixin<bool>, _PullResolver<bool>, _PullRelay<bool>
     implements What<bool> {
   _PendingFacetWhat(super.source) {
     _pulledVersion = _source._pendingVersion;

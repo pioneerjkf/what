@@ -27,9 +27,9 @@ void main() {
       final pending = pendingCoupler.what;
 
       // Initially empty before first resolution
-      expect(smooth.peekState.isEmpty, isTrue);
-      expect(smooth.peekState.hasData, isFalse);
-      expect(pending.peek, isFalse);
+      expect(untracked.state(smooth).isEmpty, isTrue);
+      expect(untracked.state(smooth).hasData, isFalse);
+      expect(untracked(pending), isFalse);
 
       final observedData = <String>[];
       final observedPending = <bool>[];
@@ -47,9 +47,9 @@ void main() {
       activeCompleter!.complete('AppleResults');
       await Future<void>.delayed(Duration.zero);
 
-      expect(smooth.peekState.hasData, isTrue);
-      expect(smooth.peek, equals('AppleResults'));
-      expect(pending.peek, isFalse);
+      expect(untracked.state(smooth).hasData, isTrue);
+      expect(untracked(smooth), equals('AppleResults'));
+      expect(untracked(pending), isFalse);
       expect(observedData, contains('AppleResults'));
 
       // 2. Change query to 'banana' -> starts background transition
@@ -57,18 +57,18 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // FLICKER-FREE: Previous data is retained!
-      expect(smooth.peekState.hasData, isTrue);
-      expect(smooth.peek, equals('AppleResults'));
-      expect(pending.peek, isTrue);
+      expect(untracked.state(smooth).hasData, isTrue);
+      expect(untracked(smooth), equals('AppleResults'));
+      expect(untracked(pending), isTrue);
       expect(observedPending.last, isTrue);
 
       // 3. Resolve 'banana' request
       activeCompleter!.complete('BananaResults');
       await Future<void>.delayed(Duration.zero);
 
-      expect(smooth.peekState.hasData, isTrue);
-      expect(smooth.peek, equals('BananaResults'));
-      expect(pending.peek, isFalse);
+      expect(untracked.state(smooth).hasData, isTrue);
+      expect(untracked(smooth), equals('BananaResults'));
+      expect(untracked(pending), isFalse);
       expect(observedData.last, equals('BananaResults'));
 
       disposeData();
@@ -91,19 +91,19 @@ void main() {
 
       activeCompleter!.complete('CatData');
       await Future<void>.delayed(Duration.zero);
-      expect(smooth.peek, equals('CatData'));
+      expect(untracked(smooth), equals('CatData'));
 
       // Mutate upstream
       query.data = 'dog';
       await Future<void>.delayed(Duration.zero);
 
       // Retains CatData while dog is in-flight without allocating secondary facet
-      expect(smooth.peek, equals('CatData'));
+      expect(untracked(smooth), equals('CatData'));
 
       activeCompleter!.complete('DogData');
       await Future<void>.delayed(Duration.zero);
 
-      expect(smooth.peek, equals('DogData'));
+      expect(untracked(smooth), equals('DogData'));
 
       terminal.deactivate();
     });
@@ -140,8 +140,8 @@ void main() {
       // Initial load completes
       activeCompleter!.complete('User#1');
       await Future<void>.delayed(Duration.zero);
-      expect(user.peek, 'User#1');
-      expect(pending.peek, isFalse);
+      expect(untracked(user), 'User#1');
+      expect(untracked(pending), isFalse);
       expect(termDownstream.data, equals('User: User#1'));
       expect(dataDownstreamRuns, 1);
 
@@ -163,17 +163,17 @@ void main() {
         1,
         reason: 'Downstream computed must NOT re-evaluate while retaining stale data',
       );
-      expect(pending.peek, isTrue);
+      expect(untracked(pending), isTrue);
 
       // Data is still User#1
-      expect(user.peek, 'User#1');
+      expect(untracked(user), 'User#1');
 
       // Complete ID 2
       activeCompleter!.complete('User#2');
       await Future<void>.delayed(Duration.zero);
 
-      expect(user.peek, 'User#2');
-      expect(pending.peek, isFalse);
+      expect(untracked(user), 'User#2');
+      expect(untracked(pending), isFalse);
       expect(termDownstream.data, equals('User: User#2'));
       expect(dataDownstreamRuns, 2);
 
@@ -199,34 +199,34 @@ void main() {
       terminal.activate();
       await Future<void>.delayed(Duration.zero);
 
-      expect(search.peek, equals('InitialData'));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(search), equals('InitialData'));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       // Trigger slow
       query.data = 'slow';
       await Future<void>.delayed(Duration.zero);
-      expect(search.peek, equals('InitialData'));
-      expect(pendingCoupler.what.peek, isTrue);
+      expect(untracked(search), equals('InitialData'));
+      expect(untracked(pendingCoupler.what), isTrue);
 
       // Trigger fast while slow is still in-flight
       query.data = 'fast';
       await Future<void>.delayed(Duration.zero);
-      expect(search.peek, equals('InitialData'));
-      expect(pendingCoupler.what.peek, isTrue);
+      expect(untracked(search), equals('InitialData'));
+      expect(untracked(pendingCoupler.what), isTrue);
 
       // Fast completes first
       fastCompleter.complete('FastResult');
       await Future<void>.delayed(Duration.zero);
 
-      expect(search.peek, equals('FastResult'));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(search), equals('FastResult'));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       // Slow completes later -> MUST be ignored due to LPDAG topology switch
       slowCompleter.complete('StaleSlowResult');
       await Future<void>.delayed(Duration.zero);
 
-      expect(search.peek, equals('FastResult'));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(search), equals('FastResult'));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       terminal.deactivate();
     });
@@ -245,18 +245,18 @@ void main() {
       term.activate();
       await Future<void>.delayed(Duration.zero);
 
-      expect(search.peekState.hasData, isTrue);
-      expect(search.peek, equals(['Result for search']));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked.state(search).hasData, isTrue);
+      expect(untracked(search), equals(['Result for search']));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       // Clear query
       query.data = '';
       await Future<void>.delayed(Duration.zero);
 
       // Smoothly transitions to empty list and pending is false
-      expect(search.peekState.hasData, isTrue);
-      expect(search.peek, isEmpty);
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked.state(search).hasData, isTrue);
+      expect(untracked(search), isEmpty);
+      expect(untracked(pendingCoupler.what), isFalse);
 
       term.deactivate();
     });
@@ -279,17 +279,17 @@ void main() {
 
       completer!.complete('Success1');
       await Future<void>.delayed(Duration.zero);
-      expect(node.peek, equals('Success1'));
+      expect(untracked(node), equals('Success1'));
 
       // Trigger error
       trigger.data = 2;
       await Future<void>.delayed(Duration.zero);
 
       // Clears retained data and honestly propagates error
-      expect(node.peekState.hasData, isFalse);
-      expect(node.peekState.hasError, isTrue);
-      expect(node.peekState.error, isA<StateError>());
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked.state(node).hasData, isFalse);
+      expect(untracked.state(node).hasError, isTrue);
+      expect(untracked.state(node).error, isA<StateError>());
+      expect(untracked(pendingCoupler.what), isFalse);
 
       term.deactivate();
     });
@@ -312,23 +312,23 @@ void main() {
       // Emit first value on Channel A
       controller!.add('MsgA1');
       await Future<void>.delayed(Duration.zero);
-      expect(streamNode.peek, equals('MsgA1'));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(streamNode), equals('MsgA1'));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       // Switch to Channel B (new stream hasn't emitted yet)
       channel.data = 'B';
       await Future<void>.delayed(Duration.zero);
 
       // Stale-While-Revalidate: MsgA1 retained!
-      expect(streamNode.peek, equals('MsgA1'));
-      expect(pendingCoupler.what.peek, isTrue);
+      expect(untracked(streamNode), equals('MsgA1'));
+      expect(untracked(pendingCoupler.what), isTrue);
 
       // Emit first value on Channel B
       controller!.add('MsgB1');
       await Future<void>.delayed(Duration.zero);
 
-      expect(streamNode.peek, equals('MsgB1'));
-      expect(pendingCoupler.what.peek, isFalse);
+      expect(untracked(streamNode), equals('MsgB1'));
+      expect(untracked(pendingCoupler.what), isFalse);
 
       term.deactivate();
     });
@@ -362,7 +362,7 @@ void main() {
       final raw = computed((via) => 'Count: ${via(count.what)}');
       final smooth = raw.retained();
 
-      expect(smooth.peek, equals('Count: 10'));
+      expect(untracked(smooth), equals('Count: 10'));
 
       // Managed retained
       var disposed = false;
@@ -374,7 +374,7 @@ void main() {
       final term = RawWhatTerminal(managedNode, onInvalidated: () {});
       term.activate();
 
-      expect(managedNode.peek, equals('ManagedResource'));
+      expect(untracked(managedNode), equals('ManagedResource'));
 
       term.deactivate();
       expect(disposed, isTrue);
@@ -491,11 +491,11 @@ void main() {
       final pending = pendingCoupler.what;
 
       // Initial read
-      expect(pending.peek, isFalse);
+      expect(untracked(pending), isFalse);
       final initialVersion = pending.debug.snapshot().version;
 
       // Force a pull cycle on pending facet directly
-      pending.peek;
+      untracked(pending);
       expect(
         pending.debug.snapshot().version,
         equals(initialVersion),
