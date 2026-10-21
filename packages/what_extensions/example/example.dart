@@ -10,7 +10,8 @@ void main() async {
   final avgWhat = numbersController.what.elements.average;
 
   // 3. Actively observe collection aggregations using EffectRunner
-  final sumRunner = sumWhat.effect(() => print('Sum: ${untracked(sumWhat)}')).run();
+  final sumRunner =
+      sumWhat.effect(() => print('Sum: ${untracked(sumWhat)}')).run();
   final avgRunner =
       avgWhat.effect(() => print('Average: ${untracked(avgWhat)}')).run();
 

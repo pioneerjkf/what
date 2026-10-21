@@ -31,7 +31,7 @@ import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/error/error.dart';
+import 'package:analyzer/diagnostic/diagnostic.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
@@ -123,8 +123,9 @@ final class LintCaseFile {
         }
         for (final rule in expectMatch.group(1)!.split(',')) {
           final name = rule.trim();
-          if (name.isNotEmpty)
+          if (name.isNotEmpty) {
             region.expected.add((rule: name, line: line + 1));
+          }
         }
       }
     }
@@ -190,7 +191,7 @@ Future<LintFileReport> _analyze(String path) async {
 
   final compileErrors = [
     for (final d in result.diagnostics)
-      if (d.severity == DiagnosticSeverity.ERROR)
+      if (d.severity == Severity.error)
         'L${result.lineInfo.getLocation(d.offset).lineNumber}: '
             '${d.diagnosticCode.name} - ${d.message}',
   ];

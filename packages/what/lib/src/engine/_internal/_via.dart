@@ -119,12 +119,8 @@ base mixin _WhatViaEpochMixin on _NaryEdgeMixin<_Node> {
       // New dependency: insert before cursor (or at tail if cursor is null)
       // to preserve evaluation sequence in the edge list.
       final newEdge = _lifecycle.isActive
-          ? (cursor != null
-              ? _addAndAttachSourceEdgeBefore(source, cursor)
-              : _addAndAttachSourceEdge(source))
-          : (cursor != null
-              ? _addSourceEdgeBefore(source, cursor)
-              : _addSourceEdge(source));
+          ? (cursor != null ? _addAndAttachSourceEdgeBefore(source, cursor) : _addAndAttachSourceEdge(source))
+          : (cursor != null ? _addSourceEdgeBefore(source, cursor) : _addSourceEdge(source));
       newEdge._seenEpoch = currentEpoch;
     }
   }

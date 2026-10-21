@@ -6,7 +6,7 @@
 ///
 /// Enforces architectural invariants such as Producer/Consumer separation, zero-escaping
 /// `WhatVia` scopes, proper controller lifecycle disposal, and rebuild isolation.
-library what_lints;
+library;
 
 import 'dart:math' as math;
 

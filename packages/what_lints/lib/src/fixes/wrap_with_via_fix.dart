@@ -51,9 +51,8 @@ class WrapWithViaFix extends DartFix {
         if (args.isNotEmpty) {
           final targetSource = args.first.toSource();
           final isState = node.methodName.name == 'state';
-          final replacement = isState
-              ? 'via.state($targetSource)'
-              : 'via($targetSource)';
+          final replacement =
+              isState ? 'via.state($targetSource)' : 'via($targetSource)';
           final changeBuilder = reporter.createChangeBuilder(
             message: isState
                 ? 'Replace untracked.state(...) with via.state(...)'

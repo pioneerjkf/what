@@ -134,11 +134,13 @@ void main() {
       expect(errDep.description, contains('Error: Failed'));
 
       // Verify switch (snapshot.phase) exhaustiveness and jump table behavior
-      final labels = deps.map((d) => switch (d.phase) {
-        WhatPhase.valid => 'Data: ${d.data}',
-        WhatPhase.empty => 'Empty',
-        WhatPhase.error => 'Error: ${d.error}',
-      }).toList();
+      final labels = deps
+          .map((d) => switch (d.phase) {
+                WhatPhase.valid => 'Data: ${d.data}',
+                WhatPhase.empty => 'Empty',
+                WhatPhase.error => 'Error: ${d.error}',
+              })
+          .toList();
 
       expect(labels, equals(['Data: 3.14', 'Empty', 'Error: Failed']));
 

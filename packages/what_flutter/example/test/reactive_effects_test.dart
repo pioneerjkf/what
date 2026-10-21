@@ -75,7 +75,8 @@ void main() {
       // Now increment to 10 (meets threshold)
       store.incrementCounter();
       await Future<void>.delayed(Duration.zero);
-      expect(untracked(store.lastThresholdAlert), contains('Threshold Reached!'));
+      expect(
+          untracked(store.lastThresholdAlert), contains('Threshold Reached!'));
 
       // 5. Lifecycle deactivation & reactivation
       store.toggleLifecycle(false);

@@ -62,11 +62,9 @@ void main() async {
 
   // 6. Safe 3-State FSM Phase Pattern Matching (Dart 3 Exhaustive Switch)
   final message = switch (untracked.state(searchResults).phase) {
-    WhatPhase.valid =>
-      '[FSM Phase] Confirmed valid results: ${untracked(searchResults).length} items',
+    WhatPhase.valid => '[FSM Phase] Confirmed valid results: ${untracked(searchResults).length} items',
     WhatPhase.empty => '[FSM Phase] Pending or Empty',
-    WhatPhase.error =>
-      '[FSM Phase] Error occurred: ${untracked.state(searchResults).error}',
+    WhatPhase.error => '[FSM Phase] Error occurred: ${untracked.state(searchResults).error}',
   };
   print(message);
 

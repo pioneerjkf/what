@@ -3,7 +3,14 @@ description: "Unified Flutter widget testing harness and state mocking system fo
 homepage: https://pioneerjkf.dev
 repository: https://github.com/pioneerjkf/what
 issue_tracker: https://github.com/pioneerjkf/what/issues
-version: 0.2.0
+topics:
+  - flutter
+  - testing
+  - test
+  - widgets
+  - reactive
+
+version: 0.3.0
 
 resolution: workspace
 
@@ -17,9 +24,9 @@ dependencies:
   flutter_test:
     sdk: flutter
   meta: ^1.18.0
-  what: ^0.2.0
-  what_flutter: ^0.2.0
-  what_test: ^0.2.0
+  what: ^0.3.0
+  what_flutter: ^0.3.0
+  what_test: ^0.3.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0

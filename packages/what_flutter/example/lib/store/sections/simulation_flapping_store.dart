@@ -180,7 +180,8 @@ class SimulationFlappingStore {
     final future = frozenPhysicsCtrl.animateWith(sim1);
     catchUpPhysicsCtrl.animateWith(sim2);
     _attachAutoBounce(future);
-    _log('Gravity: g=${untracked(gravityForce)}m/s², v0=$velocity, Speed=${scale}x');
+    _log(
+        'Gravity: g=${untracked(gravityForce)}m/s², v0=$velocity, Speed=${scale}x');
   }
 
   void runFrictionSimulation({bool reverse = false}) {
@@ -200,7 +201,8 @@ class SimulationFlappingStore {
     final future = frozenPhysicsCtrl.animateWith(sim1);
     catchUpPhysicsCtrl.animateWith(sim2);
     _attachAutoBounce(future);
-    _log('Friction: Drag=${untracked(frictionDrag)}, v0=$velocity, Speed=${scale}x');
+    _log(
+        'Friction: Drag=${untracked(frictionDrag)}, v0=$velocity, Speed=${scale}x');
   }
 
   void _attachAutoBounce(TickerFuture future) {

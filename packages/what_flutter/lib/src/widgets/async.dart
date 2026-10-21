@@ -169,7 +169,8 @@ final class WhatAsyncBuilder<T> extends WhatWidget {
     return data(context, payload);
   }
 
-  Widget _buildError(BuildContext context, Object errorObj, StackTrace stackTrace) {
+  Widget _buildError(
+      BuildContext context, Object errorObj, StackTrace stackTrace) {
     if (error != null) {
       return error!(context, errorObj, stackTrace);
     }

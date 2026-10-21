@@ -76,8 +76,11 @@ void main() {
         }
       },
       'unmount_mount': () async {
-        final btn = find.widgetWithText(FilledButton,
-            untracked(store.isMounted) ? 'Unmount (Hibernate)' : 'Mount (Wake)');
+        final btn = find.widgetWithText(
+            FilledButton,
+            untracked(store.isMounted)
+                ? 'Unmount (Hibernate)'
+                : 'Mount (Wake)');
         if (btn.evaluate().isNotEmpty) {
           await tester.tap(btn);
           await tester.pump(const Duration(milliseconds: 50));

@@ -10,9 +10,7 @@ part of '../../framework.dart';
 
 /// Base reactive relay node that dynamically couples and reroutes its mainstream
 /// upstream source based on lateral control-plane mutations evaluated through a [RawViaTerminal].
-abstract base class _DeltaWhat<T> extends _CoupledUnaryRelay<What<T>>
-    with _WhatStateMixin<T>
-    implements What<T> {
+abstract base class _DeltaWhat<T> extends _CoupledUnaryRelay<What<T>> with _WhatStateMixin<T> implements What<T> {
   _DeltaWhat() : super.late() {
     _deltaTerminal = RawViaTerminal(_evaluateDelta, onInvalidated: _onDeltaDirty);
   }

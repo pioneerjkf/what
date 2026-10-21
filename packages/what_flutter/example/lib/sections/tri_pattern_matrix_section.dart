@@ -58,7 +58,9 @@ base class TriPatternMatrixSectionDemo extends WhatWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: ctrl.isAnimating ? Colors.green : Colors.amber,
+                              color: ctrl.isAnimating
+                                  ? Colors.green
+                                  : Colors.amber,
                             ),
                           ),
                         ),

@@ -94,8 +94,9 @@ class AvoidWhatCreationInBuild extends DartLintRule {
       if (!isForbiddenCreation(node)) return;
 
       if (!FlutterAstUtils.isInsideBuildMethod(node)) return;
-      if (AvoidStateWritesInPipeline.isInsideEventOrDeferredClosure(node))
+      if (AvoidStateWritesInPipeline.isInsideEventOrDeferredClosure(node)) {
         return;
+      }
 
       reporter.atNode(node, _code);
     });
@@ -105,8 +106,9 @@ class AvoidWhatCreationInBuild extends DartLintRule {
       if (!isForbiddenMethodInvocation(node)) return;
 
       if (!FlutterAstUtils.isInsideBuildMethod(node)) return;
-      if (AvoidStateWritesInPipeline.isInsideEventOrDeferredClosure(node))
+      if (AvoidStateWritesInPipeline.isInsideEventOrDeferredClosure(node)) {
         return;
+      }
 
       reporter.atNode(node, _code);
     });

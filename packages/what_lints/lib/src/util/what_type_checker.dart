@@ -476,22 +476,31 @@ abstract final class WhatTypeChecker {
         if (name != null &&
             name.endsWith('Functor') &&
             isFromWhatPackage(targetType.element)) {
-          if (name == 'ComputedFunctor' && node.methodName.name == 'future')
+          if (name == 'ComputedFunctor' && node.methodName.name == 'future') {
             return 'ComputedFutureFunctor';
-          if (name == 'ComputedFunctor' && node.methodName.name == 'stream')
+          }
+          if (name == 'ComputedFunctor' && node.methodName.name == 'stream') {
             return 'ComputedStreamFunctor';
-          if (name.startsWith('Composed') && node.methodName.name == 'child')
+          }
+          if (name.startsWith('Composed') && node.methodName.name == 'child') {
             return 'ComposedChildFunctor';
-          if (name.startsWith('Composed') && node.methodName.name == 'children')
+          }
+          if (name.startsWith('Composed') &&
+              node.methodName.name == 'children') {
             return 'ComposedChildrenFunctor';
-          if (name == 'ComposedFunctor' && node.methodName.name == 'context')
+          }
+          if (name == 'ComposedFunctor' && node.methodName.name == 'context') {
             return 'ComposedContextFunctor';
-          if (name == 'ComposedFunctor' && node.methodName.name == 'vsync')
+          }
+          if (name == 'ComposedFunctor' && node.methodName.name == 'vsync') {
             return 'ComposedVsyncFunctor';
-          if (name == 'ComposedFunctor' && node.methodName.name == 'drive')
+          }
+          if (name == 'ComposedFunctor' && node.methodName.name == 'drive') {
             return 'ComposedDriveFunctor';
-          if (name == 'ComposedFunctor' && node.methodName.name == 'animate')
+          }
+          if (name == 'ComposedFunctor' && node.methodName.name == 'animate') {
             return 'ComposedAnimateFunctor';
+          }
           return name;
         }
       }
@@ -499,17 +508,21 @@ abstract final class WhatTypeChecker {
 
     // Unresolved fallback
     if (sourceStr == 'computed') return 'ComputedFunctor';
-    if (sourceStr == 'computed.future' || sourceStr == 'computed.async')
+    if (sourceStr == 'computed.future' || sourceStr == 'computed.async') {
       return 'ComputedFutureFunctor';
+    }
     if (sourceStr == 'computed.stream') return 'ComputedStreamFunctor';
     if (sourceStr == 'switched') return 'SwitchedFunctor';
-    if (sourceStr == 'managed' || sourceStr == 'What.managed')
+    if (sourceStr == 'managed' || sourceStr == 'What.managed') {
       return 'ManagedFunctor';
+    }
     if (sourceStr == 'composed') return 'ComposedFunctor';
-    if (sourceStr.startsWith('composed.') && sourceStr.endsWith('.child'))
+    if (sourceStr.startsWith('composed.') && sourceStr.endsWith('.child')) {
       return 'ComposedChildFunctor';
-    if (sourceStr.startsWith('composed.') && sourceStr.endsWith('.children'))
+    }
+    if (sourceStr.startsWith('composed.') && sourceStr.endsWith('.children')) {
       return 'ComposedChildrenFunctor';
+    }
     if (sourceStr == 'composed.context') return 'ComposedContextFunctor';
     if (sourceStr == 'composed.vsync') return 'ComposedVsyncFunctor';
     if (sourceStr == 'composed.drive') return 'ComposedDriveFunctor';

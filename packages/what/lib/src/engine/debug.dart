@@ -87,8 +87,7 @@ final class WhatDebugSnapshot {
   String get description => switch (phase) {
         WhatPhase.valid => '${_formatDebugPayload(data)} (v$version)',
         WhatPhase.error => 'Error: $error (v$version)',
-        WhatPhase.empty =>
-          '<empty${emptyReason != null ? ' ($emptyReason)' : ''}> (v$version)',
+        WhatPhase.empty => '<empty${emptyReason != null ? ' ($emptyReason)' : ''}> (v$version)',
       };
 
   static String _formatDebugPayload(Object? payload) {

@@ -48,8 +48,8 @@ void main() {
 
       store.setDuration(1200);
       expect(untracked(store.durationMs), 1200);
-      expect(
-          untracked(store.masterCtrl).duration, const Duration(milliseconds: 1200));
+      expect(untracked(store.masterCtrl).duration,
+          const Duration(milliseconds: 1200));
 
       store.setActiveTab(1);
       expect(untracked(store.activeTab), 1);

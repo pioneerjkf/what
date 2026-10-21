@@ -510,7 +510,8 @@ void main() {
             computeCount++;
             return via(guarded) * 10;
           },
-          guard: (via) => via.state(guarded).hasData.guarded(untracked.state(guarded).emptyReason ?? 'PrerequisiteNotMet'),
+          guard: (via) =>
+              via.state(guarded).hasData.guarded(untracked.state(guarded).emptyReason ?? 'PrerequisiteNotMet'),
         );
         expect(untracked.state(mapped).isEmpty, isTrue);
         expect(untracked.state(mapped).snapshot.emptyReason, 'GuardedEmpty');
