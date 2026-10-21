@@ -216,11 +216,12 @@ All entities implementing `WhatState` (as well as views returned by `via.state(n
 
 ```dart
 // 1. Zero-Heap Synchronous Exhaustive Matching via untracked.state
-final status = untracked.state(userWhat).match(
-  data: (v) => 'Active: $v',
-  empty: () => 'Awaiting initialization...',
-  error: (err, stack) => 'Failed: $err',
-);
+final userState = untracked.state(userWhat);
+final status = switch (userState.phase) {
+  WhatPhase.valid => 'Active: ${userState.data}',
+  WhatPhase.empty => 'Awaiting initialization...',
+  WhatPhase.error => 'Failed: ${userState.error}',
+};
 
 // 2. Multi-Input Guarding via Zero-Allocation Record Tuple
 final inputA = WhatController<int>(1).what;
@@ -242,7 +243,7 @@ final total = computed(
 #### D. Built for Software 3.0 & Autonomous AI Agents
 What's deterministic state algebra eliminates the primary sources of AI code generation bugs:
 1. **Zero State Desync**: Mutually exclusive states eliminate hallucinated flag combinations (`isLoading: true, isError: true`).
-2. **Compiler-Enforced Exhaustiveness**: Omitting an `error` or `empty` branch in `.match()` triggers static analyzer errors, allowing AI agents to self-correct in a closed 1-shot loop.
+2. **Compiler-Enforced Exhaustiveness**: Omitting an `error` or `empty` branch in `switch (state.phase)` triggers static analyzer errors, allowing AI agents to self-correct in a closed 1-shot loop.
 3. **Explicit AST Signatures (`via`)**: No hidden ambient contexts (Rules of Hooks, ambient Provider scopes) to confuse LLM attention.
 
 ---

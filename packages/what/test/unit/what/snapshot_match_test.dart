@@ -6,238 +6,218 @@ import 'package:test/test.dart';
 
 void main() {
   // ─────────────────────────────────────────────
-  // WhatSnapshot.match / matchOrElse / matchOrNull
+  // WhatSnapshot switch (phase) Pattern Matching
   // ─────────────────────────────────────────────
-  group('WhatSnapshot.match', () {
-    test('valid  → data handler called', () {
+  group('WhatSnapshot switch (phase)', () {
+    test('valid  → data branch evaluated', () {
       const snap = WhatSnapshot<int>(42);
-      final result = snap.match(
-        data: (v) => 'data:$v',
-        empty: () => 'empty',
-        error: (e, s) => 'error',
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => 'data:${snap.data}',
+        WhatPhase.empty => 'empty',
+        WhatPhase.error => 'error',
+      };
       expect(result, 'data:42');
     });
 
-    test('empty  → empty handler called', () {
+    test('empty  → empty branch evaluated', () {
       const snap = WhatSnapshot<int>.empty();
-      final result = snap.match(
-        data: (v) => 'data:$v',
-        empty: () => 'empty',
-        error: (e, s) => 'error',
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => 'data:${snap.data}',
+        WhatPhase.empty => 'empty',
+        WhatPhase.error => 'error',
+      };
       expect(result, 'empty');
     });
 
-    test('error  → error handler called', () {
+    test('error  → error branch evaluated', () {
       final snap = WhatSnapshot<int>.error(Exception('boom'));
-      final result = snap.match(
-        data: (v) => 'data:$v',
-        empty: () => 'empty',
-        error: (e, s) => 'error:$e',
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => 'data:${snap.data}',
+        WhatPhase.empty => 'empty',
+        WhatPhase.error => 'error:${snap.error}',
+      };
       expect(result, 'error:Exception: boom');
     });
   });
 
-  group('WhatSnapshot.matchOrElse', () {
-    test('valid  → data handler present → data handler called', () {
+  group('WhatSnapshot switch fallback with default clause', () {
+    test('valid  → evaluated with transformation', () {
       const snap = WhatSnapshot<int>(10);
-      expect(
-        snap.matchOrElse(data: (v) => v * 2, orElse: () => -1),
-        20,
-      );
+      final res = switch (snap.phase) {
+        WhatPhase.valid => snap.data * 2,
+        _ => -1,
+      };
+      expect(res, 20);
     });
 
-    test('empty  → empty handler absent → orElse called', () {
+    test('empty  → fallback returned', () {
       const snap = WhatSnapshot<int>.empty();
-      expect(
-        snap.matchOrElse(data: (v) => v, orElse: () => -1),
-        -1,
-      );
+      final res = switch (snap.phase) {
+        WhatPhase.valid => snap.data,
+        _ => -1,
+      };
+      expect(res, -1);
     });
 
-    test('error  → error handler present → error handler called', () {
+    test('error  → error branch returned', () {
       final snap = WhatSnapshot<int>.error(Exception('x'));
-      expect(
-        snap.matchOrElse(error: (e, s) => 99, orElse: () => 0),
-        99,
-      );
+      final res = switch (snap.phase) {
+        WhatPhase.error => 99,
+        _ => 0,
+      };
+      expect(res, 99);
     });
   });
 
-  group('WhatSnapshot.matchOrNull', () {
-    test('valid  → data handler present → returns value', () {
+  group('WhatSnapshot conditional null-coalescing with hasData / hasError / dataOrNull', () {
+    test('valid  → returns value', () {
       const snap = WhatSnapshot<int>(5);
-      expect(snap.matchOrNull(data: (v) => v + 1), 6);
+      final res = snap.hasData ? snap.data + 1 : null;
+      expect(res, 6);
+      expect(snap.dataOrNull != null ? snap.dataOrNull! + 1 : null, 6);
     });
 
-    test('empty  → empty handler absent → returns null', () {
+    test('empty  → returns null', () {
       const snap = WhatSnapshot<int>.empty();
-      expect(snap.matchOrNull(data: (v) => v), isNull);
+      final res = snap.hasData ? snap.data : null;
+      expect(res, isNull);
+      expect(snap.dataOrNull, isNull);
     });
 
-    test('error  → error handler present → returns value', () {
+    test('error  → returns error string', () {
       final snap = WhatSnapshot<int>.error(Exception('fail'));
-      expect(
-        snap.matchOrNull(error: (e, s) => e.toString()),
-        'Exception: fail',
-      );
+      final res = snap.hasError ? snap.error.toString() : null;
+      expect(res, 'Exception: fail');
+      expect(snap.dataOrNull, isNull);
     });
   });
 
   // ─────────────────────────────────────────────
-  // What (WhatState) — live node
+  // What (WhatState) — live node switch (phase)
   // ─────────────────────────────────────────────
-  group('What.match on live node', () {
-    test('valid what → data handler', () {
+  group('What switch (phase) on live node', () {
+    test('valid what → data branch', () {
       final node = WhatController(7);
-      expect(
-        node.match(data: (v) => v, empty: () => 0, error: (e, s) => -1),
-        7,
-      );
+      final res = switch (node.phase) {
+        WhatPhase.valid => node.data,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
+      expect(res, 7);
     });
 
-    test('late what → empty handler', () {
+    test('late what → empty branch', () {
       final node = WhatController<int>.late();
-      expect(
-        node.match(data: (v) => v, empty: () => 0, error: (e, s) => -1),
-        0,
-      );
+      final res = switch (node.phase) {
+        WhatPhase.valid => node.data,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
+      expect(res, 0);
     });
 
-    test('error what → error handler', () {
+    test('error what → error branch', () {
       final node = WhatController<int>.error(Exception('what fail'));
-      expect(
-        node.match(data: (v) => v, empty: () => 0, error: (e, s) => -1),
-        -1,
-      );
+      final res = switch (node.phase) {
+        WhatPhase.valid => node.data,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
+      expect(res, -1);
     });
   });
 
   // ─────────────────────────────────────────────
-  // WhatSnapshot<List<N>>.match / matchOrElse / matchOrNull
+  // WhatSnapshot<List<What>> switch (phase)
   // ─────────────────────────────────────────────
-  group('WhatSnapshot<List<What>>.match', () {
+  group('WhatSnapshot<List<What>> switch (phase)', () {
     final g1 = WhatController(1);
     final g2 = WhatController(2);
 
-    test('hasData → data handler', () {
+    test('hasData → data branch', () {
       final snap = WhatSnapshot([g1, g2]);
-      final result = snap.match(
-        data: (list) => list.length,
-        empty: () => 0,
-        error: (e, s) => -1,
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => snap.data.length,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
       expect(result, 2);
     });
 
-    test('empty group snapshot → empty handler', () {
+    test('empty group snapshot → empty branch', () {
       const snap = WhatSnapshot<List<What<int>>>.empty();
-      final result = snap.match(
-        data: (list) => list.length,
-        empty: () => -99,
-        error: (e, s) => -1,
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => snap.data.length,
+        WhatPhase.empty => -99,
+        WhatPhase.error => -1,
+      };
       expect(result, -99);
     });
 
-    test('error group snapshot → error handler', () {
+    test('error group snapshot → error branch', () {
       final snap = WhatSnapshot<List<What<int>>>.error(Exception('group fail'));
-      final result = snap.match(
-        data: (list) => list.length,
-        empty: () => 0,
-        error: (e, s) => -1,
-      );
+      final result = switch (snap.phase) {
+        WhatPhase.valid => snap.data.length,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
       expect(result, -1);
     });
   });
 
-  group('WhatSnapshot<List<What>>.matchOrElse', () {
-    final g1 = WhatController(1);
-    final g2 = WhatController(2);
-
-    test('hasData → data handler present → calls it', () {
-      final snap = WhatSnapshot([g1, g2]);
-      expect(
-        snap.matchOrElse(data: (list) => list.length, orElse: () => 0),
-        2,
-      );
-    });
-
-    test('empty → data handler absent → orElse', () {
-      const snap = WhatSnapshot<List<What<int>>>.empty();
-      expect(
-        snap.matchOrElse(data: (list) => list.length, orElse: () => 0),
-        0,
-      );
-    });
-  });
-
-  group('WhatSnapshot<List<What>>.matchOrNull', () {
-    final g1 = WhatController(1);
-    final g2 = WhatController(2);
-
-    test('hasData → returns mapped value', () {
-      final snap = WhatSnapshot([g1, g2]);
-      expect(snap.matchOrNull(data: (list) => list.length), 2);
-    });
-
-    test('empty → returns null', () {
-      const snap = WhatSnapshot<List<What<int>>>.empty();
-      expect(snap.matchOrNull(data: (list) => list.length), isNull);
-    });
-
-    test('error → returns null when no error handler', () {
-      final snap = WhatSnapshot<List<What<int>>>.error(Exception('group fail'));
-      expect(snap.matchOrNull(data: (list) => list.length), isNull);
-    });
-  });
-
   // ─────────────────────────────────────────────
-  // WhatListController live node — match / matchOrNull / matchOrElse
+  // WhatListController live node — switch (phase)
   // ─────────────────────────────────────────────
-  group('WhatListController.match on live node', () {
-    test('valid group → data handler', () {
+  group('WhatListController switch (phase) on live node', () {
+    test('valid group → data branch', () {
       final c = WhatListController([WhatController(1).what, WhatController(2).what]);
-      expect(
-        c.match(data: (list) => list.length, empty: () => 0, error: (e, s) => -1),
-        2,
-      );
+      final res = switch (c.phase) {
+        WhatPhase.valid => c.data.length,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
+      expect(res, 2);
     });
 
-    test('empty group → empty handler', () {
+    test('empty group → empty branch', () {
       final c = WhatListController<What<int>>.late();
-      expect(
-        c.match(data: (list) => list.length, empty: () => -99, error: (e, s) => -1),
-        -99,
-      );
+      final res = switch (c.phase) {
+        WhatPhase.valid => c.data.length,
+        WhatPhase.empty => -99,
+        WhatPhase.error => -1,
+      };
+      expect(res, -99);
     });
 
-    test('error group → error handler', () {
+    test('error group → error branch', () {
       final c = WhatListController<What<int>>.late();
       c.setError(Exception('x'));
-      expect(
-        c.match(data: (list) => list.length, empty: () => 0, error: (e, s) => -1),
-        -1,
-      );
+      final res = switch (c.phase) {
+        WhatPhase.valid => c.data.length,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
+      expect(res, -1);
     });
   });
 
   // ─────────────────────────────────────────────
-  // Reactive dependency tracking — match registers dependency via WhatVia
+  // Reactive dependency tracking — switch (phase) via WhatVia
   // ─────────────────────────────────────────────
-  group('Reactive match tracking', () {
-    test('match() inside RawViaTerminal registers dependency', () {
+  group('Reactive pattern matching tracking', () {
+    test('switch (via.state(controller.what).phase) inside RawViaTerminal registers dependency', () {
       final controller = WhatController(0);
       var invalidateCount = 0;
 
       final terminal = RawViaTerminal(
-        (WhatVia via) => via.state(controller.what).match(
-              data: (v) => 'data:$v',
-              empty: () => 'empty',
-              error: (e, s) => 'error',
-            ),
+        (WhatVia via) {
+          final state = via.state(controller.what);
+          return switch (state.phase) {
+            WhatPhase.valid => 'data:${state.data}',
+            WhatPhase.empty => 'empty',
+            WhatPhase.error => 'error',
+          };
+        },
         onInvalidated: () => invalidateCount++,
       );
 

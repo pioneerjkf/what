@@ -150,39 +150,39 @@ final class WhatAsyncBuilder<T> extends WhatWidget {
       }
     }
 
-    if (target.hasData) {
-      final payload = target.data;
-      if (empty != null) {
-        if (payload is Iterable && payload.isEmpty) {
-          return empty!(context);
-        }
-        if (payload is Map && payload.isEmpty) {
-          return empty!(context);
-        }
-      }
-      return data(context, payload);
-    }
+    return switch (target.phase) {
+      WhatPhase.valid => _buildData(context, target.data),
+      WhatPhase.error => _buildError(context, target.error, target.stackTrace),
+      WhatPhase.empty => _buildEmptyOrLoading(context, target.emptyReason),
+    };
+  }
 
-    if (target.hasError) {
-      if (error != null) {
-        return error!(
-          context,
-          target.error,
-          target.stackTrace,
-        );
+  Widget _buildData(BuildContext context, T payload) {
+    if (empty != null) {
+      if (payload is Iterable && payload.isEmpty) {
+        return empty!(context);
       }
-      final err = target.error;
-      return ErrorWidget.withDetails(
-        message: 'Uncaught error in WhatAsyncBuilder: $err',
-        error: err is FlutterError ? err : null,
-      );
+      if (payload is Map && payload.isEmpty) {
+        return empty!(context);
+      }
     }
+    return data(context, payload);
+  }
 
-    // target.isEmpty
-    if (empty != null && target.emptyReason != null) {
+  Widget _buildError(BuildContext context, Object errorObj, StackTrace stackTrace) {
+    if (error != null) {
+      return error!(context, errorObj, stackTrace);
+    }
+    return ErrorWidget.withDetails(
+      message: 'Uncaught error in WhatAsyncBuilder: $errorObj',
+      error: errorObj is FlutterError ? errorObj : null,
+    );
+  }
+
+  Widget _buildEmptyOrLoading(BuildContext context, Object? emptyReason) {
+    if (empty != null && emptyReason != null) {
       return empty!(context);
     }
-
     return loading(context);
   }
 }

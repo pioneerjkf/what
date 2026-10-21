@@ -105,7 +105,7 @@ class AvoidUntrackedWhatRead extends DartLintRule {
       }
     });
 
-    // 3. MethodInvocation (e.g. counter.dataOrElse(...), userWhat.match(...), untracked.state(...))
+    // 3. MethodInvocation (e.g. counter.dataOrElse(...), untracked.state(...))
     context.registry.addMethodInvocation((node) {
       final methodName = node.methodName.name;
       if (WhatTypeChecker.isPipelineReadMethod(methodName)) {

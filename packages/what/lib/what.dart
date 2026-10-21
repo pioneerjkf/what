@@ -110,12 +110,12 @@
 ///   counter.data = 5;
 ///   print(untracked(doubled)); // 10
 ///
-///   // 4. Safe pattern matching via snapshot
-///   final message = counter.snapshot.match(
-///     data: (val) => 'Count is $val',
-///     empty: () => 'No data yet',
-///     error: (err, stack) => 'Error: $err',
-///   );
+///   // 4. Safe pattern matching via phase (Dart 3 Exhaustive Switch)
+///   final message = switch (counter.phase) {
+///     WhatPhase.valid => 'Count is ${counter.data}',
+///     WhatPhase.empty => 'No data yet',
+///     WhatPhase.error => 'Error: ${counter.error}',
+///   };
 ///   print(message);
 /// }
 /// ```

@@ -72,11 +72,12 @@ part of '../framework.dart';
 ///
 /// // Pattern matching on upstream node state without short-circuiting:
 /// final status = computed((via) {
-///   return via.state(firstName.what).match(
-///     data: (name) => 'User: $name',
-///     empty: () => 'No user',
-///     error: (err, stack) => 'Error: $err',
-///   );
+///   final state = via.state(firstName.what);
+///   return switch (state.phase) {
+///     WhatPhase.valid => 'User: ${state.data}',
+///     WhatPhase.empty => 'No user',
+///     WhatPhase.error => 'Error: ${state.error}',
+///   };
 /// });
 /// ```
 abstract interface class WhatVia {
@@ -124,13 +125,14 @@ abstract interface class WhatVia {
   ///   return userState.data.name;
   /// });
   ///
-  /// // 2. Exhaustive 3-phase pattern matching via WhatStateMatchExtension
+  /// // 2. Exhaustive 3-phase pattern matching via phase (Dart 3 switch)
   /// final status = computed((via) {
-  ///   return via.state(user.what).match(
-  ///     data: (user) => 'Welcome, ${user.name}!',
-  ///     empty: () => 'Awaiting user sign-in',
-  ///     error: (err, stack) => 'Authentication error: $err',
-  ///   );
+  ///   final userState = via.state(user.what);
+  ///   return switch (userState.phase) {
+  ///     WhatPhase.valid => 'Welcome, ${userState.data.name}!',
+  ///     WhatPhase.empty => 'Awaiting user sign-in',
+  ///     WhatPhase.error => 'Authentication error: ${userState.error}',
+  ///   };
   /// });
   /// ```
   WhatState<T> state<T>(What<T> what);

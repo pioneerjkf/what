@@ -70,7 +70,7 @@ part of '../framework.dart';
 ///    * **Error** ([WhatState.hasError] == true): Exception state encapsulating [WhatState.error] and optional [WhatState.stackTrace].
 /// 3. **Sound Fail-Fast Extraction**: Reading via [untracked] while in Empty or Error state throws
 ///    [WhatSnapshotExtractionException]. Use `untracked.state(node).dataOrNull`, `untracked.state(node).dataOrElse()`,
-///    or `untracked.state(node).match()` for safe total pattern matching.
+///    or native Dart 3 `switch (untracked.state(node).phase)` for safe total pattern matching.
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - Do NOT read reactive nodes untracked directly inside a [computed] or `Effect.via` scope without

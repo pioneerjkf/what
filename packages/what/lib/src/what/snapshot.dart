@@ -52,11 +52,11 @@ part of '../framework.dart';
 /// ```dart
 /// // [Recommended] Safe extraction with fallback or pattern matching
 /// final name = snapshot.dataOrNull ?? 'Guest';
-/// // Or exhaustive pattern matching:
-/// final message = switch (snapshot) {
-///   WhatSnapshot(hasData: true, data: final val) => 'Value: $val',
-///   WhatSnapshot(isEmpty: true) => 'No data available',
-///   WhatSnapshot(hasError: true, error: final err) => 'Failed: $err',
+/// // Or exhaustive pattern matching via phase:
+/// final message = switch (snapshot.phase) {
+///   WhatPhase.valid => 'Value: ${snapshot.data}',
+///   WhatPhase.empty => 'No data available',
+///   WhatPhase.error => 'Failed: ${snapshot.error}',
 /// };
 /// ```
 @immutable
@@ -106,6 +106,10 @@ sealed class WhatSnapshot<T> implements WhatState<T> {
   /// print(emptySnapshot.emptyReason); // 'AwaitingNetworkResponse'
   /// ```
   const factory WhatSnapshot.empty([Object? emptyReason]) = _EmptyWhatSnapshot<T>;
+
+  /// The operational phase ([WhatPhase.valid], [WhatPhase.empty], or [WhatPhase.error]) of this snapshot.
+  @override
+  WhatPhase get phase;
 
   /// Extracts the underlying data synchronously from this snapshot.
   ///

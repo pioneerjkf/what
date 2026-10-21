@@ -101,11 +101,13 @@ void main() {
     });
 
     test('WhatDebugSnapshot describes empty and error states correctly', () {
+      final validNode = WhatController<double>(3.14)..debugLabel = 'validNode';
       final lateNode = WhatController<String>.late()..debugLabel = 'lateNode';
       final errorNode = WhatController<int>.error('Failed').withDebugLabel('errorNode');
 
       final terminal = RawViaTerminal<void>(
         (via) {
+          via.state(validNode.what);
           via.state(lateNode.what);
           via.state(errorNode.what);
         },
@@ -114,15 +116,31 @@ void main() {
 
       terminal.evaluate();
       final deps = terminal.debugDependencies;
+      final validDep = deps.firstWhere((d) => d.debugLabel == 'validNode');
       final lateDep = deps.firstWhere((d) => d.debugLabel == 'lateNode');
       final errDep = deps.firstWhere((d) => d.debugLabel == 'errorNode');
 
+      expect(validDep.phase, equals(WhatPhase.valid));
+      expect(validDep.hasData, isTrue);
+      expect(validDep.data, equals(3.14));
+
+      expect(lateDep.phase, equals(WhatPhase.empty));
       expect(lateDep.isEmpty, isTrue);
       expect(lateDep.description, contains('<empty>'));
 
+      expect(errDep.phase, equals(WhatPhase.error));
       expect(errDep.hasError, isTrue);
       expect(errDep.error, equals('Failed'));
       expect(errDep.description, contains('Error: Failed'));
+
+      // Verify switch (snapshot.phase) exhaustiveness and jump table behavior
+      final labels = deps.map((d) => switch (d.phase) {
+        WhatPhase.valid => 'Data: ${d.data}',
+        WhatPhase.empty => 'Empty',
+        WhatPhase.error => 'Error: ${d.error}',
+      }).toList();
+
+      expect(labels, equals(['Data: 3.14', 'Empty', 'Error: Failed']));
 
       terminal.deactivate();
     });

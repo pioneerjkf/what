@@ -7,80 +7,77 @@ import 'package:test/test.dart';
 import '../../test_utils.dart';
 
 void main() {
-  group('What.match / matchOrElse / matchOrNull Tests', () {
-    test('1. Valid, Late, Error WhatController branching with match', () {
+  group('What State & Node switch (phase) Pattern Matching Tests', () {
+    test('1. Valid, Late, Error WhatController branching with switch (phase)', () {
       final validWhat = WhatController('Lotus');
       final lateWhat = WhatController<String>.late();
       final errorWhat = What<String>.error('error payload');
 
-      expect(
-        validWhat.match(
-          data: (val) => 'Data: $val',
-          empty: () => 'Empty',
-          error: (e, s) => 'Error: $e',
-        ),
-        'Data: Lotus',
-      );
+      final validLabel = switch (validWhat.phase) {
+        WhatPhase.valid => 'Data: ${validWhat.data}',
+        WhatPhase.empty => 'Empty',
+        WhatPhase.error => 'Error: ${validWhat.error}',
+      };
+      expect(validLabel, 'Data: Lotus');
 
-      expect(
-        lateWhat.match(
-          data: (val) => 'Data: $val',
-          empty: () => 'Empty',
-          error: (e, s) => 'Error: $e',
-        ),
-        'Empty',
-      );
+      final lateLabel = switch (lateWhat.phase) {
+        WhatPhase.valid => 'Data: ${lateWhat.data}',
+        WhatPhase.empty => 'Empty',
+        WhatPhase.error => 'Error: ${lateWhat.error}',
+      };
+      expect(lateLabel, 'Empty');
 
-      expect(
-        untracked.state(errorWhat).match(
-          data: (val) => 'Data: $val',
-          empty: () => 'Empty',
-          error: (e, s) => 'Error: $e',
-        ),
-        'Error: error payload',
-      );
+      final errorState = untracked.state(errorWhat);
+      final errorLabel = switch (errorState.phase) {
+        WhatPhase.valid => 'Data: ${errorState.data}',
+        WhatPhase.empty => 'Empty',
+        WhatPhase.error => 'Error: ${errorState.error}',
+      };
+      expect(errorLabel, 'Error: error payload');
     });
 
-    test('2. WhatController branching with matchOrElse', () {
+    test('2. Fallback branching with hasData ternary', () {
       final validWhat = WhatController('Lotus');
       final lateWhat = WhatController<String>.late();
 
-      expect(
-        validWhat.matchOrElse(
-          data: (val) => 'Value: $val',
-          orElse: () => 'Fallback',
-        ),
-        'Value: Lotus',
-      );
+      final validResult = validWhat.hasData ? 'Value: ${validWhat.data}' : 'Fallback';
+      expect(validResult, 'Value: Lotus');
 
-      expect(
-        lateWhat.matchOrElse(
-          data: (val) => 'Value: $val',
-          orElse: () => 'Fallback',
-        ),
-        'Fallback',
-      );
+      final lateResult = lateWhat.hasData ? 'Value: ${lateWhat.data}' : 'Fallback';
+      expect(lateResult, 'Fallback');
     });
 
-    test('3. WhatController branching with matchOrNull', () {
+    test('3. Conditional null-coalescing extraction with hasData / hasError / dataOrNull', () {
       final validWhat = WhatController('Lotus');
       final lateWhat = WhatController<String>.late();
       final errorWhat = What<String>.error('error payload');
 
-      expect(validWhat.matchOrNull(data: (val) => val.length), 5);
-      expect(lateWhat.matchOrNull(data: (val) => val.length), isNull);
-      expect(untracked.state(errorWhat).matchOrNull(error: (e, s) => e), 'error payload');
+      // Idiomatic ternary extraction via hasData / hasError
+      final validLen = validWhat.hasData ? validWhat.data.length : null;
+      expect(validLen, 5);
+
+      final lateLen = lateWhat.hasData ? lateWhat.data.length : null;
+      expect(lateLen, isNull);
+
+      final errorState = untracked.state(errorWhat);
+      final errVal = errorState.hasError ? errorState.error : null;
+      expect(errVal, 'error payload');
+
+      // Direct optional null-safe access via dataOrNull
+      expect(validWhat.dataOrNull?.length, 5);
+      expect(lateWhat.dataOrNull?.length, isNull);
     });
 
-    test('4. Auto-tracking inside computed() when calling .match()', () {
+    test('4. Auto-tracking inside computed() when branching on switch (via.state.phase)', () {
       final count = WhatController(10);
 
       final statusMessage = computed((via) {
-        return via.state(count.what).match(
-              data: (val) => 'Count is $val',
-              empty: () => 'No count',
-              error: (e, s) => 'Count error',
-            );
+        final state = via.state(count.what);
+        return switch (state.phase) {
+          WhatPhase.valid => 'Count is ${state.data}',
+          WhatPhase.empty => 'No count',
+          WhatPhase.error => 'Count error',
+        };
       });
 
       expect(untracked(statusMessage), 'Count is 10');
@@ -89,17 +86,13 @@ void main() {
       expect(untracked(statusMessage), 'Count is 20');
     });
 
-    test('5. Auto-tracking inside effect() when calling .matchOrElse()', () async {
+    test('5. Auto-tracking inside effect() when reading via.state with hasData ternary', () async {
       final text = WhatController('Initial');
       final logs = <String>[];
 
       final dispose = effect((WhatVia via) {
-        logs.add(
-          via.state(text.what).matchOrElse(
-                data: (val) => 'Logged: $val',
-                orElse: () => 'Logged: None',
-              ),
-        );
+        final state = via.state(text.what);
+        logs.add(state.hasData ? 'Logged: ${state.data}' : 'Logged: None');
       });
 
       // Initial execution happened synchronously or microtask
@@ -113,20 +106,18 @@ void main() {
       dispose();
     });
 
-    test('6. What list match, matchOrElse, matchOrNull', () {
+    test('6. What list untracked.state branching with switch (phase)', () {
       final r1 = WhatController(10);
       final r2 = WhatController(20);
       final group = What.constant([r1.what, r2.what]);
 
-      final result = untracked.state(group).match(
-        data: (whats) => whats.length,
-        empty: () => 0,
-        error: (e, s) => -1,
-      );
+      final state = untracked.state(group);
+      final result = switch (state.phase) {
+        WhatPhase.valid => state.data.length,
+        WhatPhase.empty => 0,
+        WhatPhase.error => -1,
+      };
       expect(result, 2);
-
-      expect(untracked.state(group).matchOrElse(data: (g) => g.length, orElse: () => 0), 2);
-      expect(untracked.state(group).matchOrNull(data: (g) => g.length), 2);
     });
   });
 }

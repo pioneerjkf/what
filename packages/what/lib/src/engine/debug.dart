@@ -20,9 +20,7 @@ final class WhatDebugSnapshot {
     this.isActive = false,
     this.targetCount = 0,
     this.customProperties = const {},
-    this.hasData = false,
-    this.hasError = false,
-    this.isEmpty = false,
+    this.phase = WhatPhase.empty,
     this.data,
     this.error,
     this.emptyReason,
@@ -61,14 +59,17 @@ final class WhatDebugSnapshot {
 
   // --- Reactive State Payload ---
 
+  /// The operational phase of the observed reactive node.
+  final WhatPhase phase;
+
   /// Whether the node currently holds a valid data payload.
-  final bool hasData;
+  bool get hasData => phase == WhatPhase.valid;
 
   /// Whether the node is currently in an error state.
-  final bool hasError;
+  bool get hasError => phase == WhatPhase.error;
 
   /// Whether the node is currently in an uninitialized or empty state.
-  final bool isEmpty;
+  bool get isEmpty => phase == WhatPhase.empty;
 
   /// The current data payload if [hasData] is true; otherwise null.
   final Object? data;
@@ -83,20 +84,12 @@ final class WhatDebugSnapshot {
   String get name => debugLabel ?? nodeType.toString();
 
   /// A formatted description of the dependency state.
-  String get description {
-    if (hasData) {
-      final formatted = _formatDebugPayload(data);
-      return '$formatted (v$version)';
-    }
-    if (hasError) {
-      return 'Error: $error (v$version)';
-    }
-    if (isEmpty) {
-      final reasonStr = emptyReason != null ? ' ($emptyReason)' : '';
-      return '<empty$reasonStr> (v$version)';
-    }
-    return 'unknown (v$version)';
-  }
+  String get description => switch (phase) {
+        WhatPhase.valid => '${_formatDebugPayload(data)} (v$version)',
+        WhatPhase.error => 'Error: $error (v$version)',
+        WhatPhase.empty =>
+          '<empty${emptyReason != null ? ' ($emptyReason)' : ''}> (v$version)',
+      };
 
   static String _formatDebugPayload(Object? payload) {
     if (payload == null) return 'null';
@@ -114,13 +107,11 @@ final class WhatDebugSnapshot {
   String toString() {
     final label = debugLabel != null ? '$debugLabel ($nodeType)' : nodeType.toString();
     final custom = customProperties.isNotEmpty ? ', custom: $customProperties' : '';
-    final stateStr = hasData
-        ? ', data: ${_formatDebugPayload(data)}'
-        : hasError
-            ? ', error: $error'
-            : isEmpty
-                ? ', empty'
-                : '';
+    final stateStr = switch (phase) {
+      WhatPhase.valid => ', data: ${_formatDebugPayload(data)}',
+      WhatPhase.error => ', error: $error',
+      WhatPhase.empty => ', empty',
+    };
     return '[$label] active: $isActive, targets: $targetCount, version: $version$stateStr$custom';
   }
 }

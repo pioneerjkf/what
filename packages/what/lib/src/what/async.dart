@@ -126,7 +126,7 @@ extension StreamWhatExtension<T> on Stream<T> {
   /// 1. **Lifecycle-Coupled Subscription**: Prevents memory leaks by cancelling subscriptions when unobserved.
   /// 2. **Microtask Cancellation Coalescing**: Supports [graceful] deferral to prevent stream flickering.
   /// 3. **Built-In Distinct Filtering**: Suppresses duplicate consecutive event pulses.
-  /// 4. **Exhaustive Pattern Matching**: Supports [WhatStateMatchExtension.match], [WhatStateMatchExtension.matchOrElse], and [WhatStateMatchExtension.matchOrNull] for clean UI branching.
+  /// 4. **Exhaustive Pattern Matching**: Native Dart 3 `switch (phase)` enables zero-allocation branch jumping for clean UI mapping.
   ///
   /// * [initialFactory]: Optional callback providing an initial value before the Stream emits its first event.
   /// * [onError]: Optional error recovery callback invoked if the Stream emits an error event.
@@ -173,11 +173,11 @@ extension StreamWhatExtension<T> on Stream<T> {
   ///   graceful: graceful,
   /// );
   ///
-  /// final label = untracked.state(sensorWhat).match(
-  ///   data: (value) => 'Reading: $value',
-  ///   empty: () => 'Sensor calibrating...',
-  ///   error: (err, stack) => 'Sensor failure: $err',
-  /// );
+  /// final label = switch (untracked.state(sensorWhat).phase) {
+  ///   WhatPhase.valid => 'Reading: ${untracked(sensorWhat)}',
+  ///   WhatPhase.empty => 'Sensor calibrating...',
+  ///   WhatPhase.error => 'Sensor failure: ${untracked.state(sensorWhat).error}',
+  /// };
   /// ```
   @pragma('vm:prefer-inline')
   What<T> toWhat({

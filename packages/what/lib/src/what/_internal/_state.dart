@@ -41,6 +41,10 @@ base mixin _WhatStateMixin<T> implements WhatState<T> {
 
   @override
   @pragma('vm:prefer-inline')
+  WhatPhase get phase => _read().phase;
+
+  @override
+  @pragma('vm:prefer-inline')
   T get data => _read().data;
 
   @override
@@ -93,6 +97,9 @@ base mixin _WhatStateMixin<T> implements WhatState<T> {
 sealed class _WhatState<T> implements WhatState<T> {
   const _WhatState();
 
+  @override
+  WhatPhase get phase;
+
   /// Central factory translating caught derivation exceptions or short-circuits
   /// into the proper [_WhatState<T>] representation.
   @pragma('vm:prefer-inline')
@@ -143,6 +150,10 @@ final class _ValidWhatState<T> extends _WhatState<T> {
   void update(T nextData) {
     data = nextData;
   }
+
+  @override
+  @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.valid;
 
   @override
   @pragma('vm:prefer-inline')
@@ -204,6 +215,10 @@ final class _EmptyWhatState<T> extends _WhatState<T> {
 
   @override
   @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.empty;
+
+  @override
+  @pragma('vm:prefer-inline')
   bool get hasData => false;
 
   @override
@@ -260,6 +275,10 @@ final class _ErrorWhatState<T> extends _WhatState<T> {
 
   @override
   final StackTrace stackTrace;
+
+  @override
+  @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.error;
 
   @override
   @pragma('vm:prefer-inline')

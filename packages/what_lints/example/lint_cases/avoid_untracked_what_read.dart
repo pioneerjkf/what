@@ -86,11 +86,14 @@ final goodSnapshotVar = computed((via) {
 });
 
 // #case avoid_untracked_what_read/good/regression-P2-snapshot-match-after-via
-final goodSnapshotMatch = computed((via) => via.state(count).snapshot.match(
-      data: (v) => v,
-      empty: () => 0,
-      error: (e, s) => -1,
-    ));
+final goodSnapshotMatch = computed((via) {
+  final snap = via.state(count).snapshot;
+  return switch (snap.phase) {
+    WhatPhase.valid => snap.data,
+    WhatPhase.empty => 0,
+    WhatPhase.error => -1,
+  };
+});
 
 // #case avoid_untracked_what_read/good/regression-P3-aliased-via-result
 final goodAlias = computed((via) {
@@ -132,10 +135,10 @@ final class GoodTrackedStateReadInClosure extends WhatWidget {
   @override
   Widget build(BuildContext context, WhatVia via) {
     final state = via.state(count);
-    return state.match(
-      data: (v) => Text('Count: $v'),
-      empty: () => Text('Empty (${state.emptyReason})'),
-      error: (e, s) => Text('Error: $e'),
-    );
+    return switch (state.phase) {
+      WhatPhase.valid => Text('Count: ${state.data}'),
+      WhatPhase.empty => Text('Empty (${state.emptyReason})'),
+      WhatPhase.error => Text('Error: ${state.error}'),
+    };
   }
 }

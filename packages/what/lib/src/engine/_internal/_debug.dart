@@ -54,7 +54,7 @@ WhatDebugSnapshot _createDebugSnapshot(What node) {
     final source = delta._source;
     custom['activeSource'] = _debugLabels[source] ?? source.runtimeType.toString();
   } else if (target case final _ManagedWhat managed) {
-    custom['hasResource'] = managed._state != null && managed._state!.hasData;
+    custom['hasResource'] = managed._state?.phase == WhatPhase.valid;
     if (managed._state case final state?) {
       custom['stateType'] = state.runtimeType.toString();
     }
@@ -73,37 +73,46 @@ WhatDebugSnapshot _createDebugSnapshot(What node) {
       isActive: target.isActive,
       targetCount: count,
       customProperties: custom,
-      hasData: false,
-      hasError: false,
-      isEmpty: true,
-      data: null,
-      error: null,
+      phase: WhatPhase.empty,
       emptyReason: 'pending',
     );
   }
 
-  final bool hasData = state.hasData;
-  final bool hasError = state.hasError;
-  final bool isEmpty = state.isEmpty;
-  final Object? data = hasData ? state.data : null;
-  final Object? error = hasError ? state.error : null;
-  final Object? emptyReason = isEmpty ? state.emptyReason : null;
-
-  return WhatDebugSnapshot(
-    node: node,
-    debugLabel: label,
-    nodeType: node.runtimeType,
-    version: target._version,
-    isActive: target.isActive,
-    targetCount: count,
-    customProperties: custom,
-    hasData: hasData,
-    hasError: hasError,
-    isEmpty: isEmpty,
-    data: data,
-    error: error,
-    emptyReason: emptyReason,
-  );
+  return switch (state.phase) {
+    WhatPhase.valid => WhatDebugSnapshot(
+        node: node,
+        debugLabel: label,
+        nodeType: node.runtimeType,
+        version: target._version,
+        isActive: target.isActive,
+        targetCount: count,
+        customProperties: custom,
+        phase: WhatPhase.valid,
+        data: state.data,
+      ),
+    WhatPhase.empty => WhatDebugSnapshot(
+        node: node,
+        debugLabel: label,
+        nodeType: node.runtimeType,
+        version: target._version,
+        isActive: target.isActive,
+        targetCount: count,
+        customProperties: custom,
+        phase: WhatPhase.empty,
+        emptyReason: state.emptyReason,
+      ),
+    WhatPhase.error => WhatDebugSnapshot(
+        node: node,
+        debugLabel: label,
+        nodeType: node.runtimeType,
+        version: target._version,
+        isActive: target.isActive,
+        targetCount: count,
+        customProperties: custom,
+        phase: WhatPhase.error,
+        error: state.error,
+      ),
+  };
 }
 
 String _formatDebugSummary(_Node target) {

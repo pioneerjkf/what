@@ -57,13 +57,17 @@ void main() {
   final errorNode = What<String>.error(Exception('Connection timeout'));
   print('State: hasError=${untracked.state(errorNode).hasError}, error="${untracked.state(errorNode).error}"\n');
 
-  print('--- 4. Safe Pattern Matching via snapshot.match ---');
+  print('--- 4. Safe Pattern Matching via untracked.state(node).phase ---');
   void printStatus(What<String> node) {
-    untracked.state(node).snapshot.match(
-      data: (value) => print('  -> [DATA]: $value'),
-      empty: () => print('  -> [EMPTY]: Unready (${untracked.state(node).emptyReason})'),
-      error: (err, _) => print('  -> [ERROR]: Failed with $err'),
-    );
+    final state = untracked.state(node);
+    switch (state.phase) {
+      case WhatPhase.valid:
+        print('  -> [VALID]: ${untracked(node)}');
+      case WhatPhase.empty:
+        print('  -> [EMPTY]: Unready (${state.emptyReason})');
+      case WhatPhase.error:
+        print('  -> [ERROR]: Failed with ${state.error}');
+    }
   }
 
   printStatus(validNode);

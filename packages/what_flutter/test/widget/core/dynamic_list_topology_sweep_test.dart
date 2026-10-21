@@ -621,11 +621,11 @@ void main() {
                 final list = via(listController.what);
                 final items = list.map((item) {
                   final s = via.state(item);
-                  return s.match(
-                    data: (v) => 'DATA:$v',
-                    empty: () => 'EMPTY',
-                    error: (e, _) => 'ERR:$e',
-                  );
+                  return switch (s.phase) {
+                    WhatPhase.valid => 'DATA:${s.data}',
+                    WhatPhase.empty => 'EMPTY',
+                    WhatPhase.error => 'ERR:${s.error}',
+                  };
                 }).join(' | ');
                 return Text('ListUI: $items');
               }),

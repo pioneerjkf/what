@@ -529,11 +529,10 @@ void main() {
     group('5. Dart 3 Pattern Matching on WhatSnapshot & WhatState', () {
       test('5.1 Pattern matching on emptyReason in Dart 3 switch expressions', () {
         String classify(WhatSnapshot<String> s) => switch (s) {
-              WhatSnapshot(hasData: true, data: final d) => 'Data: $d',
-              WhatSnapshot(isEmpty: true, emptyReason: 'WaitingAuth') => 'AuthRequired',
-              WhatSnapshot(isEmpty: true, emptyReason: final r) => 'Empty: $r',
-              WhatSnapshot(hasError: true, error: final e) => 'Error: $e',
-              _ => 'Unknown',
+              WhatSnapshot(phase: WhatPhase.valid, :final data) => 'Data: $data',
+              WhatSnapshot(phase: WhatPhase.empty, emptyReason: 'WaitingAuth') => 'AuthRequired',
+              WhatSnapshot(phase: WhatPhase.empty, :final emptyReason) => 'Empty: $emptyReason',
+              WhatSnapshot(phase: WhatPhase.error, :final error) => 'Error: $error',
             };
 
         expect(classify(const WhatSnapshot('Hello')), 'Data: Hello');

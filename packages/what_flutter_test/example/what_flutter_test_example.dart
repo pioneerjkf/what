@@ -24,11 +24,11 @@ base class UserHeaderWidget extends WhatWidget {
     final userWhat = context.whatOf<User>();
     final userState = via.state(userWhat);
 
-    return userState.match(
-      data: (user) => Text('Welcome, ${user.name} (${user.email})'),
-      empty: () => const Text('Loading user profile...'),
-      error: (error, stack) => Text('Failed to load user: $error'),
-    );
+    return switch (userState.phase) {
+      WhatPhase.valid => Text('Welcome, ${userState.data.name} (${userState.data.email})'),
+      WhatPhase.empty => const Text('Loading user profile...'),
+      WhatPhase.error => Text('Failed to load user: ${userState.error}'),
+    };
   }
 }
 

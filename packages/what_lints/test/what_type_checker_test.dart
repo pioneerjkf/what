@@ -92,6 +92,7 @@ void main() {
     test(
         'isPipelineReadProperty identifies valid reactive payload getters on WhatState',
         () {
+      expect(WhatTypeChecker.isPipelineReadProperty('phase'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('data'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('dataOrNull'), isTrue);
       expect(WhatTypeChecker.isPipelineReadProperty('snapshot'), isTrue);
@@ -114,13 +115,11 @@ void main() {
         'isPipelineReadMethod identifies valid reactive payload extraction methods on WhatState',
         () {
       expect(WhatTypeChecker.isPipelineReadMethod('dataOrElse'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('match'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('matchOrElse'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('matchOrNull'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('when'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('whenOrElse'), isTrue);
-      expect(WhatTypeChecker.isPipelineReadMethod('whenOrNull'), isTrue);
 
+      // Obsolete / Purged legacy methods (must evaluate to false)
+      expect(WhatTypeChecker.isPipelineReadMethod('match'), isFalse);
+      expect(WhatTypeChecker.isPipelineReadMethod('matchOrElse'), isFalse);
+      expect(WhatTypeChecker.isPipelineReadMethod('matchOrNull'), isFalse);
       expect(WhatTypeChecker.isPipelineReadMethod('map'), isFalse);
       expect(WhatTypeChecker.isPipelineReadMethod('set'), isFalse);
       expect(WhatTypeChecker.isPipelineReadMethod(null), isFalse);

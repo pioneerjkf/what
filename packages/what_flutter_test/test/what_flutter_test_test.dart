@@ -22,11 +22,11 @@ base class UserProfileWidget extends WhatWidget {
     final userWhat = context.whatOf<UserProfile>();
     final userState = via.state(userWhat);
 
-    return userState.match(
-      data: (user) => Text('User: ${user.name}'),
-      empty: () => Text('No profile (${userState.emptyReason})'),
-      error: (error, stack) => Text('Failed: $error'),
-    );
+    return switch (userState.phase) {
+      WhatPhase.valid => Text('User: ${userState.data.name}'),
+      WhatPhase.empty => Text('No profile (${userState.emptyReason})'),
+      WhatPhase.error => Text('Failed: ${userState.error}'),
+    };
   }
 }
 

@@ -284,6 +284,7 @@ abstract final class WhatTypeChecker {
 
   /// Verified member properties that read reactive node payload on `WhatState`.
   static const _pipelineReadProperties = {
+    'phase',
     'data',
     'dataOrNull',
     'snapshot',
@@ -298,12 +299,6 @@ abstract final class WhatTypeChecker {
   /// Verified member methods that evaluate and read reactive node payload on `WhatState`.
   static const _pipelineReadMethods = {
     'dataOrElse',
-    'match',
-    'matchOrElse',
-    'matchOrNull',
-    'when',
-    'whenOrElse',
-    'whenOrNull',
   };
 
   /// Returns `true` if the given property [name] represents a reactive payload extraction getter.
@@ -437,7 +432,7 @@ abstract final class WhatTypeChecker {
       // 2.1. Record tuple functor: (whatA, whatB).build(...)
       if (targetType is RecordType) return true;
 
-      // 2.2. What reactive state node methods: what.build(...), what.match(...)
+      // 2.2. What reactive state node methods: what.map(...), what.build(...)
       if (isWhatType(targetType)) return true;
 
       // 2.3. What Animation Controller functors: controller.animate(...)

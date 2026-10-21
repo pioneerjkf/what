@@ -1004,11 +1004,11 @@ void main() {
 
         final downstream = computed<String>((via) {
           final state = via.state(listController.what);
-          return state.match(
-            data: (list) => 'DATA:${list.map((e) => via(e)).join(',')}',
-            empty: () => 'LIST_EMPTY',
-            error: (err, _) => 'LIST_ERROR:$err',
-          );
+          return switch (state.phase) {
+            WhatPhase.valid => 'DATA:${state.data.map((e) => via(e)).join(',')}',
+            WhatPhase.empty => 'LIST_EMPTY',
+            WhatPhase.error => 'LIST_ERROR:${state.error}',
+          };
         });
 
         int dirtyCount = 0;

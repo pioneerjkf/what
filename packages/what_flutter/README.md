@@ -531,14 +531,15 @@ Ad-hoc state management libraries treat state as either an ambient value or an u
 ```
 
 * **Sound Fail-Fast Extraction**: Reading `untracked(node)` while in an `Empty` or `Error` state synchronously throws `WhatSnapshotExtractionException`. Bugs are exposed immediately at the call-site rather than mutating silent UI states.
-* **Exhaustive Zero-Heap Pattern Matching**: Use `untracked.state(node).match()` or `untracked.state(node).matchOrElse()` to map states directly to UI or strings with zero intermediate collections and zero graph edge creation:
+* **Exhaustive Zero-Heap Pattern Matching**: Use native Dart 3 `switch (untracked.state(node).phase)` to map states directly to UI or strings with zero closure allocations and zero graph edge creation:
 
 ```dart
-final statusWidget = untracked.state(stateWhat).match(
-  data: (value) => Text('Active: $value'),
-  empty: () => const Text('Awaiting input...'),
-  error: (err, stack) => Text('Failed: $err', style: const TextStyle(color: Colors.red)),
-);
+final state = untracked.state(stateWhat);
+final statusWidget = switch (state.phase) {
+  WhatPhase.valid => Text('Active: ${state.data}'),
+  WhatPhase.empty => const Text('Awaiting input...'),
+  WhatPhase.error => Text('Failed: ${state.error}', style: const TextStyle(color: Colors.red)),
+};
 ```
 
 ---

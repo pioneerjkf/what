@@ -35,7 +35,7 @@ abstract class WhatException implements Exception {
 /// ## Actionable Resolution
 /// 1. Use `.dataOrNull` or `.dataOrElse(() => fallback)` to handle dormant or failed states gracefully.
 /// 2. Check `.hasData` before extracting `.data`.
-/// 3. Use exhaustive pattern matching via `.match()` or `switch (snapshot)`.
+/// 3. Use exhaustive pattern matching via `switch (snapshot.phase)` or `switch (snapshot)`.
 ///
 /// **BAD:**
 /// ```dart

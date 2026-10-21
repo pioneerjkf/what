@@ -60,12 +60,15 @@ void main() async {
   await Future<void>.delayed(const Duration(milliseconds: 150));
   await Future<void>.delayed(Duration.zero);
 
-  // 6. Safe 3-State FSM Snapshot Pattern Matching
-  untracked.state(searchResults).snapshot.match(
-    data: (items) => print('[FSM Snapshot] Confirmed valid results: ${items.length} items'),
-    empty: () => print('[FSM Snapshot] Pending or Empty'),
-    error: (err, _) => print('[FSM Snapshot] Error occurred: $err'),
-  );
+  // 6. Safe 3-State FSM Phase Pattern Matching (Dart 3 Exhaustive Switch)
+  final message = switch (untracked.state(searchResults).phase) {
+    WhatPhase.valid =>
+      '[FSM Phase] Confirmed valid results: ${untracked(searchResults).length} items',
+    WhatPhase.empty => '[FSM Phase] Pending or Empty',
+    WhatPhase.error =>
+      '[FSM Phase] Error occurred: ${untracked.state(searchResults).error}',
+  };
+  print(message);
 
   // 7. Discrete Signal Emission (Manual Refresh / Invalidation Trigger)
   print('\n-> Emitting manual refresh pulse (Pull-to-Refresh)');

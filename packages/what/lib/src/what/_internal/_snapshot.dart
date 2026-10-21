@@ -13,6 +13,10 @@ base class _ValidWhatSnapshot<T> implements WhatSnapshot<T> {
 
   @override
   @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.valid;
+
+  @override
+  @pragma('vm:prefer-inline')
   bool get hasData => true;
 
   @override
@@ -63,6 +67,10 @@ base class _ErrorWhatSnapshot<T> implements WhatSnapshot<T> {
   @override
   @pragma('vm:prefer-inline')
   WhatSnapshot<T> get snapshot => this;
+
+  @override
+  @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.error;
 
   @override
   @pragma('vm:prefer-inline')
@@ -123,6 +131,10 @@ base class _EmptyWhatSnapshot<T> implements WhatSnapshot<T> {
   @override
   @pragma('vm:prefer-inline')
   WhatSnapshot<T> get snapshot => this;
+
+  @override
+  @pragma('vm:prefer-inline')
+  WhatPhase get phase => WhatPhase.empty;
 
   @override
   @pragma('vm:prefer-inline')

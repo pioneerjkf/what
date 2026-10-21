@@ -16,9 +16,9 @@ part of '../framework.dart';
 /// Note that [What] itself does not implement [WhatState] directly; instead, it exposes
 /// an untracked live view via [WhatUntracked.state] or scoped tracking via [WhatVia.state].
 ///
-/// Guarantees consistent state interrogation ([WhatState.data], [WhatState.hasData], [WhatState.isEmpty],
+/// Guarantees consistent state interrogation ([WhatState.phase], [WhatState.data], [WhatState.hasData], [WhatState.isEmpty],
 /// [WhatState.emptyReason], [WhatState.hasError], [WhatState.error], [WhatState.stackTrace]) and declarative pattern
-/// matching via [WhatStateMatchExtension].
+/// matching via exhaustive Dart 3 switch on [WhatState.phase] or [WhatState].
 ///
 /// ## System Architectural Flow
 ///
@@ -63,7 +63,7 @@ part of '../framework.dart';
 ///    * **Empty** ([WhatState.isEmpty] == true): Uninitialized or dormant state with optional [WhatState.emptyReason].
 ///    * **Error** ([WhatState.hasError] == true): Failure state encapsulating [WhatState.error] and optional [WhatState.stackTrace].
 /// 3. **Sound Fail-Fast Extraction**: Reading [WhatState.data] while in Empty or Error state throws [WhatSnapshotExtractionException].
-///    Use [WhatState.dataOrNull], [WhatState.dataOrElse], or [WhatStateMatchExtension.match] for safe exhaustive pattern matching.
+///    Use [WhatState.dataOrNull], [WhatState.dataOrElse], or native Dart 3 `switch (state.phase)` for safe exhaustive pattern matching.
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - Do NOT read untracked values directly inside a [computed] or `Effect.via` scope without wrapping in `via(...)`,
@@ -95,7 +95,53 @@ part of '../framework.dart';
 /// count.data = 5;
 /// print(untracked(doubled)); // 10
 /// ```
+///
+/// The mutually exclusive operational phase of a [WhatState].
+///
+/// Every [WhatState] (including [WhatSnapshot] and [WhatController]) deterministically
+/// exists in exactly one of these three phases at any point in time:
+/// - [valid]: The state contains a safely extractable data payload of type `T` (including `null` for nullable types).
+/// - [empty]: The state is uninitialized or dormant, awaiting prerequisites (with optional [WhatState.emptyReason]).
+/// - [error]: The state is in a failure state holding an exception and stack trace.
+///
+/// ## Pattern Matching & State Handling Idioms
+///
+/// ### 1. Exhaustive 3-Phase Matching (UI Routing / Complete Handling)
+/// For complete, type-safe handling across all possible states:
+/// ```dart
+/// final message = switch (state.phase) {
+///   WhatPhase.valid => 'Data: ${state.data}',
+///   WhatPhase.empty => 'Waiting (reason: ${state.emptyReason})',
+///   WhatPhase.error => 'Failed: ${state.error}',
+/// };
+/// ```
+///
+/// ### 2. Inline Fallback & Extraction (Avoid verbose `_ =>` wildcards)
+/// For simple 2-phase fallback or optional extraction, prefer concise ternary expressions
+/// or built-in safe extractors over wildcard switch expressions:
+/// ```dart
+/// // Idiomatic ternary check
+/// final label = state.hasData ? 'Value: ${state.data}' : 'Fallback';
+///
+/// // Or using built-in safe accessors
+/// final value = state.dataOrElse(() => defaultValue);
+/// final optional = state.dataOrNull;
+/// ```
+enum WhatPhase {
+  /// Contains a safely extractable valid data payload (accessible via [WhatState.data]).
+  valid,
+
+  /// In an uninitialized or dormant state awaiting prerequisites (optional [WhatState.emptyReason]).
+  empty,
+
+  /// In a failure state encapsulating an exception (accessible via [WhatState.error]).
+  error;
+}
+
 abstract interface class WhatState<T> {
+  /// The operational phase ([WhatPhase.valid], [WhatPhase.empty], or [WhatPhase.error]) of this state.
+  WhatPhase get phase;
+
   /// The underlying snapshot representing this entity's current state.
   WhatSnapshot<T> get snapshot;
 
@@ -176,105 +222,6 @@ abstract interface class WhatState<T> {
   bool equals(covariant WhatState<T> other, [bool Function(T previous, T next)? equals]);
 }
 
-/// Declarative state pattern matching extension for all [WhatState] implementations
-/// (including [WhatSnapshot] and [WhatController]).
-extension WhatStateMatchExtension<T> on WhatState<T> {
-  /// Exhaustively branches on the three mutually exclusive states of this [WhatState].
-  ///
-  /// Exactly one of [data], [empty], or [error] will be executed, depending on
-  /// the current state. All three branches must be accounted for.
-  ///
-  /// Unlike [computed] which constructs a new derived [What] node in the reactive DAG,
-  /// [match] performs a synchronous, zero-heap evaluation that immediately returns an
-  /// arbitrary result value [R] (such as a UI widget or string label) without creating graph edges.
-  ///
-  /// * [data]: Callback invoked with the payload value when in a valid data state ([hasData] == true).
-  /// * [empty]: Callback invoked when in an uninitialized or dormant state ([isEmpty] == true).
-  /// * [error]: Callback invoked with the failure object and stack trace when in an error state ([hasError] == true).
-  ///
-  /// **Ensures:**
-  /// * Evaluates exactly one branch synchronously and returns its resulting [R] value.
-  ///
-  /// **Throws:**
-  /// * Throws [StateError] if [data] is omitted when [hasData] is `true`.
-  ///
-  /// ## Examples
-  /// ```dart
-  /// final label = state.match(
-  ///   data: (value) => 'Value: $value',
-  ///   empty: () => 'Loading...',
-  ///   error: (err, stack) => 'Error: $err',
-  /// );
-  /// ```
-  @pragma('vm:prefer-inline')
-  R match<R>({
-    required R Function(T data) data,
-    required R Function() empty,
-    required R Function(Object error, StackTrace stackTrace) error,
-  }) {
-    if (hasData) return data(this.data);
-    if (isEmpty) return empty();
-    return error(this.error, stackTrace);
-  }
-
-  /// Branches on a subset of states, falling back to [orElse] for any unhandled states.
-  ///
-  /// Any omitted branch ([data], [empty], or [error]) safely delegates to [orElse].
-  ///
-  /// * [data]: Optional callback invoked with the payload when in a valid data state.
-  /// * [empty]: Optional callback invoked when in an empty state.
-  /// * [error]: Optional callback invoked when in an error state.
-  /// * [orElse]: Fallback callback invoked when the active state does not have a dedicated handler.
-  ///
-  /// **Ensures:**
-  /// * Returns the result of the matching handler, or the result of [orElse] if not matched.
-  ///
-  /// ## Examples
-  /// ```dart
-  /// final label = state.matchOrElse(
-  ///   data: (value) => 'Value: $value',
-  ///   orElse: () => 'Not ready or failed',
-  /// );
-  /// ```
-  @pragma('vm:prefer-inline')
-  R matchOrElse<R>({
-    R Function(T data)? data,
-    R Function()? empty,
-    R Function(Object error, StackTrace stackTrace)? error,
-    required R Function() orElse,
-  }) {
-    if (hasData && data != null) return data(this.data);
-    if (isEmpty && empty != null) return empty();
-    if (hasError && error != null) return error(this.error, stackTrace);
-    return orElse();
-  }
-
-  /// Branches on a subset of states, returning `null` if the state is unhandled.
-  ///
-  /// * [data]: Optional callback invoked with the payload when in a valid data state.
-  /// * [empty]: Optional callback invoked when in an empty state.
-  /// * [error]: Optional callback invoked when in an error state.
-  ///
-  /// **Ensures:**
-  /// * Returns the result of the matching handler, or `null` if the state is not handled.
-  ///
-  /// ## Examples
-  /// ```dart
-  /// final value = state.matchOrNull(data: (v) => v); // Returns null if empty or error
-  /// ```
-  @pragma('vm:prefer-inline')
-  R? matchOrNull<R>({
-    R Function(T data)? data,
-    R Function()? empty,
-    R Function(Object error, StackTrace stackTrace)? error,
-  }) {
-    if (hasData && data != null) return data(this.data);
-    if (isEmpty && empty != null) return empty();
-    if (hasError && error != null) return error(this.error, stackTrace);
-    return null;
-  }
-}
-
 /// Convenience inspection and filtering methods on an [Iterable] of objects implementing [WhatState].
 ///
 /// Enables fluent queries across collections of stateful entities (such as [WhatController],
@@ -282,27 +229,31 @@ extension WhatStateMatchExtension<T> on WhatState<T> {
 extension WhatStateCollectionExtension<E extends WhatState<dynamic>> on Iterable<E> {
   /// Returns `true` if every entity in this collection holds a valid data payload ([WhatState.hasData] == `true`).
   @pragma('vm:prefer-inline')
-  bool allHaveData() => every((what) => what.hasData);
+  bool allHaveData() => every((what) => what.phase == WhatPhase.valid);
 
   /// Returns `true` if at least one entity in this collection is in an empty state ([WhatState.isEmpty] == `true`).
   @pragma('vm:prefer-inline')
-  bool hasAnyEmpty() => any((what) => what.isEmpty);
+  bool hasAnyEmpty() => any((what) => what.phase == WhatPhase.empty);
 
   /// Returns `true` if at least one entity in this collection is in an error state ([WhatState.hasError] == `true`).
   @pragma('vm:prefer-inline')
-  bool hasAnyError() => any((what) => what.hasError);
+  bool hasAnyError() => any((what) => what.phase == WhatPhase.error);
 
   /// Filters this collection, returning only the entities holding a valid data payload ([WhatState.hasData] == `true`).
   @pragma('vm:prefer-inline')
-  Iterable<E> whereHasData() => where((what) => what.hasData);
+  Iterable<E> whereHasData() => wherePhase(WhatPhase.valid);
 
   /// Filters this collection, returning only the entities in an empty state ([WhatState.isEmpty] == `true`).
   @pragma('vm:prefer-inline')
-  Iterable<E> whereEmpty() => where((what) => what.isEmpty);
+  Iterable<E> whereEmpty() => wherePhase(WhatPhase.empty);
 
   /// Filters this collection, returning only the entities in an error state ([WhatState.hasError] == `true`).
   @pragma('vm:prefer-inline')
-  Iterable<E> whereError() => where((what) => what.hasError);
+  Iterable<E> whereError() => wherePhase(WhatPhase.error);
+
+  /// Filters this collection, returning only the entities matching the specified operational [phase].
+  @pragma('vm:prefer-inline')
+  Iterable<E> wherePhase(WhatPhase phase) => where((what) => what.phase == phase);
 }
 
 // =============================================================================
