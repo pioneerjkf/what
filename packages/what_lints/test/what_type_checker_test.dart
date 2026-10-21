@@ -146,10 +146,8 @@ void main() {
       expect(WhatTypeChecker.isPipelineWriteMethod('decouple'), isTrue);
       expect(WhatTypeChecker.isPipelineWriteMethod('tryDecoupling'), isTrue);
 
-      // 4. Terminal source swaps
-      expect(WhatTypeChecker.isPipelineWriteMethod('swapSource'), isTrue);
-
       // Non-writing / Phantom methods
+      expect(WhatTypeChecker.isPipelineWriteMethod('swapSource'), isFalse);
       expect(WhatTypeChecker.isPipelineWriteMethod('swapSources'), isFalse);
       expect(WhatTypeChecker.isPipelineWriteMethod('dataOrElse'), isFalse);
       expect(WhatTypeChecker.isPipelineWriteMethod(null), isFalse);

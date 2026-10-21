@@ -49,45 +49,6 @@ void main() {
         terminal.deactivate();
       });
 
-      test('1.2 RawWhatTerminal.swapSource: Swapping to uncomputed lazy node synchronizes cleanly', () {
-        final ctrlA = WhatController(1);
-        final lazyA = computed((via) => via(ctrlA.what) * 10);
-
-        final ctrlB = WhatController(2);
-        var bComputeCount = 0;
-        final lazyB = computed((via) {
-          bComputeCount++;
-          return via(ctrlB.what) * 100;
-        });
-
-        var invalidationCount = 0;
-        final terminal = RawWhatTerminal(lazyA, onInvalidated: () => invalidationCount++);
-        terminal.activate();
-
-        expect(terminal.data, 10);
-        expect(invalidationCount, 0);
-
-        // Swap to lazyB while active (lazyB is uncomputed, version == 0)
-        terminal.swapSource(lazyB);
-        expect(bComputeCount, 0);
-
-        // Read through terminal: lazyB resolves, terminal must capture fresh version
-        expect(terminal.data, 200);
-        expect(bComputeCount, 1);
-
-        // Mutating old source ctrlA must NOT invalidate terminal
-        ctrlA.data = 999;
-        expect(invalidationCount, 0);
-
-        // Mutating new source ctrlB MUST invalidate terminal
-        ctrlB.data = 3;
-        expect(invalidationCount, 1);
-        expect(terminal.data, 300);
-        expect(bComputeCount, 2);
-
-        terminal.deactivate();
-      });
-
       test('1.3 RawWhatTerminal: Dormant deactivation, upstream mutation, and re-activation version sync', () {
         final root = WhatController(100);
         var compCount = 0;

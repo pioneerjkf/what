@@ -172,17 +172,23 @@ mixin _WhatTerminalElementMixin<T> on ComponentElement
   What<T> get _sourceWhat;
 
   @override
-  late final RawWhatTerminal<T> terminal = RawWhatTerminal<T>(
-    _sourceWhat,
-    onInvalidated: markNeedsBuild,
-    onUncaughtError: _handleTerminalUncaughtError,
-  );
+  late RawWhatTerminal<T> terminal = _createTerminal();
+
+  RawWhatTerminal<T> _createTerminal() => RawWhatTerminal<T>(
+        _sourceWhat,
+        onInvalidated: markNeedsBuild,
+        onUncaughtError: _handleTerminalUncaughtError,
+      );
 
   @mustCallSuper
   @override
   void update(covariant Widget newWidget) {
+    final oldWhat = _sourceWhat;
     super.update(newWidget);
-    terminal.swapSource(_sourceWhat);
+    if (!identical(oldWhat, _sourceWhat)) {
+      terminal.deactivate();
+      terminal = _createTerminal()..activate();
+    }
     rebuild(force: true);
   }
 }

@@ -258,7 +258,7 @@ base class RawComputedTerminal<T> extends _RawTerminal
 /// ## Architectural Benefits
 /// 1. **Zero-Copy SSOT Pass-Through**: Reads delegate directly to upstream source with zero heap caching.
 /// 2. **Synchronous Invalidation Dispatch**: No microtask latency for UI frame scheduling.
-/// 3. **Dynamic Source Swapping**: Supports [swapSource] without reallocating terminal handles.
+/// 3. **Immutable 1:1 Topology**: Fixed unary observation pipeline bound strictly to upstream source.
 ///
 /// **Warning (Anti-Pattern Prevention):**
 /// - **DO NOT** perform heavy synchronous calculations or state evaluations inside `onInvalidated`.
@@ -323,24 +323,4 @@ base class RawWhatTerminal<T> extends _RawTerminal
 
   /// The upstream [What] currently observed by this terminal.
   What<T> get source => _source;
-
-  /// Dynamically swaps the upstream source node without reallocating the terminal.
-  ///
-  /// * [newSource]: The new [What<T>] node to observe.
-  ///
-  /// **Ensures:**
-  /// * Re-links target edge to [newSource] if the terminal is currently active.
-  /// * Synchronizes pulled version with [newSource].
-  void swapSource(What<T> newSource) {
-    if (identical(_source, newSource)) return;
-    if (_lifecycle.isActive) {
-      _source._detachTargetEdgeOptimistically(this);
-      _source = newSource;
-      _source._attachTargetEdgeOptimistically(this);
-      _pulledVersion = _source._version;
-    } else {
-      _source = newSource;
-      _pulledVersion = newSource._version;
-    }
-  }
 }

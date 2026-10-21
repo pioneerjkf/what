@@ -174,7 +174,7 @@ For continuous updates on scalar or collection states, `_ValidWhatState` provide
 
 ### 5.5. `RawWhatTerminal` Zero-Copy Gateway & Hot Reload Integrity
 `RawWhatTerminal` bridges the pure LPDAG graph with Flutter elements as a zero-copy Single Source of Truth (SSOT) gateway:
-- **Zero-Allocation Source Swapping**: `terminal.swapSource(newWhat)` dynamically updates upstream observations without reconstructing terminal listeners or re-allocating heap handles.
+- **Immutable 1:1 Gateway**: `RawWhatTerminal` acts as a zero-copy Single Source of Truth (SSOT) pass-through bound directly to its upstream source without intermediate state caching or heap desynchronization.
 - **Synchronous Push Dispatch**: Invalidation pulses dispatch synchronously to `onInvalidated` via `_PushScope` without queueing delay, leaving scheduling (e.g. `element.markNeedsBuild()`) strictly to the consuming framework. For standalone asynchronous execution, `EffectRunner` provides lifecycle-managed scheduling.
 - **Hot-Reload Integrity**: Through `debugForceInvalidate()`, active terminals coordinate with element lifecycle hooks (`reassemble()`) to recursively invalidate upstream caches across the DAG, guaranteeing fresh state resolution across development cycles without cache desynchronization.
 

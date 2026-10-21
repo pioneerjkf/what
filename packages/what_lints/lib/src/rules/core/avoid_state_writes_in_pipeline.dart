@@ -48,7 +48,7 @@ class AvoidStateWritesInPipeline extends DartLintRule {
     DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
-    // 1. Direct registry hook for state write method invocations (controller.set, coupler.couple, terminal.swapSource, etc.)
+    // 1. Direct registry hook for state write method invocations (controller.set, coupler.couple, etc.)
     context.registry.addMethodInvocation((node) {
       if (WhatTypeChecker.isPipelineWriteMethod(node.methodName.name)) {
         if (!isFromWhatPackageOrTarget(node)) return;

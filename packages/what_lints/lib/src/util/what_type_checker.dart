@@ -340,9 +340,6 @@ abstract final class WhatTypeChecker {
     'coupleGuarded',
     'decouple',
     'tryDecoupling',
-
-    // 4. Terminal dynamic source swaps
-    'swapSource',
   };
 
   /// Verified member properties whose setters write state or modify topology.

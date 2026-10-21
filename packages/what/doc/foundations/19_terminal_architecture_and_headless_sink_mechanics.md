@@ -136,7 +136,7 @@ The engine provides three specialized concrete implementations under the [`RawTe
 │ • 1:1 Unary Terminal    │      │ • N-ary Dynamic Via     │      │ • N-ary Leaf Computed   │
 │ • Zero-Copy SSOT        │      │ • 1-Pass Epoch Sweep    │      │ • 0-Compute on Cache Hit│
 │ • Direct WhatState read │      │ • Explicit evaluate()   │      │ • Lazy Pull on .data    │
-│ • swapSource() support  │      │ • Tests dynamic branches│      │ • markDirty() support   │
+│ • Immutable 1:1 binding │      │ • Tests dynamic branches│      │ • markDirty() support   │
 └─────────────────────────┘      └─────────────────────────┘      └─────────────────────────┘
 ```
 
@@ -144,7 +144,7 @@ The engine provides three specialized concrete implementations under the [`RawTe
 
 | Terminal Class | Edge Cardinality | Evaluation Protocol | State Caching | Dynamic Dependency Sweeping | Primary Headless Use Case |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[`RawWhatTerminal<T>`](../../lib/src/engine/terminal.dart#L182)** | 1:1 (Unary) | Direct Delegation (`_read()`) | No (Zero-Copy SSOT) | N/A (Fixed 1:1, swapSource) | Observing single nodes, testing Stream/Future bridges, validating `managed` lifecycles |
+| **[`RawWhatTerminal<T>`](../../lib/src/engine/terminal.dart#L182)** | 1:1 (Unary) | Direct Delegation (`_read()`) | No (Zero-Copy SSOT) | N/A (Fixed 1:1) | Observing single nodes, testing Stream/Future bridges, validating `managed` lifecycles |
 | **[`RawViaTerminal<T>`](../../lib/src/engine/terminal.dart#L63)** | N-ary (Dynamic) | Explicit `evaluate()` | No (Transient) | 1-Pass Monotonic Epoch Sweep | Testing dynamic conditional branches (`if/else`), acyclic verification |
 | **[`RawComputedTerminal<T>`](../../lib/src/engine/terminal.dart#L86)** | N-ary (Dynamic) | Lazy pull on `.data` / `.snapshot` | Yes (0-Compute) | 1-Pass Monotonic Epoch Sweep | Headless leaf computation, cache coherency validation, dirty short-circuit testing |
 
@@ -189,12 +189,8 @@ base class RawWhatTerminal<T> extends _RawTerminal
    final term = RawWhatTerminal(source, onInvalidated: () {});
    if (term.hasData) print(term.data);
    ```
-3. **Dynamic Source Swapping (`swapSource`)**:
-   `RawWhatTerminal` can retarget its upstream source without reallocating the terminal instance:
-   ```dart
-   term.swapSource(newSource);
-   ```
-   If active, it synchronously severs the edge from the old source via `_detachTargetEdgeOptimistically` and attaches to the new source via `_attachTargetEdgeOptimistically`.
+3. **Immutable 1:1 Topological Binding**:
+   `RawWhatTerminal` is strictly bound to its single upstream source for its entire lifetime. If the upstream source changes in a consumer environment (such as a Flutter `Element.update`), the consumer simply deactivates and replaces the terminal instance, preserving clean `activate()` / `deactivate()` lifecycle handshakes without edge-swapping side effects.
 
 ---
 
