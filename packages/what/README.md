@@ -32,10 +32,6 @@ Traditional reactive streams and observables push eager data payloads through th
 
 ## Key Architectural Invariants
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/pioneerjkf/what/main/packages/what/assets/what_via_banner_neutral.svg" alt=".what/via — Explicit Dependency Manifest & 1-Pass Epoch Sweeping" width="100%" />
-</p>
-
 * **Separation of Producer and Consumer**: `What<T>` is the read-only, observation-only reactive interface. Mutation methods (`set`, `empty`, `setError`) are encapsulated strictly within `WhatController<T>` / `RawWhatController<T>`.
 * **Explicit Dependency Manifest (`WhatVia`)**: All dynamic derivations and effects explicitly declare observed nodes via injected `WhatVia` (e.g., `computed((via) => via(a) + via(b))`). No ambient thread-local stacks.
 * **Zero-Overhead Raw Reads**: Accessing `untracked(node)` or `untracked.state(node)` provides direct raw reads with zero tracking overhead.
@@ -503,10 +499,6 @@ final liveClient = managed<ApiClient>(
 ---
 
 ### 8. Side-Effects: `Effect`, `via.tether`, `EffectRunner` & `EffectHandle`
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/pioneerjkf/what/main/packages/what/assets/what_effect_banner_neutral.svg" alt=".what/effect — Reactive Side-Effect Dispatchers & Lifecycle Terminals" width="100%" />
-</p>
 
 What completely separates side-effects into declarative first-class entities with strict lifecycle binding and asynchronous race-condition guards.
 
