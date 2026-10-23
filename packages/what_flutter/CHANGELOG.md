@@ -1,3 +1,9 @@
+## 0.3.1
+
+- **Deprecation & Ecosystem Migration**: Marked package as discontinued in favor of [`blooming_flutter`](https://pub.dev/packages/blooming_flutter).
+- **Dependencies**: Bumped `what` and `what_extensions` dependencies to `^0.3.1`.
+- **Documentation**: Updated README with comprehensive migration guide and rebranding details.
+
 ## 0.3.0
 
 - **Dependencies**: Bumped `what` and `what_extensions` dependencies to `^0.3.0`.

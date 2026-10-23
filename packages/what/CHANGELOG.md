@@ -1,3 +1,8 @@
+## 0.3.1
+
+- **Deprecation & Ecosystem Migration**: Marked package as discontinued in favor of [`blooming`](https://pub.dev/packages/blooming).
+- **Documentation**: Updated README with comprehensive migration guide and rebranding details.
+
 ## 0.3.0
 
 - **Breaking Change (Architecture)**: Introduced `WhatPhase` 3-state operational enum (`valid`, `empty`, `error`) and exposed `phase` getter across `WhatState<T>` and `WhatSnapshot<T>`.

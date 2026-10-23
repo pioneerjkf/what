@@ -1,6 +1,35 @@
-# What Extensions
+# What Extensions (Legacy)
 
 Official reactive collection operators and functional pipeline extensions for [What](https://pub.dev/packages/what).
+
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming_extensions](https://pub.dev/packages/blooming_extensions)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what_extensions` has been **officially discontinued and succeeded by [`package:blooming_extensions`](https://pub.dev/packages/blooming_extensions)**.
+>
+> Active development and maintenance have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming_extensions`](https://pub.dev/packages/blooming_extensions)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dependencies:
+> -  what_extensions: ^0.3.0
+> +  blooming_extensions: ^1.0.0
+> ```
+> Update your imports and symbols:
+> ```diff
+> - import 'package:what_extensions/what_extensions.dart';
+> + import 'package:blooming_extensions/blooming_extensions.dart';
+>
+> - final sum = numbersController.what.elements.sum;
+> + final sum = numbersController.bloom.elements.sum;
+> ```
+> *We sincerely thank you for using and supporting What Extensions!*
 
 ---
 

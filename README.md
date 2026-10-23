@@ -5,7 +5,48 @@
   </picture>
 </p>
 
-# What
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [Blooming](https://pub.dev/packages/blooming)
+>
+> **Notice of Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and to establish a clearer, more expressive, and scalable architectural identity, the **What** ecosystem has been officially discontinued and succeeded by **[Blooming](https://github.com/pioneerjkf/blooming)** (`bloom` + `blooming`).
+>
+> All active development, maintenance, and future releases continue under the **Blooming Ecosystem**. The underlying 2-Phase LPDAG engine, glitch-free guarantees, and zero-leak dormancy lifecycle remain identical, while offering refined ergonomics.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Pub.dev Packages**: [`blooming`](https://pub.dev/packages/blooming) · [`blooming_flutter`](https://pub.dev/packages/blooming_flutter) · [`blooming_extensions`](https://pub.dev/packages/blooming_extensions) · [`blooming_lints`](https://pub.dev/packages/blooming_lints) · [`blooming_test`](https://pub.dev/packages/blooming_test) · [`blooming_flutter_test`](https://pub.dev/packages/blooming_flutter_test)
+>
+> *We extend our deepest gratitude to everyone who supported and provided feedback on `what`. We warmly welcome you to join us at [Blooming](https://github.com/pioneerjkf/blooming).*
+
+---
+
+### 📦 Ecosystem Migration Map
+
+| Legacy Package | New Package (pub.dev) | Role & Description |
+| :--- | :--- | :--- |
+| [`what`](https://pub.dev/packages/what) | [`blooming`](https://pub.dev/packages/blooming) | Pure Dart 2-Phase LPDAG reactive core |
+| [`what_flutter`](https://pub.dev/packages/what_flutter) | [`blooming_flutter`](https://pub.dev/packages/blooming_flutter) | Flutter reactive UI bindings & leaf elements |
+| [`what_extensions`](https://pub.dev/packages/what_extensions) | [`blooming_extensions`](https://pub.dev/packages/blooming_extensions) | Reactive collection & stream extensions |
+| [`what_lints`](https://pub.dev/packages/what_lints) | [`blooming_lints`](https://pub.dev/packages/blooming_lints) | Analyzer rules & self-healing lint rules |
+| [`what_test`](https://pub.dev/packages/what_test) | [`blooming_test`](https://pub.dev/packages/blooming_test) | Pure Dart reactive unit testing harness |
+| [`what_flutter_test`](https://pub.dev/packages/what_flutter_test) | [`blooming_flutter_test`](https://pub.dev/packages/blooming_flutter_test) | Flutter widget testing & override mocks |
+
+#### Quick Symbol Migration
+```diff
+- import 'package:what/what.dart';
++ import 'package:blooming/blooming.dart';
+
+- final count = WhatController<int>(0);
++ final count = BloomController<int>(0);
+
+- what.build((context, via) => Text('${via(count)}'));
++ bloom.build((context, via) => Text('${via(count)}'));
+```
+
+---
+
+# What (Legacy)
 
 **A lazy, glitch-free reactive state engine for Dart and Flutter.**
 

@@ -1,3 +1,8 @@
+## 0.3.1
+
+- **Deprecation & Ecosystem Migration**: Marked package as discontinued in favor of [`blooming_lints`](https://pub.dev/packages/blooming_lints).
+- **Documentation**: Updated README with migration guide.
+
 ## 0.3.0
 
 - **Type Checker**: Added `phase` property recognition to pipeline read AST analyzer.

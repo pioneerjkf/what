@@ -10,7 +10,7 @@ topics:
   - widgets
   - reactive
 
-version: 0.3.0
+version: 0.3.1
 
 resolution: workspace
 
@@ -24,9 +24,9 @@ dependencies:
   flutter_test:
     sdk: flutter
   meta: ^1.18.0
-  what: ^0.3.0
-  what_flutter: ^0.3.0
-  what_test: ^0.3.0
+  what: ^0.3.1
+  what_flutter: ^0.3.1
+  what_test: ^0.3.1
 
 dev_dependencies:
   flutter_lints: ^6.0.0

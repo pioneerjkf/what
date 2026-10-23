@@ -15,6 +15,35 @@
   <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.6+-0175C2.svg?style=flat-square&logo=dart" alt="Dart SDK" /></a>
 </p>
 
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming](https://pub.dev/packages/blooming)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what` has been **officially discontinued and succeeded by [`package:blooming`](https://pub.dev/packages/blooming)**.
+>
+> Active development, performance optimizations, and future enhancements have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming`](https://pub.dev/packages/blooming)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dependencies:
+> -  what: ^0.3.0
+> +  blooming: ^1.0.0
+> ```
+> Update your imports and symbols:
+> ```diff
+> - import 'package:what/what.dart';
+> + import 'package:blooming/blooming.dart';
+>
+> - final state = WhatController<int>(0);
+> + final state = BloomController<int>(0);
+> ```
+> *We sincerely thank you for using and supporting What!*
+
 ---
 
 ## Overview

@@ -11,6 +11,33 @@
   <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.6+-0175C2.svg?style=flat-square&logo=dart" alt="Dart SDK" /></a>
 </p>
 
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming_lints](https://pub.dev/packages/blooming_lints)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what_lints` has been **officially discontinued and succeeded by [`package:blooming_lints`](https://pub.dev/packages/blooming_lints)**.
+>
+> Active development and new lint diagnostics have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming_lints`](https://pub.dev/packages/blooming_lints)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dev_dependencies:
+> -  what_lints: ^0.3.0
+> +  blooming_lints: ^1.0.0
+> ```
+> Update your `analysis_options.yaml`:
+> ```diff
+>  plugins:
+> -  - what_lints
+> +  - blooming_lints
+> ```
+> *We sincerely thank you for using and supporting What Lints!*
+
 ---
 
 

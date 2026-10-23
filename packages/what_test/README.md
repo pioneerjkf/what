@@ -4,6 +4,35 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](https://github.com/pioneerjkf/what/blob/main/LICENSE)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.6+-0175C2.svg?style=flat-square&logo=dart)](https://dart.dev)
 
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming_test](https://pub.dev/packages/blooming_test)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what_test` has been **officially discontinued and succeeded by [`package:blooming_test`](https://pub.dev/packages/blooming_test)**.
+>
+> Active development and testing tools have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming_test`](https://pub.dev/packages/blooming_test)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dev_dependencies:
+> -  what_test: ^0.3.0
+> +  blooming_test: ^1.0.0
+> ```
+> Update your imports and test runners:
+> ```diff
+> - import 'package:what_test/what_test.dart';
+> + import 'package:blooming_test/blooming_test.dart';
+>
+> - whatTest<int>( ... );
+> + bloomTest<int>( ... );
+> ```
+> *We sincerely thank you for using and supporting What Test!*
+
 A comprehensive, declarative testing harness and LPDAG state matcher library for the [what](https://pub.dev/packages/what) reactive state framework.
 
 ## Features

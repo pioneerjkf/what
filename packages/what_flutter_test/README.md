@@ -4,6 +4,35 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](https://github.com/pioneerjkf/what/blob/main/LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.27+-02569B.svg?style=flat-square&logo=flutter)](https://flutter.dev)
 
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming_flutter_test](https://pub.dev/packages/blooming_flutter_test)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what_flutter_test` has been **officially discontinued and succeeded by [`package:blooming_flutter_test`](https://pub.dev/packages/blooming_flutter_test)**.
+>
+> Active development and Flutter testing tools have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming_flutter_test`](https://pub.dev/packages/blooming_flutter_test)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dev_dependencies:
+> -  what_flutter_test: ^0.3.0
+> +  blooming_flutter_test: ^1.0.0
+> ```
+> Update your imports and test runners:
+> ```diff
+> - import 'package:what_flutter_test/what_flutter_test.dart';
+> + import 'package:blooming_flutter_test/blooming_flutter_test.dart';
+>
+> - whatWidgetTest( ... );
+> + bloomWidgetTest( ... );
+> ```
+> *We sincerely thank you for using and supporting What Flutter Test!*
+
 Unified Flutter testing harness and hierarchical widget state mocking system for the [what_flutter](https://pub.dev/packages/what_flutter) reactive UI framework.
 
 ## Features

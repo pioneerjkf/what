@@ -15,8 +15,39 @@
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.27+-02569B.svg?style=flat-square&logo=flutter" alt="Flutter SDK" /></a>
 </p>
 
+> [!WARNING]
+> ### 🌸 Discontinued & Succeeded by [blooming_flutter](https://pub.dev/packages/blooming_flutter)
+>
+> **Notice of Package Migration & Rebranding**
+>
+> To eliminate long-term cognitive ambiguity caused by the interrogative naming convention (`What`) and provide a clearer, more expressive architectural identity, `package:what_flutter` has been **officially discontinued and succeeded by [`package:blooming_flutter`](https://pub.dev/packages/blooming_flutter)**.
+>
+> Active development, UI performance optimizations, and future enhancements have fully transitioned to the **Blooming** repository.
+>
+> * 🔗 **New GitHub Repository**: [github.com/pioneerjkf/blooming](https://github.com/pioneerjkf/blooming)
+> * 📦 **Replacement Package**: [`blooming_flutter`](https://pub.dev/packages/blooming_flutter)
+>
+> #### Migration Guide
+> Update your `pubspec.yaml`:
+> ```diff
+>  dependencies:
+> -  what_flutter: ^0.3.0
+> +  blooming_flutter: ^1.0.0
+> ```
+> Update your imports and symbols:
+> ```diff
+> - import 'package:what_flutter/what_flutter.dart';
+> + import 'package:blooming_flutter/blooming_flutter.dart';
+>
+> - what.build((context, via) => Text('${via(count)}'));
+> + bloom.build((context, via) => Text('${via(count)}'));
+>
+> - class MyWidget extends WhatWidget { ... }
+> + class MyWidget extends BloomWidget { ... }
+> ```
+> *We sincerely thank you for using and supporting What Flutter!*
 
-> **Powered by the What 2-Phase LPDAG Pure Dart Engine.** For pure Dart core specifications, architecture whitepapers, and CLI/backend reactivity, visit [`what`](https://pub.dev/packages/what).
+> **Powered by the Blooming 2-Phase LPDAG Pure Dart Engine.** For pure Dart core specifications, visit [`blooming`](https://pub.dev/packages/blooming).
 
 ---
 
